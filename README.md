@@ -11,6 +11,7 @@ A calm-first, mobile-focused story generation platform with a .NET API, a React 
 - Series continuity with Story Bible state.
 - One-shot generation mode.
 - iOS 27+: on-device story drafting with Apple Intelligence (Foundation Models), with no model downloads.
+- iOS 27+: on-device story voiceovers with Apple speech synthesis (premium/enhanced voices), still gated by parent approval.
 - iOS 27+: native on-device dictation (`SpeechAnalyzer` + `DictationTranscriber`) for Quick Generate fields.
 - Parent approval flow (teaser first, full audio on approval).
 - Kid Shelf browsing limited to Recent + Favorites.

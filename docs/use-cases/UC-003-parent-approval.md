@@ -17,6 +17,7 @@ Story was generated with approval required.
 
 ## Variants / Edge Cases
 - If approval persistence needs a later retry, the current device still promotes the generated full narration into the single visible playback control after approval.
+- In the iOS 27+ host, teaser and full voiceovers are rendered on-device. The teaser plays immediately, while the on-device full narration is referenced only after the API confirms approval (or a library sync reports it ready).
 - Unsupported hosts still surface localhost recovery guidance before any parent-passkey prompt is attempted.
 - Parent verification must fail fast when the browser ceremony or follow-up requests stall, and the recovery guidance must stay calm on mobile as well as desktop.
 

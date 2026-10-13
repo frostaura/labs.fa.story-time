@@ -41,9 +41,36 @@ struct BridgeRequestTests {
     }
 
     @Test func capabilitiesReplyMatchesWebContract() {
-        let reply = NativeCapabilities(appleIntelligence: .modelNotReady, dictation: true).replyBody
+        let reply = NativeCapabilities(appleIntelligence: .modelNotReady, dictation: true, narration: true).replyBody
         #expect(reply["appleIntelligence"] as? String == "modelNotReady")
         #expect(reply["dictation"] as? Bool == true)
+        #expect(reply["narration"] as? Bool == true)
+    }
+
+    @Test func parsesNarrationRequests() throws {
+        let narrate = try BridgeRequest.parse([
+            "action": "narrateStory",
+            "input": ["storyId": "abc123", "title": "Moon Boat", "scenes": ["One"], "narrationStyle": "whisper"],
+        ])
+        #expect(narrate == .narrateStory(NarrateStoryInput(storyId: "abc123", title: "Moon Boat", scenes: ["One"], narrationStyle: "whisper")))
+
+        let load = try BridgeRequest.parse(["action": "loadNarration", "storyId": "abc123", "part": "full"])
+        #expect(load == .loadNarration(storyId: "abc123", part: .full))
+    }
+
+    @Test func rejectsUnsafeNarrationStoryIds() {
+        #expect(throws: BridgeRequestError.invalidStoryId) {
+            try BridgeRequest.parse(["action": "loadNarration", "storyId": "../../secrets", "part": "full"])
+        }
+        #expect(throws: BridgeRequestError.invalidStoryId) {
+            try BridgeRequest.parse([
+                "action": "narrateStory",
+                "input": ["storyId": "a/b", "title": "t", "scenes": ["s"]],
+            ])
+        }
+        #expect(throws: BridgeRequestError.missingInput) {
+            try BridgeRequest.parse(["action": "loadNarration", "storyId": "abc", "part": "bonus"])
+        }
     }
 
     @Test func dictationEventScriptEscapesTranscript() {
@@ -96,5 +123,48 @@ struct StoryPromptBuilderTests {
         #expect(StoryPromptBuilder.normalized(title: " Moon ", scenes: [" one ", " ", "two"])
             == StoryDraftReply(title: "Moon", scenes: ["one", "two"]))
         #expect(StoryPromptBuilder.normalized(title: "Empty", scenes: ["  "]) == nil)
+    }
+}
+
+@Suite("NarrationScript")
+struct NarrationScriptTests {
+    private let input = NarrateStoryInput(
+        storyId: "story-1",
+        title: " Moon Boat ",
+        recap: "Previously: the boat found a star.",
+        scenes: ["First scene.", "  ", "Second scene."],
+        narrationStyle: "calm"
+    )
+
+    @Test func fullNarrationReadsTitleRecapAndScenes() {
+        #expect(NarrationScript.segments(for: input, part: .full)
+            == ["Moon Boat", "Previously: the boat found a star.", "First scene.", "Second scene."])
+    }
+
+    @Test func teaserReadsTitleAndOpeningExcerpt() {
+        #expect(NarrationScript.segments(for: input, part: .teaser) == ["Moon Boat", "First scene."])
+
+        let long = String(repeating: "Soft waves hum. ", count: 40)
+        let teaser = NarrationScript.segments(
+            for: NarrateStoryInput(storyId: "s", title: "T", scenes: [long]),
+            part: .teaser
+        )
+        #expect(teaser[1].count <= NarrationScript.teaserCharacterBudget)
+        #expect(teaser[1].hasSuffix("."))
+    }
+
+    @Test func validatesStoryIds() {
+        #expect(NarrationScript.isValidStoryId("0f3a9c_story-1"))
+        #expect(!NarrationScript.isValidStoryId(""))
+        #expect(!NarrationScript.isValidStoryId("../etc"))
+        #expect(!NarrationScript.isValidStoryId("ünicode"))
+        #expect(!NarrationScript.isValidStoryId(String(repeating: "a", count: 65)))
+        #expect(NarrationScript.fileName(storyId: "abc", part: .teaser) == "abc-teaser.m4a")
+    }
+
+    @Test func voiceStyleFollowsNarrationStyle() {
+        #expect(NarrationVoiceStyle.from(narrationStyle: nil) == .bedtime)
+        #expect(NarrationVoiceStyle.from(narrationStyle: "Warm Whisper").rateMultiplier < NarrationVoiceStyle.bedtime.rateMultiplier)
+        #expect(NarrationVoiceStyle.from(narrationStyle: "playful").pitchMultiplier > 1)
     }
 }

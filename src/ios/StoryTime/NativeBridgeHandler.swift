@@ -1,13 +1,15 @@
 import StoryTimeKit
 import WebKit
 
-/// Answers bridge calls from the web app with Apple Intelligence and on-device dictation.
+/// Answers bridge calls from the web app with Apple Intelligence drafting, on-device dictation,
+/// and on-device narration (Apple speech synthesis).
 @MainActor
 final class NativeBridgeHandler: NSObject, WKScriptMessageHandlerWithReply {
     weak var webView: WKWebView?
 
     private let drafter = AppleIntelligenceStoryDrafter()
     private let dictation = OnDeviceDictation()
+    private let narrator = OnDeviceNarrator()
 
     func userContentController(
         _ userContentController: WKUserContentController,
@@ -18,7 +20,8 @@ final class NativeBridgeHandler: NSObject, WKScriptMessageHandlerWithReply {
             case .capabilities:
                 let capabilities = NativeCapabilities(
                     appleIntelligence: drafter.availability,
-                    dictation: await OnDeviceDictation.isSupported
+                    dictation: await OnDeviceDictation.isSupported,
+                    narration: OnDeviceNarrator.isSupported
                 )
                 return (capabilities.replyBody, nil)
             case let .draftStory(input):
@@ -35,6 +38,14 @@ final class NativeBridgeHandler: NSObject, WKScriptMessageHandlerWithReply {
             case .stopDictation:
                 dictation.stop()
                 return (NSNull(), nil)
+            case let .narrateStory(input):
+                let result = try await narrator.narrate(input)
+                return (result.replyBody, nil)
+            case let .loadNarration(storyId, part):
+                guard let dataUri = narrator.dataUri(storyId: storyId, part: part) else {
+                    return (NSNull(), nil)
+                }
+                return (["dataUri": dataUri], nil)
             }
         } catch {
             return (nil, String(describing: error))

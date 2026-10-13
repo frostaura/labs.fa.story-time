@@ -1,6 +1,7 @@
 import { type CSSProperties, type SyntheticEvent, useState } from 'react'
 import { appMessages } from '../config/messages'
 import { storyModes } from '../config/modes'
+import { useNarrationSource } from '../hooks/useNarrationSource'
 import type { PosterLayer, StoryArtifact } from '../types/storyTime'
 
 type UiMessages = typeof appMessages.ui
@@ -54,7 +55,9 @@ export function StoryCard({
   const activeAudioAriaLabel = hasFullNarration
     ? ui.fullNarration(story.title)
     : ui.teaserNarration(story.title)
-  const activeAudioSource = hasFullNarration && story.fullAudio ? story.fullAudio : story.teaserAudio
+  const activeAudioSource = useNarrationSource(
+    hasFullNarration && story.fullAudio ? story.fullAudio : story.teaserAudio,
+  )
   const modeLabel = story.mode === storyModes.series ? ui.modeSeries : ui.modeOneShot
   const fallbackDurationSeconds = hasFullNarration
     ? Math.max(75, story.sceneCount * 75)

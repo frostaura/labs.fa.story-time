@@ -15,6 +15,7 @@ const liveBackendExpectationTimeout = 15_000
 type FakeHostOptions = {
   appleIntelligence: string
   dictation: boolean
+  narration?: boolean
   draft?: { title: string; scenes: string[] }
   transcript?: string
 }
@@ -41,9 +42,16 @@ const installFakeIosHost = async (page: Page, options: FakeHostOptions) => {
                 return Promise.resolve({
                   appleIntelligence: hostOptions.appleIntelligence,
                   dictation: hostOptions.dictation,
+                  narration: hostOptions.narration ?? false,
                 })
               case 'draftStory':
                 return Promise.resolve(hostOptions.draft ?? null)
+              case 'narrateStory':
+                return Promise.resolve({ teaserDurationSeconds: 8, fullDurationSeconds: 96 })
+              case 'loadNarration':
+                return Promise.resolve({
+                  dataUri: `data:audio/mp4;base64,${(message as unknown as { part: string }).part === 'full' ? 'RlVMTA==' : 'VEVBU0VS'}`,
+                })
               case 'startDictation':
                 window.setTimeout(() => {
                   window.dispatchEvent(
@@ -149,4 +157,28 @@ test('UC-001 live backend accepts the Apple Intelligence draft end-to-end', asyn
   await expect(page.getByText('Ari and the Sleepy Comet').first()).toBeVisible({
     timeout: liveBackendExpectationTimeout,
   })
+})
+
+test('UC-003 iOS host records narration on-device and keeps full narration behind approval', async ({ page }) => {
+  await installCommonMockRoutes(page)
+  await mockEmptyLibrary(page)
+  await installFakeIosHost(page, { appleIntelligence: 'unavailable', dictation: false, narration: true })
+  await page.route('**/api/stories/generate', async (route) => {
+    await fulfillJson(route, 200, buildGeneratedStoryPayload())
+  })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Generate story' }).click()
+
+  const teaser = page.getByLabel('Teaser narration for Ari and the Moonlit Meadow').first()
+  await expect(teaser).toHaveAttribute('src', 'data:audio/mp4;base64,VEVBU0VS')
+  await expect(page.getByLabel('Full narration for Ari and the Moonlit Meadow')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Approve full narration' }).first()).toBeDisabled()
+
+  const messages = await page.evaluate(
+    () => (window as Window & { __storyTimeHostMessages?: { action: string }[] }).__storyTimeHostMessages ?? [],
+  )
+  expect(messages.map((message) => message.action)).toEqual(
+    expect.arrayContaining(['capabilities', 'narrateStory', 'loadNarration']),
+  )
 })

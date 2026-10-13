@@ -21,6 +21,7 @@ import {
 import {
   createNativeBridge,
   NATIVE_DICTATION_EVENT,
+  nativeNarrationSource,
   type DictationEventDetail,
   type NativeCapabilities,
   type OnDeviceDraft,
@@ -551,6 +552,11 @@ const formatParentVerificationError = (
 
 const GENERATION_REQUEST_TIMEOUT_MS = 12_000
 const ON_DEVICE_DRAFT_TIMEOUT_MS = 45_000
+const ON_DEVICE_NARRATION_TIMEOUT_MS = 90_000
+
+/** Full narration stays behind approval: the on-device file is referenced only once the API unlocks it. */
+const deviceFullNarration = (story: StoryArtifact, fullAudioReady: boolean): string | undefined =>
+  fullAudioReady ? nativeNarrationSource(story.storyId, 'full') : undefined
 const PARENT_REQUEST_TIMEOUT_MS = 6_000
 const STORY_HIGHLIGHT_DURATION_MS = 4_500
 
@@ -614,6 +620,7 @@ function App() {
   const [nativeCapabilities, setNativeCapabilities] = useState<NativeCapabilities>({
     appleIntelligence: 'unavailable',
     dictation: false,
+    narration: false,
   })
   const [dictatingField, setDictatingField] = useState<DictationField | null>(null)
 
@@ -719,6 +726,40 @@ function App() {
     }
   }
 
+  const applyOnDeviceNarration = async (story: StoryArtifact): Promise<StoryArtifact> => {
+    if (!nativeBridge || !nativeCapabilities.narration) {
+      return story
+    }
+
+    setGenerationFeedback({ tone: 'info', message: ui.recordingNarrationOnDeviceStatus(profile.childName) })
+    try {
+      const narration = await withTimeout(
+        nativeBridge.narrateStory({
+          storyId: story.storyId,
+          title: story.title,
+          recap: story.recap,
+          scenes: story.scenes,
+          narrationStyle: story.storyBible?.audioAnchorMetadata.narrationStyle ?? oneShotCustomization.narrationStyle,
+        }),
+        ON_DEVICE_NARRATION_TIMEOUT_MS,
+        appMessages.generationTemporarilyUnavailable,
+      )
+      if (!narration) {
+        return story
+      }
+
+      return {
+        ...story,
+        narrationSource: 'device',
+        teaserAudio: nativeNarrationSource(story.storyId, 'teaser'),
+        fullAudio: deviceFullNarration(story, story.fullAudioReady),
+      }
+    } catch (narrationError) {
+      logClientWarning('On-device narration failed; keeping server narration.', narrationError)
+      return story
+    }
+  }
+
   const storiesById = useMemo(() => new Map(stories.map((story) => [story.storyId, story])), [stories])
   const seriesOptions = useMemo<SeriesOption[]>(() => {
     const seen = new Set<string>()
@@ -786,7 +827,10 @@ function App() {
             ...story,
             isFavorite: libraryItem.isFavorite,
             fullAudioReady: libraryItem.fullAudioReady,
-            fullAudio: libraryItem.fullAudio ?? story.fullAudio,
+            fullAudio:
+              story.narrationSource === 'device'
+                ? deviceFullNarration(story, libraryItem.fullAudioReady)
+                : libraryItem.fullAudio ?? story.fullAudio,
           }
         }),
       )
@@ -1070,27 +1114,25 @@ function App() {
       }
 
       const generated = (await response.json()) as GenerateStoryResponse
-      const nextStories: StoryArtifact[] = [
-        {
-          storyId: generated.storyId,
-          title: generated.title,
-          mode: generated.mode,
-          seriesId: generated.seriesId,
-          recap: generated.recap,
-          scenes: generated.scenes,
-          sceneCount: generated.sceneCount,
-          posterLayers: generated.posterLayers,
-          approvalRequired: generated.approvalRequired,
-          teaserAudio: generated.teaserAudio,
-          fullAudio: generated.fullAudio,
-          fullAudioReady: generated.fullAudioReady,
-          storyBible: generated.storyBible,
-          reducedMotion: generated.reducedMotion,
-          generatedAt: generated.generatedAt,
-          isFavorite: false,
-        },
-        ...stories,
-      ]
+      const generatedStory = await applyOnDeviceNarration({
+        storyId: generated.storyId,
+        title: generated.title,
+        mode: generated.mode,
+        seriesId: generated.seriesId,
+        recap: generated.recap,
+        scenes: generated.scenes,
+        sceneCount: generated.sceneCount,
+        posterLayers: generated.posterLayers,
+        approvalRequired: generated.approvalRequired,
+        teaserAudio: generated.teaserAudio,
+        fullAudio: generated.fullAudio,
+        fullAudioReady: generated.fullAudioReady,
+        storyBible: generated.storyBible,
+        reducedMotion: generated.reducedMotion,
+        generatedAt: generated.generatedAt,
+        isFavorite: false,
+      })
+      const nextStories: StoryArtifact[] = [generatedStory, ...stories]
 
       setStories(nextStories)
       setHighlightedStoryId(generated.storyId)
@@ -1203,7 +1245,14 @@ function App() {
       setStories((existing) =>
         existing.map((story) =>
           story.storyId === storyId
-            ? { ...story, fullAudioReady: approval.fullAudioReady, fullAudio: approval.fullAudio }
+            ? {
+                ...story,
+                fullAudioReady: approval.fullAudioReady,
+                fullAudio:
+                  story.narrationSource === 'device'
+                    ? deviceFullNarration(story, approval.fullAudioReady)
+                    : approval.fullAudio,
+              }
             : story,
         ),
       )

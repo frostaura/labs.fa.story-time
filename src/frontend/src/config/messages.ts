@@ -181,6 +181,8 @@ export const appMessages = Object.freeze({
     dictateField: (field: string) => withToken(resolveUiMessage('dictateFieldTemplate'), '{field}', field),
     stopDictation: (field: string) => withToken(resolveUiMessage('stopDictationTemplate'), '{field}', field),
     dictationUnavailable: resolveUiMessage('dictationUnavailable'),
+    recordingNarrationOnDeviceStatus: (childName: string) =>
+      withToken(resolveUiMessage('recordingNarrationOnDeviceStatusTemplate'), '{childName}', childName),
     storyGenerated: (title: string) =>
       withToken(resolveUiMessage('storyGeneratedTemplate'), '{title}', title),
     continuationGenerated: (title: string) =>

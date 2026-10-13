@@ -77,6 +77,7 @@
     "draftingOnDeviceStatusTemplate": "Writing {childName}'s story on this device with Apple Intelligence…",
     "dictateFieldTemplate": "Dictate {field}",
     "stopDictationTemplate": "Stop dictating {field}",
+    "recordingNarrationOnDeviceStatusTemplate": "Recording {childName}'s narration on this device…",
     "dictationUnavailable": "Dictation isn't available right now. You can keep typing.",
     "storyGeneratedTemplate": "{title} is ready in Recent.",
     "continuationGeneratedTemplate": "{title} is ready and now leads this series.",

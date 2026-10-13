@@ -47,6 +47,8 @@ export type StoryArtifact = {
   reducedMotion: boolean
   generatedAt: string
   isFavorite: boolean
+  /** `device` when narration was rendered on-device by the iOS host (Apple speech synthesis). */
+  narrationSource?: 'device'
 }
 
 export type HomeStatusResponse = {

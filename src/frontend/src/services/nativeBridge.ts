@@ -11,6 +11,7 @@ import type { StoryBible } from '../types/storyTime'
 export const NATIVE_BRIDGE_HANDLER = 'storyTime'
 export const NATIVE_DICTATION_EVENT = 'storytime:dictation'
 export const APPLE_INTELLIGENCE_PROVIDER = 'apple-foundation-models'
+export const NATIVE_NARRATION_PREFIX = 'storytime-native:narration/'
 
 export type AppleIntelligenceAvailability =
   | 'available'
@@ -22,6 +23,22 @@ export type AppleIntelligenceAvailability =
 export type NativeCapabilities = {
   appleIntelligence: AppleIntelligenceAvailability
   dictation: boolean
+  narration: boolean
+}
+
+export type NarrationPart = 'teaser' | 'full'
+
+export type NarrateStoryInput = {
+  storyId: string
+  title: string
+  recap?: string
+  scenes: string[]
+  narrationStyle?: string
+}
+
+export type NativeNarration = {
+  teaserDurationSeconds: number
+  fullDurationSeconds: number
 }
 
 export type OnDeviceDraftInput = {
@@ -48,6 +65,8 @@ type NativeMessage =
   | { action: 'draftStory'; input: OnDeviceDraftInput }
   | { action: 'startDictation' }
   | { action: 'stopDictation' }
+  | { action: 'narrateStory'; input: NarrateStoryInput }
+  | { action: 'loadNarration'; storyId: string; part: NarrationPart }
 
 type MessageHandler = { postMessage: (message: NativeMessage) => Promise<unknown> }
 
@@ -58,6 +77,7 @@ type WebKitWindow = Window & {
 const unavailableCapabilities: NativeCapabilities = Object.freeze({
   appleIntelligence: 'unavailable',
   dictation: false,
+  narration: false,
 })
 
 const resolveHandler = (): MessageHandler | null => {
@@ -85,7 +105,42 @@ const normalizeCapabilities = (reply: unknown): NativeCapabilities => {
   return {
     appleIntelligence: isAvailability(candidate.appleIntelligence) ? candidate.appleIntelligence : 'unavailable',
     dictation: candidate.dictation === true,
+    narration: candidate.narration === true,
   }
+}
+
+const isPositiveNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0
+
+const normalizeNarration = (reply: unknown): NativeNarration | null => {
+  const candidate = reply as Partial<NativeNarration> | null
+  if (!candidate || !isPositiveNumber(candidate.teaserDurationSeconds) || !isPositiveNumber(candidate.fullDurationSeconds)) {
+    return null
+  }
+
+  return {
+    teaserDurationSeconds: candidate.teaserDurationSeconds,
+    fullDurationSeconds: candidate.fullDurationSeconds,
+  }
+}
+
+/** Small persisted reference to narration audio cached by the iOS host (audio is too large for LocalStorage). */
+export const nativeNarrationSource = (storyId: string, part: NarrationPart): string =>
+  `${NATIVE_NARRATION_PREFIX}${encodeURIComponent(storyId)}/${part}`
+
+export const parseNativeNarrationSource = (
+  source: string | undefined | null,
+): { storyId: string; part: NarrationPart } | null => {
+  if (!source || !source.startsWith(NATIVE_NARRATION_PREFIX)) {
+    return null
+  }
+
+  const [encodedStoryId, part, ...rest] = source.slice(NATIVE_NARRATION_PREFIX.length).split('/')
+  if (!encodedStoryId || rest.length > 0 || (part !== 'teaser' && part !== 'full')) {
+    return null
+  }
+
+  return { storyId: decodeURIComponent(encodedStoryId), part }
 }
 
 const normalizeDraft = (reply: unknown): OnDeviceDraft | null => {
@@ -128,6 +183,13 @@ export const createNativeBridge = () => {
     },
     stopDictation: async (): Promise<void> => {
       await handler.postMessage({ action: 'stopDictation' })
+    },
+    narrateStory: async (input: NarrateStoryInput): Promise<NativeNarration | null> =>
+      normalizeNarration(await handler.postMessage({ action: 'narrateStory', input })),
+    loadNarration: async (storyId: string, part: NarrationPart): Promise<string | null> => {
+      const reply = await handler.postMessage({ action: 'loadNarration', storyId, part })
+      const dataUri = (reply as { dataUri?: unknown } | null)?.dataUri
+      return typeof dataUri === 'string' && dataUri.startsWith('data:audio/') ? dataUri : null
     },
   })
 }

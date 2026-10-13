@@ -23,6 +23,7 @@ StoryTime is a calm-first, mobile-first PWA, shipped natively as an iOS 27+ host
 
 ### 3.2 Playback and Media
 - Teaser narration before approval when approval mode is on.
+- **On-device narration (iOS 27+)**: inside the iOS host, teaser and full voiceovers are rendered on-device with Apple speech synthesis (best installed voice, delivery tuned by narration style) and cached by the host. The client stores only `storytime-native:narration/...` references, and the full reference unlocks only once the API reports approval. Server narration remains the fallback (ARCH-005).
 - Full narration unlocked after approval.
 - Poster output has 3-5 parallax layers with defined speed multipliers and a visibly layered composition in default motion mode.
 - Motion-enabled poster surfaces use perceptible depth and ambient drift so generated stories do not read as flat static cards.

@@ -12,6 +12,8 @@ public enum BridgeAction: String, Sendable {
     case draftStory
     case startDictation
     case stopDictation
+    case narrateStory
+    case loadNarration
 }
 
 /// Mirrors the TypeScript `AppleIntelligenceAvailability` union.
@@ -26,14 +28,16 @@ public enum AppleIntelligenceAvailability: String, Sendable {
 public struct NativeCapabilities: Equatable, Sendable {
     public var appleIntelligence: AppleIntelligenceAvailability
     public var dictation: Bool
+    public var narration: Bool
 
-    public init(appleIntelligence: AppleIntelligenceAvailability, dictation: Bool) {
+    public init(appleIntelligence: AppleIntelligenceAvailability, dictation: Bool, narration: Bool = false) {
         self.appleIntelligence = appleIntelligence
         self.dictation = dictation
+        self.narration = narration
     }
 
     public var replyBody: [String: Any] {
-        ["appleIntelligence": appleIntelligence.rawValue, "dictation": dictation]
+        ["appleIntelligence": appleIntelligence.rawValue, "dictation": dictation, "narration": narration]
     }
 }
 
@@ -82,10 +86,32 @@ public struct StoryDraftReply: Equatable, Sendable {
     }
 }
 
+public struct NarrateStoryInput: Decodable, Equatable, Sendable {
+    public var storyId: String
+    public var title: String
+    public var recap: String?
+    public var scenes: [String]
+    public var narrationStyle: String?
+
+    public init(storyId: String, title: String, recap: String? = nil, scenes: [String], narrationStyle: String? = nil) {
+        self.storyId = storyId
+        self.title = title
+        self.recap = recap
+        self.scenes = scenes
+        self.narrationStyle = narrationStyle
+    }
+}
+
+public enum NarrationPart: String, Sendable, CaseIterable {
+    case teaser
+    case full
+}
+
 public enum BridgeRequestError: Error, Equatable {
     case malformedMessage
     case unknownAction(String)
     case missingInput
+    case invalidStoryId
 }
 
 public enum BridgeRequest: Equatable, Sendable {
@@ -93,6 +119,8 @@ public enum BridgeRequest: Equatable, Sendable {
     case draftStory(DraftStoryInput)
     case startDictation
     case stopDictation
+    case narrateStory(NarrateStoryInput)
+    case loadNarration(storyId: String, part: NarrationPart)
 
     /// Parses the `postMessage` body delivered by WebKit (a property-list style dictionary).
     public static func parse(_ body: Any) throws -> BridgeRequest {
@@ -111,12 +139,32 @@ public enum BridgeRequest: Equatable, Sendable {
         case .stopDictation:
             return .stopDictation
         case .draftStory:
-            guard let input = message["input"], JSONSerialization.isValidJSONObject(input) else {
+            return .draftStory(try decodeInput(DraftStoryInput.self, from: message))
+        case .narrateStory:
+            let input = try decodeInput(NarrateStoryInput.self, from: message)
+            guard NarrationScript.isValidStoryId(input.storyId) else {
+                throw BridgeRequestError.invalidStoryId
+            }
+            return .narrateStory(input)
+        case .loadNarration:
+            guard let storyId = message["storyId"] as? String,
+                  let rawPart = message["part"] as? String,
+                  let part = NarrationPart(rawValue: rawPart) else {
                 throw BridgeRequestError.missingInput
             }
-            let data = try JSONSerialization.data(withJSONObject: input)
-            return .draftStory(try JSONDecoder().decode(DraftStoryInput.self, from: data))
+            guard NarrationScript.isValidStoryId(storyId) else {
+                throw BridgeRequestError.invalidStoryId
+            }
+            return .loadNarration(storyId: storyId, part: part)
         }
+    }
+
+    private static func decodeInput<T: Decodable>(_ type: T.Type, from message: [String: Any]) throws -> T {
+        guard let input = message["input"], JSONSerialization.isValidJSONObject(input) else {
+            throw BridgeRequestError.missingInput
+        }
+        let data = try JSONSerialization.data(withJSONObject: input)
+        return try JSONDecoder().decode(type, from: data)
     }
 }
 
