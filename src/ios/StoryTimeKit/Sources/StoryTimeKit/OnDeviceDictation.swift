@@ -70,7 +70,7 @@ public final class OnDeviceDictation {
             if let lastSampleTime = try await analyzer.analyzeSequence(inputSequence) {
                 try await analyzer.finalizeAndFinish(through: lastSampleTime)
             } else {
-                try analyzer.cancelAndFinishNow()
+                await analyzer.cancelAndFinishNow()
             }
             try await results.value
             return (finalized + volatile).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -98,18 +98,64 @@ public final class OnDeviceDictation {
 
         let inputNode = audioEngine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
-        let converter = analyzerFormat.map { AnalyzerInputConverter(analyzerFormat: $0) }
+        let targetFormat = analyzerFormat ?? inputFormat
+        let converter = inputFormat == targetFormat ? nil : AVAudioConverter(from: inputFormat, to: targetFormat)
 
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
-            if let converter, let inputs = try? converter.convert(buffer, at: nil) {
-                inputs.forEach { inputBuilder.yield($0) }
-            } else {
-                inputBuilder.yield(AnalyzerInput(buffer: buffer))
-            }
-        }
+        Self.installTap(
+            on: inputNode,
+            inputFormat: inputFormat,
+            targetFormat: targetFormat,
+            converter: converter,
+            inputBuilder: inputBuilder
+        )
 
         audioEngine.prepare()
         try audioEngine.start()
+    }
+
+    /// Built outside the main actor: the tap fires on the realtime audio thread.
+    nonisolated private static func installTap(
+        on inputNode: AVAudioInputNode,
+        inputFormat: AVAudioFormat,
+        targetFormat: AVAudioFormat,
+        converter: AVAudioConverter?,
+        inputBuilder: AsyncStream<AnalyzerInput>.Continuation
+    ) {
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
+            guard let converter else {
+                inputBuilder.yield(AnalyzerInput(buffer: buffer))
+                return
+            }
+            if let converted = convert(buffer, with: converter, to: targetFormat) {
+                inputBuilder.yield(AnalyzerInput(buffer: converted))
+            }
+        }
+    }
+
+    /// Resamples microphone audio into the analyzer's preferred format.
+    nonisolated private static func convert(
+        _ buffer: AVAudioPCMBuffer,
+        with converter: AVAudioConverter,
+        to format: AVAudioFormat
+    ) -> AVAudioPCMBuffer? {
+        let ratio = format.sampleRate / buffer.format.sampleRate
+        let capacity = AVAudioFrameCount((Double(buffer.frameLength) * ratio).rounded(.up))
+        guard capacity > 0, let output = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else {
+            return nil
+        }
+
+        var consumed = false
+        var conversionError: NSError?
+        converter.convert(to: output, error: &conversionError) { _, status in
+            if consumed {
+                status.pointee = .noDataNow
+                return nil
+            }
+            consumed = true
+            status.pointee = .haveData
+            return buffer
+        }
+        return conversionError == nil && output.frameLength > 0 ? output : nil
     }
 }
 #endif
