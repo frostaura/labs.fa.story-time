@@ -109,8 +109,13 @@ describe('quick generate fetch-boundary flow against live backend', () => {
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Quick Generate' })).toBeInTheDocument()
       })
+      // Wait for live home status so its default duration cannot overwrite the slider change below.
+      await waitFor(() => {
+        expect(screen.getByTestId('tier-badge')).toHaveTextContent(/trial/i)
+      })
 
       fireEvent.change(screen.getByLabelText('Duration'), { target: { value: '15' } })
+      expect(screen.getByText('Duration (15 min)')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'Generate story' }))
 
       await waitFor(() => {
