@@ -206,6 +206,13 @@ internal static class StoryTimeOptionsFactory
                     Polish = "polish"
                 }
             },
+            OnDeviceDraft = new OnDeviceDraftOptions
+            {
+                Enabled = true,
+                AllowedProviders = ["apple-foundation-models"],
+                MaxTitleCharacters = 80,
+                MaxSceneCharacters = 1200
+            },
             NarrativeTemplates = new NarrativeTemplateOptions
             {
                 SeriesRecapFirstEpisode = "{Protagonist} begins a calm bedtime adventure in {ArcName}.",

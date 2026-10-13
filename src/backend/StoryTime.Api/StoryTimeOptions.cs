@@ -194,6 +194,8 @@ public sealed class GenerationOptions
 
     public AiOrchestrationOptions AiOrchestration { get; set; } = new();
 
+    public OnDeviceDraftOptions OnDeviceDraft { get; set; } = new();
+
     public NarrativeTemplateOptions NarrativeTemplates { get; set; } = new();
 }
 
@@ -539,6 +541,17 @@ public sealed class AiOrchestrationOptions
     public string StageResponseFormatInstruction { get; set; } = "";
 
     public AiStageNameOptions StageNames { get; set; } = new();
+}
+
+public sealed class OnDeviceDraftOptions
+{
+    public bool Enabled { get; set; } = true;
+
+    public List<string> AllowedProviders { get; set; } = [];
+
+    public int MaxTitleCharacters { get; set; } = 80;
+
+    public int MaxSceneCharacters { get; set; } = 1200;
 }
 
 public sealed class ExternalMediaProviderOptions

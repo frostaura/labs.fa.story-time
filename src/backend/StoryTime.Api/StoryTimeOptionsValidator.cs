@@ -429,6 +429,26 @@ public sealed class StoryTimeOptionsValidator : IValidateOptions<StoryTimeOption
             errors.Add("StoryTime:Messages:UnsupportedCatalogProvider must include the {Provider} token.");
         }
 
+        var onDeviceDraft = options.Generation.OnDeviceDraft;
+        if (onDeviceDraft.Enabled)
+        {
+            if (onDeviceDraft.AllowedProviders.Count == 0 ||
+                onDeviceDraft.AllowedProviders.Any(string.IsNullOrWhiteSpace))
+            {
+                errors.Add("StoryTime:Generation:OnDeviceDraft:AllowedProviders must list at least one non-empty provider when enabled.");
+            }
+
+            if (onDeviceDraft.MaxTitleCharacters <= 0)
+            {
+                errors.Add("StoryTime:Generation:OnDeviceDraft:MaxTitleCharacters must be greater than zero when enabled.");
+            }
+
+            if (onDeviceDraft.MaxSceneCharacters <= 0)
+            {
+                errors.Add("StoryTime:Generation:OnDeviceDraft:MaxSceneCharacters must be greater than zero when enabled.");
+            }
+        }
+
         var aiOptions = options.Generation.AiOrchestration;
         var aiEndpoint = aiOptions.Endpoint;
         if (!string.IsNullOrWhiteSpace(aiEndpoint) && !IsOpenRouterEndpoint(aiEndpoint))

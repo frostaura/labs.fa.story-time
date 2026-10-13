@@ -315,6 +315,55 @@ input[type='password']::placeholder {
   opacity: 0.7;
 }
 
+/* --- Native dictation (iOS host only) --- */
+.input-with-dictation {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.input-with-dictation input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dictation-button {
+  background: var(--color-accent-soft);
+  border-radius: 999px;
+  color: var(--color-accent);
+  flex-shrink: 0;
+  height: 2.25rem;
+  padding: 0;
+  width: 2.25rem;
+}
+
+.dictation-button:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+}
+
+.dictation-button-active,
+.dictation-button-active:hover {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dictation-button-active {
+    animation: dictation-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes dictation-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--color-accent-soft);
+  }
+  50% {
+    box-shadow: 0 0 0 6px var(--color-accent-soft);
+  }
+}
+
 /* --- Custom select (MAJ-03) --- */
 select {
   appearance: none;

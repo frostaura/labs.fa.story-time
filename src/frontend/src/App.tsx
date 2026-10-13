@@ -4,6 +4,7 @@ import { FavoritesShelf } from './components/FavoritesShelf'
 import { ParentControlsSection } from './components/ParentControlsSection'
 import {
   QuickGenerateCard,
+  type DictationField,
   type OneShotCustomization,
   type SeriesOption,
 } from './components/QuickGenerateCard'
@@ -17,6 +18,13 @@ import {
   resolveApiBaseUrl,
   runtimeConfig,
 } from './config/runtime'
+import {
+  createNativeBridge,
+  NATIVE_DICTATION_EVENT,
+  type DictationEventDetail,
+  type NativeCapabilities,
+  type OnDeviceDraft,
+} from './services/nativeBridge'
 import { createStoryTimeApi } from './services/storyTimeApi'
 import type {
   ChildProfile,
@@ -32,6 +40,7 @@ import type {
   PosterLayer,
   StoryApprovalResponse,
   StoryArtifact,
+  StoryBible,
   SubscriptionCheckoutCompleteResponse,
   SubscriptionCheckoutSessionResponse,
   SubscriptionPaywallResponse,
@@ -541,6 +550,7 @@ const formatParentVerificationError = (
 }
 
 const GENERATION_REQUEST_TIMEOUT_MS = 12_000
+const ON_DEVICE_DRAFT_TIMEOUT_MS = 45_000
 const PARENT_REQUEST_TIMEOUT_MS = 6_000
 const STORY_HIGHLIGHT_DURATION_MS = 4_500
 
@@ -600,6 +610,114 @@ function App() {
   const [checkoutFeedback, setCheckoutFeedback] = useState<InlineFeedback | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paywall, setPaywall] = useState<SubscriptionPaywallResponse | null>(null)
+  const nativeBridge = useMemo(() => createNativeBridge(), [])
+  const [nativeCapabilities, setNativeCapabilities] = useState<NativeCapabilities>({
+    appleIntelligence: 'unavailable',
+    dictation: false,
+  })
+  const [dictatingField, setDictatingField] = useState<DictationField | null>(null)
+
+  useEffect(() => {
+    if (!nativeBridge) {
+      return
+    }
+
+    let cancelled = false
+    nativeBridge
+      .getCapabilities()
+      .then((capabilities) => {
+        if (!cancelled) {
+          setNativeCapabilities(capabilities)
+        }
+      })
+      .catch((capabilityError: unknown) => {
+        logClientWarning('Native capability probe failed.', capabilityError)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [nativeBridge])
+
+  const applyDictatedText = useCallback((field: DictationField, text: string) => {
+    if (field === 'childName') {
+      setProfile((current) => ({ ...current, childName: text }))
+      return
+    }
+
+    setOneShotCustomization((current) => ({ ...current, [field]: text }))
+  }, [])
+
+  useEffect(() => {
+    if (!dictatingField) {
+      return
+    }
+
+    const handlePartial = (event: Event) => {
+      const detail = (event as CustomEvent<DictationEventDetail>).detail
+      if (detail && typeof detail.text === 'string') {
+        applyDictatedText(dictatingField, detail.text)
+      }
+    }
+
+    window.addEventListener(NATIVE_DICTATION_EVENT, handlePartial)
+    return () => window.removeEventListener(NATIVE_DICTATION_EVENT, handlePartial)
+  }, [applyDictatedText, dictatingField])
+
+  const onToggleDictation = async (field: DictationField) => {
+    if (!nativeBridge || !nativeCapabilities.dictation) {
+      return
+    }
+
+    if (dictatingField) {
+      const wasSameField = dictatingField === field
+      await nativeBridge.stopDictation().catch((stopError: unknown) => {
+        logClientWarning('Native dictation stop failed.', stopError)
+      })
+      if (wasSameField) {
+        return
+      }
+    }
+
+    setDictatingField(field)
+    try {
+      const transcript = await nativeBridge.startDictation()
+      if (transcript.length > 0) {
+        applyDictatedText(field, transcript)
+      }
+    } catch (dictationError) {
+      logClientWarning('Native dictation failed.', dictationError)
+      setGenerationFeedback({ tone: 'error', message: ui.dictationUnavailable })
+    } finally {
+      setDictatingField((current) => (current === field ? null : current))
+    }
+  }
+
+  const requestOnDeviceDraft = async (
+    customization: Record<string, string> | undefined,
+    storyBible: StoryBible | undefined,
+  ): Promise<OnDeviceDraft | null> => {
+    if (!nativeBridge || nativeCapabilities.appleIntelligence !== 'available') {
+      return null
+    }
+
+    try {
+      return await withTimeout(
+        nativeBridge.draftStory({
+          childName: profile.childName,
+          mode,
+          durationMinutes,
+          customization,
+          storyBible,
+        }),
+        ON_DEVICE_DRAFT_TIMEOUT_MS,
+        appMessages.generationTemporarilyUnavailable,
+      )
+    } catch (draftError) {
+      logClientWarning('Apple Intelligence draft failed; using server composition.', draftError)
+      return null
+    }
+  }
 
   const storiesById = useMemo(() => new Map(stories.map((story) => [story.storyId, story])), [stories])
   const seriesOptions = useMemo<SeriesOption[]>(() => {
@@ -894,6 +1012,26 @@ function App() {
           ? ui.generatingContinuationStatus(selectedSeriesOption.label, profile.childName)
           : ui.generatingStoryStatus(profile.childName)
 
+      const customization =
+        mode === storyModes.oneShot
+          ? {
+              arcName: oneShotCustomization.arcName,
+              companionName: oneShotCustomization.companionName,
+              setting: oneShotCustomization.setting,
+              mood: oneShotCustomization.mood,
+              themeTrackId: oneShotCustomization.themeTrackId,
+              narrationStyle: oneShotCustomization.narrationStyle,
+            }
+          : undefined
+
+      if (nativeCapabilities.appleIntelligence === 'available') {
+        setGenerationFeedback({
+          tone: 'info',
+          message: ui.draftingOnDeviceStatus(profile.childName),
+        })
+      }
+      const onDeviceDraft = await requestOnDeviceDraft(customization, selectedSeriesStory?.storyBible)
+
       setGenerationFeedback({
         tone: 'info',
         message: generationStatusMessage,
@@ -908,17 +1046,8 @@ function App() {
         storyBible: selectedSeriesStory?.storyBible,
         favorite: false,
         reducedMotion: profile.reducedMotion,
-        customization:
-          mode === storyModes.oneShot
-            ? {
-                arcName: oneShotCustomization.arcName,
-                companionName: oneShotCustomization.companionName,
-                setting: oneShotCustomization.setting,
-                mood: oneShotCustomization.mood,
-                themeTrackId: oneShotCustomization.themeTrackId,
-                narrationStyle: oneShotCustomization.narrationStyle,
-              }
-            : undefined,
+        customization,
+        ...(onDeviceDraft ? { onDeviceDraft } : {}),
       }), GENERATION_REQUEST_TIMEOUT_MS, appMessages.generationTemporarilyUnavailable)
 
       if (!response.ok) {
@@ -1388,6 +1517,16 @@ function App() {
             isOneShotDetailsExpanded={isOneShotDetailsExpanded}
             mode={mode}
             onChildNameChange={(childName) => setProfile((current) => ({ ...current, childName }))}
+            dictation={
+              nativeCapabilities.dictation
+                ? {
+                    activeField: dictatingField,
+                    onToggle: (field) => {
+                      void onToggleDictation(field)
+                    },
+                  }
+                : null
+            }
             onDurationChange={setDurationMinutes}
             onGenerate={() => {
               void onGenerate()

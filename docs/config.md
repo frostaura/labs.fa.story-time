@@ -162,6 +162,10 @@ This document is the operational reference for runtime configuration used by Sto
 | `StoryTime:Generation:AiOrchestration:StageNames:SceneBatch` | string | `"scene_batch"` |
 | `StoryTime:Generation:AiOrchestration:StageNames:Stitch` | string | `"stitch"` |
 | `StoryTime:Generation:AiOrchestration:StageNames:Polish` | string | `"polish"` |
+| `StoryTime:Generation:OnDeviceDraft:Enabled` | boolean | `true` |
+| `StoryTime:Generation:OnDeviceDraft:AllowedProviders` | string[] | `["apple-foundation-models"]` |
+| `StoryTime:Generation:OnDeviceDraft:MaxTitleCharacters` | number | `80` |
+| `StoryTime:Generation:OnDeviceDraft:MaxSceneCharacters` | number | `1200` |
 | `StoryTime:Generation:NarrativeTemplates:SeriesRecapFirstEpisode` | string | `"{Protagonist} begins a calm bedtime adventure in {ArcName}."` |
 | `StoryTime:Generation:NarrativeTemplates:SeriesRecapContinuation` | string | `"Previously: {PreviousSummary}"` |
 | `StoryTime:Generation:NarrativeTemplates:ArcObjective` | string | `"Find tonight's calm ending in {ArcName}."` |
@@ -273,8 +277,18 @@ This document is the operational reference for runtime configuration used by Sto
 - `StoryTime:Generation:PosterRoleSpeedMultipliers` must define at least one role and compatible role dependencies.
 - `StoryTime:Generation:AiOrchestration` always requires OpenRouter endpoint semantics (`Endpoint` targets `openrouter.ai`, `EnforceOpenRouterEndpoint=true`, `LocalFallbackEnabled=false`); when `Enabled=true`, `Model`, `TimeoutSeconds`, `StageResponseFormatInstruction`, and `StageNames:*` are required.
 - `StoryTime:Generation:AiOrchestration:OpenRouterReferer` and `OpenRouterTitle` are required when AI orchestration is enabled.
+- `StoryTime:Generation:OnDeviceDraft` (iOS host Apple Intelligence drafts, ARCH-005): when `Enabled=true`, `AllowedProviders` must list at least one non-empty provider and both `Max*Characters` values must be greater than zero. Drafts from unlisted providers, or with no non-blank scenes, are ignored and the server pipeline composes the story; accepted drafts are capped to the duration-derived scene count.
 - External providers require endpoints when enabled (`PosterModelProvider`, `NarrationProvider`, `AiOrchestration`, `Checkout:Provider` in external mode).
 - Procedural limits enforce positive values (for example poster fallback budget, audio harmonic mix).
+
+## iOS host build settings (`src/ios/project.yml`)
+
+| Build setting | Info.plist key | Default | Purpose |
+| --- | --- | --- | --- |
+| `STORYTIME_WEB_APP_URL` | `StoryTimeWebAppUrl` | `http://localhost:5173` | HTTPS URL of the deployed StoryTime web app loaded in the `WKWebView` (keeps passkey RP ID and CORS identical to the web). |
+| `STORYTIME_API_BASE_URL` | `StoryTimeApiBaseUrl` | `""` | Optional; injected as `window.__STORYTIME_API_BASE_URL__` before the page loads. |
+
+The deployment target is iOS 27.0. No on-device model files are bundled or downloaded: Apple Intelligence and speech assets are OS-managed.
 
 ## Frontend keys (`VITE_*`)
 

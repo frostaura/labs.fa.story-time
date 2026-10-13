@@ -1,8 +1,10 @@
 SHELL := /bin/bash
 BACKEND_SOLUTION := src/backend/StoryTime.slnx
 FRONTEND_DIR := src/frontend
+IOS_DIR := src/ios
+IOS_SIMULATOR_DESTINATION ?= generic/platform=iOS Simulator
 
-.PHONY: traceability lint build test test-governance frontend-coverage validate-env test-coverage backend-coverage verify up down
+.PHONY: ios-test ios-project ios-build traceability lint build test test-governance frontend-coverage validate-env test-coverage backend-coverage verify up down
 
 traceability:
 	python3 scripts/traceability-check.py
@@ -42,3 +44,13 @@ up:
 
 down:
 	docker compose down
+
+# iOS 27+ host (macOS + Xcode 27 only). Android is intentionally not a build target.
+ios-test:
+	swift test --package-path $(IOS_DIR)/StoryTimeKit
+
+ios-project:
+	cd $(IOS_DIR) && xcodegen generate
+
+ios-build: ios-project
+	xcodebuild -project $(IOS_DIR)/StoryTime.xcodeproj -scheme StoryTime -destination '$(IOS_SIMULATOR_DESTINATION)' CODE_SIGNING_ALLOWED=NO build

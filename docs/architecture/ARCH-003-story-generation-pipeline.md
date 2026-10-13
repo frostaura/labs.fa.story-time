@@ -32,4 +32,5 @@ Story generation must preserve calm tone, continuity, and predictable output con
 - `src/backend/StoryTime.Api/appsettings.json` (`StoryTime:Generation`)
 
 ## Notes
+- When the iOS host supplies an Apple Intelligence `onDeviceDraft` (ARCH-005), the five stages are skipped and the draft scenes are used after server-side caps; the pipeline remains the fallback.
 - OpenRouter endpoint enforcement remains mandatory when AI orchestration is enabled.

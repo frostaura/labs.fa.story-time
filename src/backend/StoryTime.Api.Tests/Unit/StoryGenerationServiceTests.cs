@@ -236,6 +236,113 @@ public sealed class StoryGenerationServiceTests
     }
 
     [Fact]
+    public async Task GenerateAsync_UsesAppleIntelligenceDraft_AndSkipsServerOrchestration()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.ApiKey = "openrouter-test-key";
+        var handler = new OpenRouterContractHandler();
+        var service = CreateService(options, new TestHttpClientFactory(handler));
+
+        var generated = await service.GenerateAsync(
+            new GenerateStoryRequest(
+                "user-on-device",
+                "Noa",
+                "one-shot",
+                5,
+                null,
+                false,
+                false,
+                OnDeviceDraft: new OnDeviceDraftRequest(
+                    "  Noa and the Lantern Fox  ",
+                    ["  Noa follows a soft glow.  ", " ", "The lantern fox hums goodnight."],
+                    "apple-foundation-models")),
+            CancellationToken.None);
+
+        Assert.Empty(handler.OpenRouterRequests);
+        Assert.Equal("Noa and the Lantern Fox", generated.Title);
+        Assert.Equal(["Noa follows a soft glow.", "The lantern fox hums goodnight."], generated.Scenes);
+        Assert.NotEmpty(generated.PosterLayers);
+        Assert.False(string.IsNullOrWhiteSpace(generated.TeaserAudio));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CapsAppleIntelligenceDraftToDurationAndConfiguredLengths()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = false;
+        options.Generation.OnDeviceDraft.MaxTitleCharacters = 5;
+        options.Generation.OnDeviceDraft.MaxSceneCharacters = 4;
+        var service = CreateService(options);
+        var manyScenes = Enumerable.Range(1, 50).Select(index => $"Scene {index}").ToArray();
+
+        var generated = await service.GenerateAsync(
+            new GenerateStoryRequest(
+                "user-on-device-caps",
+                "Noa",
+                "series",
+                5,
+                null,
+                false,
+                false,
+                OnDeviceDraft: new OnDeviceDraftRequest("A very long title", manyScenes, "APPLE-FOUNDATION-MODELS")),
+            CancellationToken.None);
+
+        Assert.Equal("A ver", generated.Title);
+        Assert.True(generated.Scenes.Count < manyScenes.Length);
+        Assert.All(generated.Scenes, scene => Assert.True(scene.Length <= 4));
+        Assert.NotNull(generated.StoryBible);
+    }
+
+    [Theory]
+    [InlineData("unknown-provider", false)]
+    [InlineData("apple-foundation-models", true)]
+    public async Task GenerateAsync_FallsBackToServerComposition_WhenDraftIsUnusable(string provider, bool disableFeature)
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = false;
+        options.Generation.OnDeviceDraft.Enabled = !disableFeature;
+        var service = CreateService(options);
+
+        var generated = await service.GenerateAsync(
+            new GenerateStoryRequest(
+                "user-on-device-fallback",
+                "Noa",
+                "one-shot",
+                5,
+                null,
+                false,
+                false,
+                OnDeviceDraft: new OnDeviceDraftRequest("Ignored", ["Ignored scene"], provider)),
+            CancellationToken.None);
+
+        Assert.NotEqual("Ignored", generated.Title);
+        Assert.DoesNotContain("Ignored scene", generated.Scenes);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_FallsBackToServerComposition_WhenDraftHasNoScenes()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.AiOrchestration.Enabled = false;
+        var service = CreateService(options);
+
+        var generated = await service.GenerateAsync(
+            new GenerateStoryRequest(
+                "user-on-device-empty",
+                "Noa",
+                "one-shot",
+                5,
+                null,
+                false,
+                false,
+                OnDeviceDraft: new OnDeviceDraftRequest("Ignored", [" ", ""], "apple-foundation-models")),
+            CancellationToken.None);
+
+        Assert.NotEqual("Ignored", generated.Title);
+        Assert.NotEmpty(generated.Scenes);
+    }
+
+    [Fact]
     public async Task GenerateAsync_ThrowsConfiguredError_WhenAiEndpointIsNotOpenRouter()
     {
         var options = StoryTimeOptionsFactory.Create();

@@ -35,6 +35,7 @@ Coverage goals:
 - Full premium series flow including continuation and approval.
 - Storage audit to ensure no narrative text persistence server-side.
 - Frontend Quick Generate interaction through fetch boundary.
+- iOS host bridge contract via a simulated `window.webkit.messageHandlers.storyTime` (Apple Intelligence draft hand-off, on-device dictation, browser fallback).
 - Frontend browser-rendered flow validation through Playwright, including responsive viewport coverage, motion-enabled layered-poster rendering checks, strict localhost WebAuthn verification with a virtual authenticator, and live-backend generation/continuation/paywall/checkout paths alongside mocked contract journeys.
 
 ### 2.4 Non-Functional Validation Matrix
@@ -54,7 +55,9 @@ Coverage goals:
 - `unit`: included in `make test`
 - `integration`: included in `make test`
 - `e2e`: included in `make test`
-- `ci`: GitHub Actions workflow `.github/workflows/ci.yml`
+- `ci`: GitHub Actions workflow `.github/workflows/ci.yml` (`verify` on Ubuntu + `ios` on macOS)
+- `ios-unit`: `make ios-test` (StoryTimeKit Swift Testing suite)
+- `ios-build`: `make ios-build` (iOS 27 simulator build; macOS + Xcode 27 only)
 
 ## 4. Execution Commands
 From repository root:
@@ -87,6 +90,8 @@ cd src/frontend && npm run test:browser-e2e
 cd src/frontend && npm run test:unit -- --coverage
 python3 scripts/validate-env-examples.py
 make test-coverage
+make ios-test   # macOS or any Swift 6 toolchain
+make ios-build  # macOS + Xcode 27 only
 ```
 
 ## 5. Definition of Pass

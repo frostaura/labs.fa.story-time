@@ -1,0 +1,37 @@
+name: StoryTime
+options:
+  bundleIdPrefix: com.frostaura
+  deploymentTarget:
+    iOS: "27.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    STORYTIME_WEB_APP_URL: "http://localhost:5173"
+    STORYTIME_API_BASE_URL: ""
+packages:
+  StoryTimeKit:
+    path: StoryTimeKit
+targets:
+  StoryTime:
+    type: application
+    platform: iOS
+    supportedDestinations: [iOS]
+    sources:
+      - path: StoryTime
+    dependencies:
+      - package: StoryTimeKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.frostaura.storytime
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: StoryTime/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: StoryTime/Resources/StoryTime.entitlements
+schemes:
+  StoryTime:
+    build:
+      targets:
+        StoryTime: all

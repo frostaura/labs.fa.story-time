@@ -176,6 +176,11 @@ export const appMessages = Object.freeze({
       ),
     generatingOneShotStatus: (childName: string) =>
       withToken(resolveUiMessage('generatingOneShotStatusTemplate'), '{childName}', childName),
+    draftingOnDeviceStatus: (childName: string) =>
+      withToken(resolveUiMessage('draftingOnDeviceStatusTemplate'), '{childName}', childName),
+    dictateField: (field: string) => withToken(resolveUiMessage('dictateFieldTemplate'), '{field}', field),
+    stopDictation: (field: string) => withToken(resolveUiMessage('stopDictationTemplate'), '{field}', field),
+    dictationUnavailable: resolveUiMessage('dictationUnavailable'),
     storyGenerated: (title: string) =>
       withToken(resolveUiMessage('storyGeneratedTemplate'), '{title}', title),
     continuationGenerated: (title: string) =>

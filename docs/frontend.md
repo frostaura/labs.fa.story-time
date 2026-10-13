@@ -38,6 +38,7 @@
 2. `createStoryTimeApi(baseUrl)` returns route-safe API methods.
 3. `App` invokes API methods in event handlers (`onGenerate`, `approveStory`, `toggleFavorite`, etc.).
 4. Responses are normalized into frontend state and persisted to LocalStorage.
+5. Inside the iOS 27+ host, `createNativeBridge()` exposes Apple Intelligence drafting and on-device dictation. `onGenerate` attaches `onDeviceDraft` when a draft succeeds, and Quick Generate renders mic toggles only when the host reports `dictation: true`. Live partial transcripts arrive as `storytime:dictation` window events.
 
 ## Accessibility and UX Guarantees
 

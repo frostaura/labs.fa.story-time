@@ -336,6 +336,34 @@ public sealed class StoryTimeOptionsValidatorTests
     }
 
     [Fact]
+    public void Validate_FailsWhenOnDeviceDraftSettingsAreInvalid()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.OnDeviceDraft.AllowedProviders = [];
+        options.Generation.OnDeviceDraft.MaxTitleCharacters = 0;
+        options.Generation.OnDeviceDraft.MaxSceneCharacters = 0;
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Failures!, failure => failure.Contains("OnDeviceDraft:AllowedProviders", StringComparison.Ordinal));
+        Assert.Contains(result.Failures!, failure => failure.Contains("OnDeviceDraft:MaxTitleCharacters", StringComparison.Ordinal));
+        Assert.Contains(result.Failures!, failure => failure.Contains("OnDeviceDraft:MaxSceneCharacters", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_IgnoresOnDeviceDraftSettings_WhenDisabled()
+    {
+        var options = StoryTimeOptionsFactory.Create();
+        options.Generation.OnDeviceDraft.Enabled = false;
+        options.Generation.OnDeviceDraft.AllowedProviders = [];
+
+        var result = new StoryTimeOptionsValidator().Validate(name: null, options);
+
+        Assert.DoesNotContain(result.Failures ?? [], failure => failure.Contains("OnDeviceDraft", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Validate_FailsWhenAiEndpointIsNotOpenRouterAndEnforcementIsEnabled()
     {
         var options = StoryTimeOptionsFactory.Create();

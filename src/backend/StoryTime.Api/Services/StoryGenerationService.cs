@@ -62,12 +62,24 @@ public sealed class StoryGenerationService(
         }
 
         var arcName = bible?.ArcName ?? customization.ArcName ?? Pick(_options.Generation.ArcNames, _options.Generation.Fallbacks.ArcName);
-        var outline = await ComposeOutlineAsync(mode, protagonist, sceneCount, arcName, bible, customization, cancellationToken);
-        var scenePlan = await ComposeScenePlanAsync(outline, sceneCount, arcName, bible, cancellationToken);
-        var sceneBatch = await ComposeSceneBatchAsync(scenePlan, protagonist, bible, customization, cancellationToken);
-        var stitchedScenes = await StitchScenesAsync(sceneBatch, recap, bible, cancellationToken);
-        var polishedScenes = await PolishScenesAsync(stitchedScenes, cancellationToken);
-        var title = BuildTitle(mode, protagonist, arcName, bible, now);
+        var onDeviceDraft = ResolveOnDeviceDraft(request.OnDeviceDraft, sceneCount);
+        string[] scenePlan;
+        string[] polishedScenes;
+        if (onDeviceDraft is not null)
+        {
+            scenePlan = [];
+            polishedScenes = onDeviceDraft.Scenes;
+        }
+        else
+        {
+            var outline = await ComposeOutlineAsync(mode, protagonist, sceneCount, arcName, bible, customization, cancellationToken);
+            scenePlan = await ComposeScenePlanAsync(outline, sceneCount, arcName, bible, cancellationToken);
+            var sceneBatch = await ComposeSceneBatchAsync(scenePlan, protagonist, bible, customization, cancellationToken);
+            var stitchedScenes = await StitchScenesAsync(sceneBatch, recap, bible, cancellationToken);
+            polishedScenes = await PolishScenesAsync(stitchedScenes, cancellationToken);
+        }
+
+        var title = onDeviceDraft?.Title ?? BuildTitle(mode, protagonist, arcName, bible, now);
         var posterLayers = _mediaAssetService.BuildPosterLayers(seriesId ?? request.SoftUserId, request.ReducedMotion);
 
         if (bible is not null)
@@ -108,6 +120,43 @@ public sealed class StoryGenerationService(
             ReducedMotion: request.ReducedMotion,
             GeneratedAt: now);
     }
+
+    private ResolvedOnDeviceDraft? ResolveOnDeviceDraft(OnDeviceDraftRequest? draft, int sceneCount)
+    {
+        var draftOptions = _options.Generation.OnDeviceDraft;
+        if (draft is null || !draftOptions.Enabled || draft.Scenes is null)
+        {
+            return null;
+        }
+
+        var provider = draft.Provider?.Trim();
+        if (string.IsNullOrEmpty(provider) ||
+            !draftOptions.AllowedProviders.Contains(provider, StringComparer.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var scenes = draft.Scenes
+            .Where(scene => !string.IsNullOrWhiteSpace(scene))
+            .Select(scene => Truncate(scene.Trim(), draftOptions.MaxSceneCharacters))
+            .Take(sceneCount)
+            .ToArray();
+        if (scenes.Length == 0)
+        {
+            return null;
+        }
+
+        var title = string.IsNullOrWhiteSpace(draft.Title)
+            ? null
+            : Truncate(draft.Title.Trim(), draftOptions.MaxTitleCharacters);
+
+        return new ResolvedOnDeviceDraft(title, scenes);
+    }
+
+    private static string Truncate(string value, int maxCharacters) =>
+        value.Length <= maxCharacters ? value : value[..maxCharacters].TrimEnd();
+
+    private sealed record ResolvedOnDeviceDraft(string? Title, string[] Scenes);
 
     private string ResolveProtagonist(string? childName)
     {

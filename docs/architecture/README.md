@@ -11,3 +11,4 @@ Current records:
 - `ARCH-002-backend-service-composition.md`
 - `ARCH-003-story-generation-pipeline.md`
 - `ARCH-004-parent-gate-webauthn-security-model.md`
+- `ARCH-005-ios-host-apple-intelligence.md`

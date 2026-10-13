@@ -103,6 +103,35 @@ public sealed class StoryApiIntegrationTests(WebApplicationFactory<Program> fact
     }
 
     [Fact]
+    public async Task Generate_AcceptsAppleIntelligenceOnDeviceDraft()
+    {
+        var request = new
+        {
+            softUserId = "user-on-device-draft",
+            childName = "Ari",
+            mode = "one-shot",
+            durationMinutes = 5,
+            favorite = false,
+            onDeviceDraft = new
+            {
+                title = "Ari and the Sleepy Comet",
+                scenes = new[] { "Ari waves at a sleepy comet.", "The comet tucks the stars in." },
+                provider = "apple-foundation-models"
+            }
+        };
+
+        using var response = await _client.PostAsJsonAsync("/api/stories/generate", request);
+
+        response.EnsureSuccessStatusCode();
+        var generated = await response.Content.ReadFromJsonAsync<GenerateStoryResponse>();
+        Assert.NotNull(generated);
+        Assert.Equal("Ari and the Sleepy Comet", generated!.Title);
+        Assert.Equal(["Ari waves at a sleepy comet.", "The comet tucks the stars in."], generated.Scenes);
+        Assert.Equal(2, generated.SceneCount);
+        Assert.NotEmpty(generated.PosterLayers);
+    }
+
+    [Fact]
     public async Task GenerateThenApprove_SucceedsAndTracksFavoriteInLibrary()
     {
         var gateToken = await CreateGateTokenAsync("user-library");

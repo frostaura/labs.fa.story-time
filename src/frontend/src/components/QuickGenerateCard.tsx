@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef } from 'react'
+import { type CSSProperties, type ReactNode, useEffect, useRef } from 'react'
 import { appMessages } from '../config/messages'
 import { type Mode, storyModes } from '../config/modes'
 import type { OneShotDefaults } from '../types/storyTime'
@@ -12,6 +12,13 @@ export type OneShotCustomization = {
   mood: string
   themeTrackId: string
   narrationStyle: string
+}
+
+export type DictationField = 'childName' | Exclude<keyof OneShotCustomization, 'themeTrackId'>
+
+export type DictationControls = {
+  activeField: DictationField | null
+  onToggle: (field: DictationField) => void
 }
 
 type HomeStatusSummary = {
@@ -62,6 +69,43 @@ type QuickGenerateCardProps = {
   onOneShotChange: (key: keyof OneShotCustomization, value: string) => void
   onReducedMotionChange: (value: boolean) => void
   onGenerate: () => void
+  dictation?: DictationControls | null
+}
+
+type DictatableInputProps = {
+  children: ReactNode
+  dictation: DictationControls | null
+  field: DictationField
+  fieldLabel: string
+  ui: UiMessages
+}
+
+function DictatableInput({ children, dictation, field, fieldLabel, ui }: DictatableInputProps) {
+  if (!dictation) {
+    return children
+  }
+
+  const isActive = dictation.activeField === field
+  return (
+    <div className="input-with-dictation">
+      {children}
+      <button
+        aria-label={isActive ? ui.stopDictation(fieldLabel) : ui.dictateField(fieldLabel)}
+        aria-pressed={isActive}
+        className={`dictation-button${isActive ? ' dictation-button-active' : ''}`}
+        data-testid={`dictate-${field}`}
+        onClick={() => dictation.onToggle(field)}
+        type="button"
+      >
+        <svg aria-hidden="true" focusable="false" height="16" viewBox="0 0 24 24" width="16">
+          <path
+            d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+    </div>
+  )
 }
 
 const ONESHOT_PLACEHOLDER_KEYS: Record<keyof OneShotCustomization, keyof UiMessages> = {
@@ -98,6 +142,7 @@ export function QuickGenerateCard({
   onOneShotChange,
   onReducedMotionChange,
   onGenerate,
+  dictation = null,
 }: QuickGenerateCardProps) {
   const firstOptionalFieldRef = useRef<HTMLInputElement | null>(null)
 
@@ -141,15 +186,17 @@ export function QuickGenerateCard({
       <div className="quick-generate-main-fields">
         <div className="form-group">
           <label htmlFor="child-name">{ui.childName}</label>
-          <input
-            data-testid="child-name-input"
-            id="child-name"
-            name="childName"
-            onChange={(event) => onChildNameChange(event.target.value)}
-            placeholder={homeStatus.defaultChildName}
-            type="text"
-            value={profile.childName}
-          />
+          <DictatableInput dictation={dictation} field="childName" fieldLabel={ui.childName} ui={ui}>
+            <input
+              data-testid="child-name-input"
+              id="child-name"
+              name="childName"
+              onChange={(event) => onChildNameChange(event.target.value)}
+              placeholder={homeStatus.defaultChildName}
+              type="text"
+              value={profile.childName}
+            />
+          </DictatableInput>
         </div>
 
         {homeStatus.durationSliderVisible ? (
@@ -251,51 +298,59 @@ export function QuickGenerateCard({
               <div className="oneshot-fields-grid">
                 <div className="form-group">
                   <label htmlFor="one-shot-arc">{ui.oneShotStoryArc}</label>
-                  <input
-                    ref={firstOptionalFieldRef}
-                    id="one-shot-arc"
-                    name="oneShotArc"
-                    onChange={(event) => onOneShotChange('arcName', event.target.value)}
-                    placeholder={placeholderFor('arcName')}
-                    type="text"
-                    value={oneShotCustomization.arcName}
-                  />
+                  <DictatableInput dictation={dictation} field="arcName" fieldLabel={ui.oneShotStoryArc} ui={ui}>
+                    <input
+                      ref={firstOptionalFieldRef}
+                      id="one-shot-arc"
+                      name="oneShotArc"
+                      onChange={(event) => onOneShotChange('arcName', event.target.value)}
+                      placeholder={placeholderFor('arcName')}
+                      type="text"
+                      value={oneShotCustomization.arcName}
+                    />
+                  </DictatableInput>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="one-shot-companion">{ui.oneShotCompanion}</label>
-                  <input
-                    id="one-shot-companion"
-                    name="oneShotCompanion"
-                    onChange={(event) => onOneShotChange('companionName', event.target.value)}
-                    placeholder={placeholderFor('companionName')}
-                    type="text"
-                    value={oneShotCustomization.companionName}
-                  />
+                  <DictatableInput dictation={dictation} field="companionName" fieldLabel={ui.oneShotCompanion} ui={ui}>
+                    <input
+                      id="one-shot-companion"
+                      name="oneShotCompanion"
+                      onChange={(event) => onOneShotChange('companionName', event.target.value)}
+                      placeholder={placeholderFor('companionName')}
+                      type="text"
+                      value={oneShotCustomization.companionName}
+                    />
+                  </DictatableInput>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="one-shot-setting">{ui.oneShotSetting}</label>
-                  <input
-                    id="one-shot-setting"
-                    name="oneShotSetting"
-                    onChange={(event) => onOneShotChange('setting', event.target.value)}
-                    placeholder={placeholderFor('setting')}
-                    type="text"
-                    value={oneShotCustomization.setting}
-                  />
+                  <DictatableInput dictation={dictation} field="setting" fieldLabel={ui.oneShotSetting} ui={ui}>
+                    <input
+                      id="one-shot-setting"
+                      name="oneShotSetting"
+                      onChange={(event) => onOneShotChange('setting', event.target.value)}
+                      placeholder={placeholderFor('setting')}
+                      type="text"
+                      value={oneShotCustomization.setting}
+                    />
+                  </DictatableInput>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="one-shot-mood">{ui.oneShotMood}</label>
-                  <input
-                    id="one-shot-mood"
-                    name="oneShotMood"
-                    onChange={(event) => onOneShotChange('mood', event.target.value)}
-                    placeholder={placeholderFor('mood')}
-                    type="text"
-                    value={oneShotCustomization.mood}
-                  />
+                  <DictatableInput dictation={dictation} field="mood" fieldLabel={ui.oneShotMood} ui={ui}>
+                    <input
+                      id="one-shot-mood"
+                      name="oneShotMood"
+                      onChange={(event) => onOneShotChange('mood', event.target.value)}
+                      placeholder={placeholderFor('mood')}
+                      type="text"
+                      value={oneShotCustomization.mood}
+                    />
+                  </DictatableInput>
                 </div>
 
                 <div className="form-group">
@@ -312,14 +367,16 @@ export function QuickGenerateCard({
 
                 <div className="form-group">
                   <label htmlFor="one-shot-narration-style">{ui.oneShotNarrationStyle}</label>
-                  <input
-                    id="one-shot-narration-style"
-                    name="oneShotNarrationStyle"
-                    onChange={(event) => onOneShotChange('narrationStyle', event.target.value)}
-                    placeholder={placeholderFor('narrationStyle')}
-                    type="text"
-                    value={oneShotCustomization.narrationStyle}
-                  />
+                  <DictatableInput dictation={dictation} field="narrationStyle" fieldLabel={ui.oneShotNarrationStyle} ui={ui}>
+                    <input
+                      id="one-shot-narration-style"
+                      name="oneShotNarrationStyle"
+                      onChange={(event) => onOneShotChange('narrationStyle', event.target.value)}
+                      placeholder={placeholderFor('narrationStyle')}
+                      type="text"
+                      value={oneShotCustomization.narrationStyle}
+                    />
+                  </DictatableInput>
                 </div>
               </div>
             </div>

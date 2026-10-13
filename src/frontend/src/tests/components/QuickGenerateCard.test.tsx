@@ -53,6 +53,36 @@ describe('QuickGenerateCard', () => {
     visible: true,
   }
 
+  it('hides dictation controls outside the native iOS host', () => {
+    render(<QuickGenerateCard {...defaultProps} isOneShotDetailsExpanded mode={storyModes.oneShot} />)
+
+    expect(screen.queryByRole('button', { name: /^Dictate / })).not.toBeInTheDocument()
+  })
+
+  it('renders on-device dictation toggles for text fields when the host supports it', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const onToggle = vi.fn()
+    render(
+      <QuickGenerateCard
+        {...defaultProps}
+        dictation={{ activeField: 'setting', onToggle }}
+        isOneShotDetailsExpanded
+        mode={storyModes.oneShot}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Dictate Child name' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Dictate Story arc' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dictate Companion' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dictate Mood' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dictate Narration style' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Dictate Theme track' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Stop dictating Setting' })).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Dictate Child name' }))
+    expect(onToggle).toHaveBeenCalledWith('childName')
+  })
+
   it('keeps one-shot customization collapsed until requested', () => {
     render(<QuickGenerateCard {...defaultProps} mode={storyModes.oneShot} />)
 

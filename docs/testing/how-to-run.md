@@ -65,9 +65,17 @@ By default the browser suite now uses isolated ports (`4184` for the preview app
 Browser coverage is intentionally split:
 - `src/frontend/tests/playwright/quick-generate.browser.e2e.spec.ts` keeps deterministic mocked browser contract checks for UC-001 through UC-005.
 - `src/frontend/tests/playwright/quick-generate.full-stack.browser.e2e.spec.ts` adds live-backend browser coverage for generation, approval, favorites, paywall, and localhost parent verification using a Chromium virtual authenticator while reading the same runtime-configured storage keys that the shipped app uses.
+- `src/frontend/tests/playwright/native-host.browser.e2e.spec.ts` simulates the iOS host bridge (`window.webkit.messageHandlers.storyTime`) to verify Apple Intelligence draft hand-off (mocked and live backend), on-device dictation, and that plain browsers hide dictation.
 - `src/frontend/tests/playwright/responsive.browser.e2e.spec.ts` exercises mobile, tablet, and desktop viewport behavior.
 
 The mocked browser suite runs on `127.0.0.1` by design, so it asserts the unsupported-host recovery copy for parent verification rather than attempting a passkey ceremony there.
+
+## iOS host (macOS + Xcode 27)
+```bash
+make ios-test    # swift test --package-path src/ios/StoryTimeKit
+make ios-build   # xcodegen + xcodebuild for the iOS Simulator (CODE_SIGNING_ALLOWED=NO)
+```
+`StoryTimeKit` bridge/prompt logic is platform-neutral, so `make ios-test` also runs on any host with a Swift 6 toolchain. Foundation Models and Speech code compiles only with the iOS 27 SDK. Manual regression of Apple Intelligence drafting and dictation needs an Apple Intelligence–eligible device or simulator.
 
 ## Docker (full stack)
 ```bash

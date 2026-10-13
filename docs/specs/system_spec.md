@@ -1,7 +1,7 @@
 # StoryTime System Specification (Canonical)
 
 ## 1. Product Goal
-StoryTime is a calm-first, mobile-first PWA that lets families generate and play personalized bedtime stories with minimal navigation and safe defaults.
+StoryTime is a calm-first, mobile-first PWA, shipped natively as an iOS 27+ host app (Android is not a build target), that lets families generate and play personalized bedtime stories with minimal navigation and safe defaults.
 
 ## 2. Core Product Principles
 - Calm bedtime routine first, learning second, entertainment third.
@@ -18,6 +18,8 @@ StoryTime is a calm-first, mobile-first PWA that lets families generate and play
 - **One-shot mode**: standalone stories with full customization.
 - **Multi-pass AI flow**: outline -> scene plan -> scene batch -> stitch -> polish.
 - **LLM provider**: When AI orchestration is enabled, remote stage requests must route through the OpenRouter chat-completions contract; the shipped default keeps AI orchestration disabled and falls back to deterministic non-LLM generation until provider credentials and approval are supplied.
+- **On-device generation (iOS 27+)**: inside the iOS host, story text is drafted on-device by Apple Intelligence (Foundation Models) and sent as `onDeviceDraft` (`provider: apple-foundation-models`). The API accepts it only when `Generation:OnDeviceDraft` is enabled and the provider is allow-listed, caps scenes/title/scene length, and otherwise falls back to server composition. No model files are bundled or downloaded by StoryTime (ARCH-005).
+- **On-device dictation (iOS 27+)**: inside the iOS host, Quick Generate text fields (child name, story arc, companion, setting, mood, narration style) offer native dictation via `SpeechAnalyzer` + `DictationTranscriber`, with live partial results. Dictation controls are hidden in plain browsers.
 
 ### 3.2 Playback and Media
 - Teaser narration before approval when approval mode is on.
