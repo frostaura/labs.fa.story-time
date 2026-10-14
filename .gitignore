@@ -19,3 +19,6 @@ obj/
 # Scratch — every temporary artefact (logs, screenshots, captures, reports).
 # Emptied at the end of every session; see the tree root CLAUDE.md "Scratch" section.
 .tmp/
+
+# native xcframework output (built by src/native/build.sh)
+src/native/build/
