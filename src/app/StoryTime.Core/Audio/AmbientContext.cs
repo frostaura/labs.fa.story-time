@@ -22,17 +22,14 @@ public sealed class AmbientContext
         var seed = story.Id;
         if (!string.IsNullOrEmpty(story.PosterSpecJson))
         {
-            try
+            // The parser reads current and retired spec contracts and never throws.
+            var spec = StoryTime.Poster.Spec.PosterSpecJson.Parse(story.PosterSpecJson);
+            if (spec is not null)
             {
-                var spec = JsonSerializer.Deserialize<PosterSpec>(story.PosterSpecJson);
-                if (spec is not null)
-                {
-                    palette = Enum.IsDefined(spec.Palette) ? spec.Palette : PosterPalette.NightHarbor;
-                    mood = string.IsNullOrWhiteSpace(spec.Mood) ? "calm" : spec.Mood;
-                    if (spec.Seed != 0) seed = spec.Seed;
-                }
+                palette = spec.Palette;
+                mood = spec.Mood.ToString().ToLowerInvariant();
+                if (spec.Seed != 0) seed = spec.Seed;
             }
-            catch (JsonException) { /* fall back to defaults */ }
         }
         return new AmbientContext { Palette = palette, Mood = mood, Seed = seed };
     }

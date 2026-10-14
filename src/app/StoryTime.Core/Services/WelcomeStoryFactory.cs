@@ -66,7 +66,7 @@ public sealed class WelcomeStoryFactory
             Mode = StoryMode.OneShot,
             EpisodeNumber = 0,
             FullText = polished,
-            PosterSpecJson = JsonSerializer.Serialize(spec),
+            PosterSpecJson = StoryTime.Poster.Spec.PosterSpecJson.Serialize(spec),
             Voice = profile.Voice,
             State = StoryState.Ready,
             CreatedUtc = _clock.UtcNow,

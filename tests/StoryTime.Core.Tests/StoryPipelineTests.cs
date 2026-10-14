@@ -325,8 +325,11 @@ public class StoryPipelineTests
         await using var h = await Harness.CreateAsync();
         var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.False(string.IsNullOrEmpty(story.PosterSpecJson));
-        var spec = System.Text.Json.JsonSerializer.Deserialize<PosterSpec>(story.PosterSpecJson);
-        Assert.Equal(4, spec!.Layers.Count);
+        var spec = StoryTime.Poster.Spec.PosterSpecJson.Parse(story.PosterSpecJson);
+        Assert.NotNull(spec);
+        Assert.Equal(PosterSpec.CurrentVersion, spec.Version);
+        // Persisted specs are already normalized (contract v3, enum-only, compatible features).
+        Assert.True(StoryTime.Poster.Spec.PosterSpecRules.SpecEquals(spec, StoryTime.Poster.Spec.PosterSpecRules.Normalize(spec)));
     }
 
     [Fact]

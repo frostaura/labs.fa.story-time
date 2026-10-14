@@ -650,7 +650,7 @@ public sealed class StoryPipeline
         Func<Func<Task>, Task>? persist = null)
     {
         var spec = _composer.Validate(await _engine.GeneratePosterSpecAsync(outline, ct));
-        var specJson = JsonSerializer.Serialize(spec, JsonOpts);
+        var specJson = StoryTime.Poster.Spec.PosterSpecJson.Serialize(spec);
         var thumbPath = Path.Combine(_options.MediaDirectory, $"story-{story.Id}-thumb-v{Poster.PosterComposer.ArtVersion}.png");
         var renderedPath = await _rasterizer.FlattenToPngAsync(spec, thumbPath, 512, ct);
         Func<Task> save = async () =>
