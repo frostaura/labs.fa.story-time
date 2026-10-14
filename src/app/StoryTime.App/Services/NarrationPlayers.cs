@@ -139,8 +139,9 @@ public sealed class MediaElementNarrationPlayer : INarrationPlayer
         PushPlaybackState(IsPlaying);
     }
 
-    /// <summary>Narrator persona, shown as the "artist" on every native surface.</summary>
-    private static string NarratorNameOf(StoryRecord story) => story.Voice.ToString();
+    /// <summary>The storyteller, shown as the "artist" on every native surface. One voice reads
+    /// every story (the old Ember/Willow/Sage personas are retired; story.Voice is legacy data).</summary>
+    private static string NarratorNameOf(StoryRecord story) => "StoryTime";
 
     /// <summary>The story's flattened poster thumbnail, handed to the toolkit as a PLAIN
     /// filesystem path rather than a <c>file://</c> URI: the toolkit reads a local path

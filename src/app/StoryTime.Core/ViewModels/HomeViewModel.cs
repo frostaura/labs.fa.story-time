@@ -325,6 +325,6 @@ public sealed partial class HomeViewModel : ObservableObject
         var interests = profile.Interests.Count > 0
             ? string.Join(" · ", profile.Interests.Take(3))
             : "Gentle tales";
-        return $"{interests} · {profile.Voice} · {(int)profile.Length} min";
+        return $"{interests} · {(int)profile.Length} min";
     }
 }

@@ -17,12 +17,9 @@
 
                 <Label Style="{StaticResource Eyebrow}" Text="STORYTIME · 2 OF 3" Margin="0,24,0,28" />
 
-                <Label Style="{StaticResource Display}" Text="A voice and a length." />
+                <Label Style="{StaticResource Display}" Text="A length for bedtime." />
                 <Label Style="{StaticResource Body}" Margin="0,10,0,32"
                        Text="No card until you decide to stay." />
-
-                <Label Style="{StaticResource Eyebrow}" Text="NARRATOR" Margin="0,0,0,4" />
-                <VerticalStackLayout x:Name="VoiceList" Spacing="0" Margin="0,0,0,30" />
 
                 <Label Style="{StaticResource Eyebrow}" Text="STORY LENGTH · MINUTES" Margin="0,0,0,6" />
                 <controls:LengthTrackView x:Name="LengthTrack" Margin="0,0,0,6"

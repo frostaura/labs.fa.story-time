@@ -33,7 +33,7 @@ public class HomeViewModelTests : IAsyncLifetime
         _haptics = new FakeHaptics();
         _sheet = new WeaveSheetViewModel(_host, _env.Store, _cooldown, _navigator, new PlayerLaunchContext(),
             _settings, new NullHaptics(), entitlements, new KidModeService());
-        _recipe = new RecipeShelfViewModel(_env.Store, new FakeTtsEngine(), _haptics, _host, new NullVoiceSamplePlayer());
+        _recipe = new RecipeShelfViewModel(_env.Store, _haptics, _host);
         _vm = new HomeViewModel(_env.Store, _host, _cooldown, entitlements, _navigator,
             new PlayerLaunchContext(), new KidModeService(),
             new PosterArtRefresher(_env.Store, new NullPosterRasterizer(), _env.Options), new NullHaptics(),
@@ -137,7 +137,7 @@ public class HomeViewModelTests : IAsyncLifetime
         var fresh = new HomeViewModel(_env.Store, _host, _cooldown, new FakeEntitlements(), _navigator,
             new PlayerLaunchContext(), new KidModeService(),
             new PosterArtRefresher(_env.Store, new NullPosterRasterizer(), _env.Options), new NullHaptics(),
-            _sheet, new RecipeShelfViewModel(_env.Store, new FakeTtsEngine(), new FakeHaptics(), _host, new NullVoiceSamplePlayer()), _env.Catalog);
+            _sheet, new RecipeShelfViewModel(_env.Store, new FakeHaptics(), _host), _env.Catalog);
         await fresh.ActivateAsync();
         Assert.Equal(StoryLength.Ten, fresh.SelectedLength);
     }
@@ -158,7 +158,6 @@ public class HomeViewModelTests : IAsyncLifetime
         Assert.True(_recipe.IsOpen);
         Assert.False(_recipe.IsWeaving);
         Assert.True(_recipe.Interests.First(i => i.Name == "Foxes").IsSelected);
-        Assert.True(_recipe.Voices.First(v => v.Voice == NarratorVoice.Ember).IsSelected);
         Assert.True(_recipe.IsSeries);
     }
 
@@ -176,9 +175,6 @@ public class HomeViewModelTests : IAsyncLifetime
     {
         await _vm.ActivateAsync();
         await _vm.AdjustRecipeCommand.ExecuteAsync(null);
-        await _recipe.SelectVoiceCommand.ExecuteAsync(_recipe.Voices.First(v => v.Voice == NarratorVoice.Willow));
-        Assert.Contains("Willow", _vm.SummaryLine);
-
         await _recipe.ToggleInterestCommand.ExecuteAsync(_recipe.Interests.First(i => i.Name == "Magic"));
         Assert.Contains("Magic", _vm.SummaryLine);
     }
@@ -188,17 +184,17 @@ public class HomeViewModelTests : IAsyncLifetime
     {
         await _vm.ActivateAsync();
         await _vm.WeaveCommand.ExecuteAsync(null);   // host snapshots the recipe at start
-        Assert.Equal(NarratorVoice.Ember, _host.StartedWith!.Voice);
+        Assert.Equal(StoryMode.Series, _host.StartedWith!.Mode);
 
         _sheet.State = WeaveSheetState.Collapsed;    // mini-bar docked; shelf may open
         await _vm.AdjustRecipeCommand.ExecuteAsync(null);
         Assert.True(_recipe.IsOpen);
         Assert.True(_recipe.IsWeaving);              // eyebrow whispers "for the next story"
 
-        await _recipe.SelectVoiceCommand.ExecuteAsync(_recipe.Voices.First(v => v.Voice == NarratorVoice.Sage));
-        // The running weave keeps its snapshot; the store carries the next weave's recipe.
-        Assert.Equal(NarratorVoice.Ember, _host.StartedWith!.Voice);
-        Assert.Equal(NarratorVoice.Sage, (await _env.Store.GetActiveProfileAsync())!.Voice);
+        await _recipe.SetSeriesCommand.ExecuteAsync(false);
+        // The running story keeps its snapshot; the store carries the next one's recipe.
+        Assert.Equal(StoryMode.Series, _host.StartedWith!.Mode);
+        Assert.Equal(StoryMode.OneShot, (await _env.Store.GetActiveProfileAsync())!.Mode);
     }
 
     [Fact]
@@ -771,8 +767,7 @@ public class OnboardingViewModelTests : IAsyncLifetime
     public async Task VoiceStep_GatesFifteenAndKeepsHintCopy()
     {
         var clock = new FakeClock();
-        var vm = new OnboardingVoiceViewModel(_state, _navigator, new FakeTtsEngine(), new StubEntitlements(_settings, clock),
-            new NullHaptics(), new NullVoiceSamplePlayer());
+        var vm = new OnboardingVoiceViewModel(_state, _navigator, new StubEntitlements(_settings, clock), new NullHaptics());
         vm.SelectLengthCommand.Execute(StoryLength.Fifteen);
         Assert.True(vm.ShowPremiumHint);
         Assert.NotEqual(StoryLength.Fifteen, vm.SelectedLength);
@@ -781,10 +776,9 @@ public class OnboardingViewModelTests : IAsyncLifetime
         vm.SetSeriesCommand.Execute(false);
         Assert.Equal(OnboardingVoiceViewModel.OneShotHint, vm.ModeHint);
 
-        vm.SelectVoiceCommand.Execute(vm.Voices[2]);
         await vm.ContinueCommand.ExecuteAsync(null);
-        Assert.Equal(NarratorVoice.Sage, _state.Profile.Voice);
         Assert.Equal(StoryMode.OneShot, _state.Profile.Mode);
+        Assert.Equal([Routes.OnboardingRules], _navigator.Routes.TakeLast(1));
     }
 
     [Fact]

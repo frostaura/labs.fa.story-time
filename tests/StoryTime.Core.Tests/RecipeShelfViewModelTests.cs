@@ -11,7 +11,6 @@ public class RecipeShelfViewModelTests : IAsyncLifetime
 {
     private TestEnv _env = null!;
     private FakeWeaveHost _host = null!;
-    private FakeTtsEngine _tts = null!;
     private FakeHaptics _haptics = null!;
     private RecipeShelfViewModel _vm = null!;
     private ChildProfile _profile = null!;
@@ -20,9 +19,8 @@ public class RecipeShelfViewModelTests : IAsyncLifetime
     {
         _env = await TestEnv.CreateAsync();
         _host = new FakeWeaveHost();
-        _tts = new FakeTtsEngine();
         _haptics = new FakeHaptics();
-        _vm = new RecipeShelfViewModel(_env.Store, _tts, _haptics, _host, new NullVoiceSamplePlayer());
+        _vm = new RecipeShelfViewModel(_env.Store, _haptics, _host);
 
         _profile = TestEnv.Profile();
         await _env.Store.SaveProfileAsync(_profile);
@@ -37,7 +35,6 @@ public class RecipeShelfViewModelTests : IAsyncLifetime
         Assert.True(_vm.IsOpen);
         string[] expected = ["Foxes", "Ocean"];
         Assert.Equal(expected, _vm.Interests.Where(i => i.IsSelected).Select(i => i.Name).ToArray());
-        Assert.Equal(NarratorVoice.Ember, _vm.Voices.Single(v => v.IsSelected).Voice);
         Assert.True(_vm.IsSeries);
         Assert.Equal(RecipeShelfViewModel.SeriesHint, _vm.ModeHint);
     }
@@ -54,36 +51,6 @@ public class RecipeShelfViewModelTests : IAsyncLifetime
         await _vm.ToggleInterestCommand.ExecuteAsync(_vm.Interests.First(i => i.Name == "Magic"));
         Assert.DoesNotContain("Magic", (await _env.Store.GetActiveProfileAsync())!.Interests);
         Assert.Equal(2, _haptics.Count("Selection"));
-    }
-
-    [Fact]
-    public async Task SelectVoice_WritesThroughInstantly()
-    {
-        await _vm.OpenAsync(_profile);
-        await _vm.SelectVoiceCommand.ExecuteAsync(_vm.Voices.First(v => v.Voice == NarratorVoice.Sage));
-        Assert.Equal(NarratorVoice.Sage, (await _env.Store.GetActiveProfileAsync())!.Voice);
-        Assert.Equal(1, _haptics.Count("Selection"));
-        Assert.True(_vm.Voices.Single(v => v.IsSelected).Voice == NarratorVoice.Sage);
-    }
-
-    [Fact]
-    public async Task ReselectingCurrentVoice_DoesNotTickOrRewrite()
-    {
-        await _vm.OpenAsync(_profile);
-        var saves = 0;
-        _vm.ProfileChanged += (_, _) => saves++;
-        await _vm.SelectVoiceCommand.ExecuteAsync(_vm.Voices.First(v => v.Voice == NarratorVoice.Ember));
-        Assert.Equal(0, _haptics.Count("Selection"));
-        Assert.Equal(0, saves);
-    }
-
-    [Fact]
-    public async Task PlaySample_SelectsAndRendersTheVoice()
-    {
-        await _vm.OpenAsync(_profile);
-        await _vm.PlaySampleCommand.ExecuteAsync(_vm.Voices.First(v => v.Voice == NarratorVoice.Willow));
-        Assert.Equal(NarratorVoice.Willow, (await _env.Store.GetActiveProfileAsync())!.Voice);
-        Assert.Equal(NarratorVoice.Willow, _vm.Voices.Single(v => v.IsSelected).Voice);
     }
 
     [Fact]
@@ -124,8 +91,7 @@ public class RecipeShelfViewModelTests : IAsyncLifetime
         var raised = 0;
         _vm.ProfileChanged += (_, _) => raised++;
         await _vm.ToggleInterestCommand.ExecuteAsync(_vm.Interests.First(i => i.Name == "Stars"));
-        await _vm.SelectVoiceCommand.ExecuteAsync(_vm.Voices.First(v => v.Voice == NarratorVoice.Sage));
         await _vm.SetSeriesCommand.ExecuteAsync(false);
-        Assert.Equal(3, raised);
+        Assert.Equal(2, raised);
     }
 }
