@@ -17,6 +17,9 @@ public sealed class PosterPlan
     public required double Horizon { get; init; }
     /// <summary>+1: focal subject on the right third, moon on the left. −1: mirrored.</summary>
     public required int Side { get; init; }
+    /// <summary>The composition archetype this poster uses (hero on a third, centred, or
+    /// seen from a high vantage).</summary>
+    public PosterLayout Layout { get; init; } = PosterLayout.Third;
     public MoonPlan? Moon { get; init; }
     public required IReadOnlyList<StarPlan> Stars { get; init; }
     public MilkyWayPlan? MilkyWay { get; init; }
@@ -27,12 +30,27 @@ public sealed class PosterPlan
     public WaterPlan? Water { get; init; }
     public required IReadOnlyList<Placement> Placements { get; init; }
     public required IReadOnlyList<AmbientParticle> Ambient { get; init; }
+    /// <summary>Warm light sources (windows, lanterns, campfires, glowing things): the
+    /// poster's focal glow. Painted as soft light pools on their layer.</summary>
+    public IReadOnlyList<LightPlan> Lights { get; init; } = [];
     /// <summary>The focal subject (null when the scene's own landscape is the subject).</summary>
     public Placement? Focal { get; init; }
     /// <summary>Clean negative space reserved for a story title overlay.</summary>
     public required NormRect TitleSafe { get; init; }
     public required bool Underwater { get; init; }
 }
+
+/// <summary>Composition archetypes. Third: the hero stands on a vertical third, the moon on
+/// the other. Center: the hero is centred low and big, the moon above one shoulder.
+/// High: a raised vantage — the horizon sits higher and the hero is seen across a valley.</summary>
+public enum PosterLayout { Third, Center, High }
+
+public enum LightKind { Window, Lantern, Campfire, Glow, MoonPool }
+
+/// <summary>A warm light source at (x, y) on <paramref name="Depth"/>'s layer; radius is the
+/// reach of its light pool as a fraction of the poster's shorter side.</summary>
+public sealed record LightPlan(double X, double Y, double Radius, double Strength, int Depth, LightKind Kind,
+    PosterFeature? Feature = null, bool HeroOwned = false);
 
 public readonly record struct NormRect(double Left, double Top, double Right, double Bottom)
 {
@@ -191,7 +209,7 @@ public enum Prop
 {
     // flora & scenery
     Pine, RoundTree, Palm, GrassTuft, Reeds, Rock, Bush, Fern, Kelp, BranchCoral, FanCoral, BigLeaf,
-    Fence, Mushroom, Flower, Vines, Pool, Trunk,
+    Fence, Mushroom, Flower, Vines, Pool, Trunk, FrameCluster, Campfire, Anemone, Snowman,
     // structures & vehicles
     Cabin, House, Castle, Windmill, Tent, Lantern, Telescope, Boat, Sailboat, Balloon, Train, Lighthouse,
     // creatures

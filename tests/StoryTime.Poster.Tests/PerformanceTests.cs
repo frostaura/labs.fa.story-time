@@ -4,6 +4,10 @@ using StoryTime.Contracts;
 using Xunit;
 using Xunit.Abstractions;
 
+// The timing budgets measure the engine, not the test load: the art-direction metrics
+// render hundreds of posters, so the assembly runs its classes one at a time.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace StoryTime.Poster.Tests;
 
 /// <summary>Render time and memory budgets at iPhone Air resolution (3× scale). The
@@ -75,3 +79,4 @@ public class PerformanceTests(ITestOutputHelper output)
         Assert.True(png.Max() <= PlayerPngBudget, $"player poster caches {png.Max() / 1048576.0:0.00} MB of PNG");
     }
 }
+

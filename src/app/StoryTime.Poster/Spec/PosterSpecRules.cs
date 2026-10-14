@@ -182,6 +182,7 @@ public static class PosterEngineInfo
 {
     /// <summary>Bump when the engine's output changes enough that cached art must re-render.
     /// v9: the procedural parallax engine (spec contract v3) replaced the shape-formation
-    /// composer (v8).</summary>
-    public const int ArtVersion = 9;
+    /// composer (v8). v10: the picture-book pass — illustrated creatures, layouts, framing,
+    /// warm focal lights, broader palettes.</summary>
+    public const int ArtVersion = 10;
 }

@@ -36,6 +36,7 @@ public static class ScenePlanner
         private readonly Rng _root;
         private readonly int _side;
         private readonly double _focalX;
+        private readonly PosterLayout _layout;
         private readonly List<TerrainBand> _bands = [];
         private readonly List<Placement> _props = [];
         private readonly List<AmbientParticle> _ambient = [];
@@ -59,11 +60,39 @@ public static class ScenePlanner
             _root = new Rng(spec.Seed);
             var r = _root.Fork("composition");
             _side = r.Chance(0.5) ? 1 : -1;
-            _focalX = 0.5 + _side * (1.0 / 6.0) + r.Jitter(0.025);
+            // Two or three composition archetypes per scene, chosen by seed.
+            var layouts = AllowedLayouts(spec.Scene);
+            _layout = layouts[R("layout").Int(layouts.Length)];
+            _focalX = _layout == PosterLayout.Center
+                ? 0.5 + r.Jitter(0.02)
+                : 0.5 + _side * (1.0 / 6.0) + r.Jitter(0.025);
         }
+
+        private static PosterLayout[] AllowedLayouts(PosterScene scene) => scene switch
+        {
+            PosterScene.ReefAtDusk or PosterScene.CloudKingdom => [PosterLayout.Third, PosterLayout.Center],
+            PosterScene.JungleCanopy or PosterScene.IslandCove => [PosterLayout.Third, PosterLayout.Center],
+            _ => [PosterLayout.Third, PosterLayout.Center, PosterLayout.High],
+        };
+
+        /// <summary>The scene's horizon for this layout: the centred hero is seen from low
+        /// (more sky above it), the high vantage looks out across the land.</summary>
+        private double H(double baseY) => _layout switch
+        {
+            PosterLayout.Center => Math.Min(0.75, baseY + 0.03),
+            PosterLayout.High => baseY - 0.08,
+            _ => baseY,
+        };
+
+        /// <summary>Hero target height as a fraction of the poster (what is actually drawn).</summary>
+        private double HeroHeight(Rng r) => _layout == PosterLayout.Center ? r.Range(0.27, 0.32) : r.Range(0.24, 0.3);
+
+        private double HeroSize(Prop prop, int variant, Rng r) =>
+            Math.Min(0.75, HeroHeight(r) / StoryTime.Poster.Render.PropPainter.HeightFactor(prop, variant));
 
         private Rng R(string label) => _root.Fork(label);
         private bool Has(PosterFeature f) => _spec.Features.Contains(f);
+        private bool CreatureListed => _spec.Features.Any(PosterSpecRules.IsCreature);
         private uint Seed(string label) => (uint)(R(label).NextULong() & 0xFFFFFFFF);
 
         public void Build()
@@ -85,8 +114,10 @@ public static class ScenePlanner
             }
             PlaceFeatures();
             PlaceDefaultHero();
+            PlaceFraming();
             EnsureWarmLight();
             SeparateSubjects();
+            KeepHeroBelowTitle();
             PlanSky();
             PlanAmbient();
         }
@@ -97,6 +128,7 @@ public static class ScenePlanner
             Colors = _c,
             Horizon = _horizon,
             Side = _side,
+            Layout = _layout,
             Moon = _moon,
             Stars = _stars,
             MilkyWay = _milky,
@@ -107,6 +139,7 @@ public static class ScenePlanner
             Water = _water,
             Placements = _props.OrderBy(p => p.Depth).ThenBy(p => p.Y).ToList(),
             Ambient = _ambient,
+            Lights = _props.Where(p => p.Lit && p.Prop is not Prop.Train).Select(LightFor).ToList(),
             Focal = _focal,
             TitleSafe = TitleSafe,
             Underwater = _underwater,
@@ -237,7 +270,7 @@ public static class ScenePlanner
         private void MoonlitSea()
         {
             var r = R("sea");
-            _horizon = 0.66 + r.Jitter(0.03);
+            _horizon = H(0.66) + r.Jitter(0.03);
             var headSide = Has(PosterFeature.Lighthouse) ? _side : (r.Chance(0.5) ? 1 : -1);
 
             // Far: the open sea, a long low headland on one side, a whisper of an isle.
@@ -252,7 +285,7 @@ public static class ScenePlanner
                 var cliff = Band(2, Mountains(_horizon + 0.12, r.Range(0.08, 0.1), 2.6, "sea-cliff",
                     SideEnvelope(headSide, 0.32, 0.09), 1.25), 0.55, TerrainStyle.Earth);
                 var lx = 0.5 + headSide * r.Range(0.30, 0.35);
-                Place(Prop.Lighthouse, 2, lx, cliff.Profile.Y(lx) + 0.006, r.Range(0.22, 0.26), "lighthouse",
+                Place(Prop.Lighthouse, 2, lx, cliff.Profile.Y(lx) + 0.006, CreatureListed ? r.Range(0.2, 0.24) : HeroHeight(r) / 1.0, "lighthouse",
                     flip: false, feature: PosterFeature.Lighthouse, lit: true);
             }
             else
@@ -271,7 +304,7 @@ public static class ScenePlanner
         private void ForestClearing()
         {
             var r = R("forest");
-            _horizon = 0.66 + r.Jitter(0.03);
+            _horizon = H(0.66) + r.Jitter(0.03);
             Band(1, Mountains(_horizon + 0.01, r.Range(0.11, 0.15), 1.5, "forest-mtn"), 0.0, TerrainStyle.Earth, fog: 0.4);
             var treeline = Band(1, Hills(_horizon + 0.035, 0.03, 3, "forest-far"), 0.28, TerrainStyle.Earth, fog: 0.25);
             Scatter(Prop.Pine, 1, treeline.Profile, -0.12, 1.12, 0.028, 0.05, 0.085, "forest-far-pines", 0.28);
@@ -294,14 +327,17 @@ public static class ScenePlanner
         private void MountainLake()
         {
             var r = R("lake");
-            _horizon = 0.64 + r.Jitter(0.03);
+            _horizon = H(0.64) + r.Jitter(0.03);
             Band(1, Mountains(_horizon, r.Range(0.19, 0.23), 1.3, "lake-mtn-a"), 0.0, TerrainStyle.Earth, fog: 0.35, snowCaps: true);
             Band(1, Mountains(_horizon, r.Range(0.11, 0.14), 2.1, "lake-mtn-b"), 0.18, TerrainStyle.Earth, fog: 0.4, snowCaps: true);
             var line = Band(1, Hills(_horizon + 0.004, 0.012, 5, "lake-line"), 0.32, TerrainStyle.Earth, rim: false);
             Scatter(Prop.Pine, 1, line.Profile, -0.12, 1.12, 0.022, 0.035, 0.055, "lake-far-pines", 0.32);
             _water = new WaterPlan(1, _horizon + 0.006, Glade: true);
 
-            var shoreSide = -_side;
+            // The pine shore takes the hero's third when the hero is a building on land;
+            // otherwise the hero is on the water and the shore frames the far side.
+            var landHero = !CreatureListed && _spec.Features.Any(f => f is PosterFeature.Cabin or PosterFeature.Tent or PosterFeature.Windmill or PosterFeature.Telescope);
+            var shoreSide = landHero ? (_focalX > 0.5 ? 1 : -1) : -_side;
             var shore = Band(2, Hills(_horizon + 0.15, 0.06, 2.2, "lake-shore", 3, SideEnvelope(shoreSide, 0.36), 1.25), 0.6, TerrainStyle.Earth);
             Scatter(Prop.Pine, 2, shore.Profile, shoreSide > 0 ? 0.72 : -0.15, shoreSide > 0 ? 1.15 : 0.28, 0.05, 0.15, 0.24, "lake-pines", 0.6);
 
@@ -315,7 +351,7 @@ public static class ScenePlanner
         private void FireflyMeadow()
         {
             var r = R("meadow");
-            _horizon = 0.67 + r.Jitter(0.03);
+            _horizon = H(0.67) + r.Jitter(0.03);
             Band(1, Hills(_horizon, r.Range(0.06, 0.09), 1.6, "meadow-far"), 0.05, TerrainStyle.Earth, fog: 0.35);
             Band(1, Hills(_horizon + 0.05, 0.06, 2.0, "meadow-far2"), 0.32, TerrainStyle.Earth, fog: 0.3);
             var hill = Band(2, Hills(_horizon + 0.15, r.Range(0.06, 0.08), 1.3, "meadow-hill"), 0.62, TerrainStyle.Earth);
@@ -331,7 +367,7 @@ public static class ScenePlanner
         private void SnowyVillage()
         {
             var r = R("snow");
-            _horizon = 0.64 + r.Jitter(0.03);
+            _horizon = H(0.64) + r.Jitter(0.03);
             Band(1, Mountains(_horizon + 0.01, r.Range(0.16, 0.2), 1.4, "snow-mtn"), 0.0, TerrainStyle.Snow, fog: 0.3, snowCaps: true);
             var slope = Band(2, Hills(_horizon + 0.13, 0.045, 1.5, "snow-slope"), 0.5, TerrainStyle.Snow);
             // The village gathers on the side away from the focal subject.
@@ -363,11 +399,11 @@ public static class ScenePlanner
         private void DesertOasis()
         {
             var r = R("desert");
-            _horizon = 0.67 + r.Jitter(0.03);
+            _horizon = H(0.67) + r.Jitter(0.03);
             Band(1, Dunes(_horizon, r.Range(0.06, 0.09), 1.4, "desert-far"), 0.05, TerrainStyle.Sand, fog: 0.3);
             Band(1, Dunes(_horizon + 0.06, 0.06, 1.9, "desert-far2"), 0.32, TerrainStyle.Sand, fog: 0.25);
             var mid = Band(2, Dunes(_horizon + 0.16, 0.05, 1.3, "desert-mid"), 0.6, TerrainStyle.Sand);
-            var ox = 0.5 - _side * r.Range(0.12, 0.2);
+            var ox = 0.5 - _side * (_layout == PosterLayout.Center ? r.Range(0.27, 0.32) : r.Range(0.12, 0.2));
             Place(Prop.Pool, 2, ox, mid.Profile.Y(ox) + 0.025, r.Range(0.2, 0.25), "oasis-pool", flip: false);
             // Palms root together on the far bank and fan apart at the crowns.
             var palms = 1 + r.Int(3);
@@ -384,7 +420,7 @@ public static class ScenePlanner
         private void IslandCove()
         {
             var r = R("cove");
-            _horizon = 0.64 + r.Jitter(0.03);
+            _horizon = H(0.64) + r.Jitter(0.03);
             Band(1, Hills(_horizon, 0.02, 4, "cove-isle", 2, Window(0.5 + _side * r.Range(0.12, 0.25), 0.06), _horizon + 0.004),
                 0.0, TerrainStyle.Earth, fog: 0.2, rim: false);
             _water = new WaterPlan(1, _horizon, Glade: true);
@@ -410,7 +446,7 @@ public static class ScenePlanner
         private void StarryHills()
         {
             var r = R("hills");
-            _horizon = 0.71 + r.Jitter(0.03);
+            _horizon = H(0.71) + r.Jitter(0.03);
             Band(1, Hills(_horizon, 0.05, 1.7, "hills-far"), 0.05, TerrainStyle.Earth, fog: 0.35);
             Band(1, Hills(_horizon + 0.04, 0.06, 1.4, "hills-far2"), 0.3, TerrainStyle.Earth, fog: 0.25);
             var hill = Band(2, Hills(_horizon + 0.13, r.Range(0.08, 0.11), 1.1, "hills-mid"), 0.62, TerrainStyle.Earth);
@@ -427,7 +463,7 @@ public static class ScenePlanner
         {
             var r = R("reef");
             _underwater = true;
-            _horizon = 0.73 + r.Jitter(0.03);
+            _horizon = H(0.73) + r.Jitter(0.03);
             Band(1, Bumps(_horizon, 0.04, 0.09, 0.8, "reef-far"), 0.05, TerrainStyle.Reef, fog: 0.3, rim: false);
             var mid = Band(2, Bumps(_horizon + 0.12, 0.05, 0.11, 0.7, "reef-mid"), 0.55, TerrainStyle.Reef, fog: 0.2);
             Scatter(Prop.BranchCoral, 2, mid.Profile, -0.05, 1.05, 0.16, 0.10, 0.16, "reef-corals", 0.55,
@@ -443,7 +479,7 @@ public static class ScenePlanner
         private void CloudKingdom()
         {
             var r = R("clouds");
-            _horizon = 0.70 + r.Jitter(0.03);
+            _horizon = H(0.70) + r.Jitter(0.03);
             Band(1, Bumps(_horizon + 0.03, 0.03, 0.1, 1.0, "ck-far"), 0.1, TerrainStyle.Cloud, fog: 0.2);
             Band(2, Bumps(_horizon + 0.18, 0.05, 0.16, 1.0, "ck-mid"), 0.5, TerrainStyle.Cloud, fog: 0.1);
             Band(3, Bumps(1.05, 0.09, 0.22, 1.0, "ck-near"), 0.85, TerrainStyle.Cloud);
@@ -452,7 +488,7 @@ public static class ScenePlanner
         private void TownRooftops()
         {
             var r = R("town");
-            _horizon = 0.64 + r.Jitter(0.03);
+            _horizon = H(0.64) + r.Jitter(0.03);
             Band(1, Roofs(_horizon + 0.04, 0.06, 0.11, 0.05, 0.10, "town-far", tower: true), 0.12, TerrainStyle.Roofs, fog: 0.3, rim: false);
             Band(2, Roofs(_horizon + 0.17, 0.10, 0.17, 0.08, 0.16, "town-mid", tower: false), 0.55, TerrainStyle.Roofs, fog: 0.1);
             // The near roof: a long, gently sagging ridge across the bottom.
@@ -486,7 +522,7 @@ public static class ScenePlanner
         private void JungleCanopy()
         {
             var r = R("jungle");
-            _horizon = 0.64 + r.Jitter(0.03);
+            _horizon = H(0.64) + r.Jitter(0.03);
             Band(1, Bumps(_horizon, 0.02, 0.045, 0.95, "jungle-far"), 0.05, TerrainStyle.Canopy, fog: 0.4, rim: false);
             Band(1, Bumps(_horizon + 0.05, 0.03, 0.06, 0.95, "jungle-far2"), 0.28, TerrainStyle.Canopy, fog: 0.3);
             var mid = Band(2, Bumps(_horizon + 0.15, 0.05, 0.10, 0.9, "jungle-mid"), 0.55, TerrainStyle.Canopy, fog: 0.12);
@@ -522,7 +558,8 @@ public static class ScenePlanner
             foreach (var f in _spec.Features)
             {
                 if (PosterSpecRules.IsCreature(f)) continue;
-                var asFocal = _focal is null && !structureUsedFocal && (PosterSpecRules.IsStructure(f) || PosterSpecRules.IsVehicle(f));
+                var asFocal = _focal is null && !structureUsedFocal && f is not (PosterFeature.Lantern or PosterFeature.Train)
+                              && (PosterSpecRules.IsStructure(f) || PosterSpecRules.IsVehicle(f));
                 var x = GroundedX(mid, asFocal ? _focalX : otherX);
                 switch (f)
                 {
@@ -531,11 +568,11 @@ public static class ScenePlanner
                         {
                             var isle = _bands.Last(b => b.Depth == 2).Profile;
                             var lx = GroundedX(isle, 0.5 + _side * 0.3);
-                            Place(Prop.Lighthouse, 2, lx, isle.Y(lx) + 0.006, r.Range(0.2, 0.24), "lighthouse", flip: false, feature: f, lit: true);
+                            Place(Prop.Lighthouse, 2, lx, isle.Y(lx) + 0.006, CreatureListed ? r.Range(0.2, 0.24) : HeroHeight(r), "lighthouse", flip: false, feature: f, lit: true);
                         }
                         break; // MoonlitSea placed it on its cliff already
                     case PosterFeature.Cabin:
-                        Place(Prop.Cabin, 2, x, mid.Y(x) + 0.01, asFocal ? r.Range(0.20, 0.24) : r.Range(0.15, 0.18), "cabin", feature: f, lit: true);
+                        Place(Prop.Cabin, 2, x, mid.Y(x) + 0.01, asFocal ? HeroHeight(r) / 0.88 : r.Range(0.15, 0.18), "cabin", feature: f, lit: true);
                         break;
                     case PosterFeature.Village:
                         if (_spec.Scene is PosterScene.SnowyVillage or PosterScene.TownRooftops) break; // the scene IS a village
@@ -549,16 +586,17 @@ public static class ScenePlanner
                     case PosterFeature.Castle:
                     {
                         var depth = _spec.Scene is PosterScene.CloudKingdom ? 1 : 1;
-                        var cx = 0.5 - _side * r.Range(0.12, 0.18);
-                        Place(Prop.Castle, depth, cx, Ground(1).Y(cx) + (_spec.Scene == PosterScene.CloudKingdom ? 0.03 : 0.012), r.Range(0.17, 0.22), "castle", feature: f, lit: true,
+                        var cx = _focal is null ? _focalX : 0.5 - _side * r.Range(0.12, 0.18);
+                        Place(Prop.Castle, depth, cx, Ground(1).Y(cx) + (_spec.Scene == PosterScene.CloudKingdom ? 0.03 : 0.012),
+                            _focal is null ? HeroHeight(r) / 1.05 : r.Range(0.17, 0.22), "castle", feature: f, lit: true,
                             tone: _spec.Scene == PosterScene.CloudKingdom ? 0.3 : 0.42);
                         break;
                     }
                     case PosterFeature.Windmill:
-                        Place(Prop.Windmill, 2, x, mid.Y(x) + 0.01, asFocal ? 0.30 : 0.24, "windmill", feature: f);
+                        Place(Prop.Windmill, 2, x, mid.Y(x) + 0.01, asFocal ? HeroHeight(r) / 1.08 : 0.24, "windmill", feature: f);
                         break;
                     case PosterFeature.Tent:
-                        Place(Prop.Tent, 2, x, mid.Y(x) + 0.008, asFocal ? 0.2 : 0.15, "tent", feature: f, lit: true);
+                        Place(Prop.Tent, 2, x, mid.Y(x) + 0.008, asFocal ? HeroHeight(r) / 0.78 : 0.17, "tent", feature: f, lit: true);
                         break;
                     case PosterFeature.Lantern:
                     {
@@ -566,15 +604,15 @@ public static class ScenePlanner
                         // small camp lantern set on the ground beside the hero.
                         var street = _spec.Scene is PosterScene.SnowyVillage or PosterScene.TownRooftops;
                         var lx = _focal is not null ? _focal.X - _side * 0.17 : x;
-                        Place(Prop.Lantern, 3, lx, near.Y(lx) + 0.012, street ? 0.2 : 0.07, "lantern", feature: f, lit: true,
+                        Place(Prop.Lantern, 3, lx, near.Y(lx) + 0.012, street ? 0.22 : 0.085, "lantern", feature: f, lit: true,
                             variant: street ? 1 : 0);
                         break;
                     }
                     case PosterFeature.Telescope:
                         if (_spec.Scene == PosterScene.TownRooftops)
-                            Place(Prop.Telescope, 3, x, near.Y(x) + 0.004, asFocal ? 0.18 : 0.14, "telescope", flip: _side > 0, feature: f);
+                            Place(Prop.Telescope, 3, x, near.Y(x) + 0.004, asFocal ? HeroHeight(r) / 0.78 : 0.18, "telescope", flip: _side > 0, feature: f);
                         else
-                            Place(Prop.Telescope, 2, x, mid.Y(x) + 0.006, asFocal ? 0.2 : 0.16, "telescope", flip: _side > 0, feature: f);
+                            Place(Prop.Telescope, 2, x, mid.Y(x) + 0.006, asFocal ? HeroHeight(r) / 0.78 : 0.19, "telescope", flip: _side > 0, feature: f);
                         break;
                     case PosterFeature.Boat:
                     case PosterFeature.Sailboat:
@@ -582,30 +620,32 @@ public static class ScenePlanner
                         var by = _water.Line + r.Range(0.06, 0.12);
                         var bx = asFocal ? _focalX : 0.5 + _side * r.Range(0.02, 0.1);
                         Place(f == PosterFeature.Boat ? Prop.Boat : Prop.Sailboat, 2, bx, by,
-                            f == PosterFeature.Boat ? r.Range(0.12, 0.15) : r.Range(0.17, 0.21), "boat", feature: f, lit: f == PosterFeature.Boat);
+                            asFocal ? HeroHeight(r) / (f == PosterFeature.Boat ? 0.9 : 0.97) : f == PosterFeature.Boat ? r.Range(0.13, 0.16) : r.Range(0.18, 0.22),
+                            "boat", feature: f, lit: f == PosterFeature.Boat);
                         break;
                     case PosterFeature.Balloon:
                     {
                         var moonX = 0.5 - _side * 0.25;
                         var bx2 = moonX + _side * 0.24;
-                        Place(Prop.Balloon, 2, bx2, r.Range(0.40, 0.46), r.Range(0.15, 0.19), "balloon", feature: f, lit: true);
+                        Place(Prop.Balloon, 2, bx2, r.Range(0.42, 0.47), asFocal ? HeroHeight(r) / 1.2 : r.Range(0.15, 0.18), "balloon", feature: f, lit: true);
                         break;
                     }
                     case PosterFeature.Train:
                     {
                         // On rails along the mid ground, never on a ridge line.
                         var tx = GroundedX(mid, 0.5 + r.Jitter(0.06));
-                        Place(Prop.Train, 2, tx, mid.Y(tx) + 0.004, r.Range(0.04, 0.05), "train", flip: _side > 0, feature: f, lit: true);
+                        Place(Prop.Train, 2, tx, mid.Y(tx) + 0.004, r.Range(0.05, 0.06), "train", flip: _side > 0, feature: f, lit: true);
                         break;
                     }
                     case PosterFeature.Birds:
-                        Place(Prop.Birds, 1, 0.5 + _side * r.Range(0.05, 0.15), r.Range(0.36, 0.44), r.Range(0.12, 0.16), "birds", feature: f, tone: 0.2);
+                        Place(Prop.Birds, 1, 0.5 + _side * r.Range(0.05, 0.15), r.Range(0.36, 0.42), r.Range(0.29, 0.33), "birds", feature: f, tone: 0.2);
                         break;
                     case PosterFeature.Flowers:
                         for (var i = 0; i < 9; i++)
                         {
-                            var fx = r.Chance(0.5) ? r.Range(0.02, 0.32) : r.Range(0.68, 0.98);
-                            Place(Prop.Flower, 3, fx, near.Y(fx) + r.Range(0.004, 0.03), r.Range(0.035, 0.055), $"flower-{i}", feature: f);
+                            // Flowers grow up through the framing, in front of it.
+                            var fx = r.Chance(0.5) ? r.Range(0.03, 0.3) : r.Range(0.7, 0.97);
+                            Place(Prop.Flower, 3, fx, 1.0 + r.Range(0.005, 0.03), r.Range(0.09, 0.12), $"flower-{i}", feature: f);
                         }
                         break;
                     case PosterFeature.Mushrooms:
@@ -614,7 +654,7 @@ public static class ScenePlanner
                         for (var i = 0; i < 3; i++)
                         {
                             var x2 = mx + i * 0.03 * _side;
-                            Place(Prop.Mushroom, 3, x2, near.Y(x2) + 0.012, r.Range(0.035, 0.06), $"mushroom-{i}", feature: f, lit: i == 0);
+                            Place(Prop.Mushroom, 3, x2, near.Y(x2) + 0.012, r.Range(0.05, 0.08), $"mushroom-{i}", feature: f, lit: i == 0);
                         }
                         break;
                     }
@@ -624,7 +664,8 @@ public static class ScenePlanner
                     case PosterFeature.Fish:
                     {
                         var fx = _focal is not null ? 0.5 - _side * 0.12 : _focalX;
-                        var school = Place(Prop.FishSchool, 3, fx, r.Range(0.42, 0.5), r.Range(0.3, 0.38), "fish", flip: _side < 0, feature: f);
+                        var fsz = _focal is null ? HeroHeight(r) / 0.8 : r.Range(0.24, 0.3);
+                        var school = Place(Prop.FishSchool, 3, fx, 0.5 + fsz * 0.45, fsz, "fish", flip: _side < 0, feature: f);
                         _focal ??= school;
                         break;
                     }
@@ -654,7 +695,7 @@ public static class ScenePlanner
             if (_focal is not null) return;
             // A featured landmark (castle, lighthouse, village, train) already is the subject.
             if (_props.FirstOrDefault(p => p.Feature is PosterFeature.Castle or PosterFeature.Lighthouse
-                    or PosterFeature.Train or PosterFeature.Windmill) is { } landmark)
+                    or PosterFeature.Windmill) is { } landmark)
             {
                 _focal = landmark;
                 return;
@@ -666,31 +707,39 @@ public static class ScenePlanner
             switch (_spec.Scene)
             {
                 case PosterScene.MoonlitSea or PosterScene.IslandCove or PosterScene.MountainLake when _water is not null:
-                    _focal = Place(Prop.Boat, 2, x, _water.Line + r.Range(0.07, 0.11), r.Range(0.16, 0.2), "hero-boat", lit: true);
+                    _focal = Place(Prop.Boat, 2, x, _water.Line + r.Range(0.11, 0.15), HeroHeight(r) / 0.9, "hero-boat", lit: true);
                     break;
-                case PosterScene.ForestClearing or PosterScene.StarryHills or PosterScene.FireflyMeadow:
-                    x = GroundedX(mid, x);
-                    _props.RemoveAll(p => p.Feature is null && p.Depth == 2 && p.Prop is Prop.RoundTree or Prop.Pine && Math.Abs(p.X - x) < 0.14);
-                    _focal = Place(_spec.Scene == PosterScene.StarryHills ? Prop.Tent : Prop.Cabin, 2, x, mid.Y(x) + 0.01,
-                        r.Range(0.17, 0.2), "hero-home", lit: true);
-                    break;
-                case PosterScene.ReefAtDusk:
-                    _focal = Place(Prop.FishSchool, 3, x, r.Range(0.44, 0.5), r.Range(0.3, 0.36), "hero-fish", flip: _side < 0);
-                    break;
-                case PosterScene.CloudKingdom:
+                case PosterScene.ForestClearing or PosterScene.StarryHills or PosterScene.FireflyMeadow or PosterScene.DesertOasis:
                 {
-                    var cx = 0.5 + _side * r.Range(0.15, 0.19);   // the castle takes the focal third
-                    _focal = Place(Prop.Castle, 1, cx, Ground(1).Y(cx) + 0.03, r.Range(0.19, 0.23), "hero-castle", lit: true, tone: 0.45);
+                    x = GroundedX(mid, x);
+                    var tent = _spec.Scene is PosterScene.StarryHills or PosterScene.DesertOasis;
+                    _props.RemoveAll(p => p.Feature is null && p.Depth == 2 && p.Prop is Prop.RoundTree or Prop.Pine && Math.Abs(p.X - x) < 0.2);
+                    _focal = Place(tent ? Prop.Tent : Prop.Cabin, 2, x, mid.Y(x) + 0.01, HeroHeight(r) / (tent ? 0.8 : 0.88), "hero-home", lit: true);
                     break;
                 }
-                case PosterScene.JungleCanopy:
-                    for (var i = 0; i < 3; i++)
-                    {
-                        var mx = x + (i - 1) * 0.035;
-                        Place(Prop.Mushroom, 3, mx, near.Y(mx) + 0.012, r.Range(0.05, 0.07), $"hero-glow-{i}", lit: true);
-                    }
-                    _focal = _props[^1];
+                case PosterScene.SnowyVillage:
+                    _focal = Place(Prop.Snowman, 3, x, near.Y(x) + 0.01, HeroHeight(r), "hero-snowman", flip: _focalX > 0.5);
                     break;
+                case PosterScene.TownRooftops:
+                    _focal = Place(Prop.House, 2, x, Math.Min(0.86, _horizon + 0.25), HeroHeight(r) / 0.9, "hero-house", variant: 1, lit: true);
+                    break;
+                case PosterScene.ReefAtDusk:
+                {
+                    var hsz = HeroHeight(r) / 0.8;
+                    _focal = Place(Prop.FishSchool, 3, x, 0.5 + hsz * 0.45, hsz, "hero-fish", flip: _side < 0);
+                    break;
+                }
+                case PosterScene.CloudKingdom:
+                    _focal = Place(Prop.Castle, 1, x, Ground(1).Y(x) + 0.03, HeroHeight(r) / 1.05, "hero-castle", lit: true, tone: 0.45);
+                    break;
+                case PosterScene.JungleCanopy:
+                {
+                    // A ring of giant glowing mushrooms: the tallest is the subject.
+                    Place(Prop.Mushroom, 3, x - 0.08, near.Y(x - 0.08) + 0.012, r.Range(0.1, 0.13), "hero-glow-0", lit: true);
+                    Place(Prop.Mushroom, 3, x + 0.09, near.Y(x + 0.09) + 0.012, r.Range(0.13, 0.16), "hero-glow-1", lit: true);
+                    _focal = Place(Prop.Mushroom, 3, x, near.Y(x) + 0.014, HeroHeight(r), "hero-glow-2", lit: true);
+                    break;
+                }
             }
         }
 
@@ -756,6 +805,29 @@ public static class ScenePlanner
             }
         }
 
+        /// <summary>The hero never climbs into the title band: on a high horizon a tall
+        /// castle or lighthouse is scaled down until its tip clears it.</summary>
+        private void KeepHeroBelowTitle()
+        {
+            if (_focal is not { } hero) return;
+            var above = hero.Prop switch
+            {
+                Prop.Castle => 1.18,
+                Prop.Lighthouse => 1.05,
+                Prop.Windmill => 1.12,
+                Prop.Balloon => 0.6,
+                Prop.Sailboat => 1.0,
+                Prop.Boat => 0.7,
+                _ => Render.PropPainter.IsCreatureProp(hero.Prop) ? Render.PropPainter.HeightFactor(hero.Prop, hero.Variant) : 1.0,
+            };
+            var limit = TitleSafe.Bottom + 0.04;
+            if (hero.Y - hero.Size * above >= limit) return;
+            var fitted = hero with { Size = Math.Max(0.05, (hero.Y - limit) / above) };
+            var idx = _props.IndexOf(hero);
+            if (idx >= 0) _props[idx] = fitted;
+            _focal = fitted;
+        }
+
         /// <summary>Fixed things subjects must not stand in: the oasis pool and big framing
         /// trees/palms in the near layer.</summary>
         private static bool IsObstacle(Placement p) =>
@@ -763,61 +835,136 @@ public static class ScenePlanner
 
         private static double PosterEngineTravel(int depth) => PosterEngine.TravelFraction[Math.Clamp(depth, 0, 3)];
 
-        /// <summary>Every poster above water carries at least one small amber light: the "safe
-        /// place" a sleepy eye lands on (Hearth's single warm accent).</summary>
+        /// <summary>Foreground framing: a darker, richly shaped cluster rising in each lower
+        /// corner — full on the open side, lower beside the hero so it never covers it.</summary>
+        private void PlaceFraming()
+        {
+            var r = R("framing");
+            var kit = _spec.Scene switch
+            {
+                PosterScene.FireflyMeadow or PosterScene.StarryHills => Render.PropPainter.FrameKit.Meadow,
+                PosterScene.ForestClearing => Render.PropPainter.FrameKit.Forest,
+                PosterScene.SnowyVillage => Render.PropPainter.FrameKit.Snow,
+                PosterScene.MoonlitSea or PosterScene.MountainLake => Render.PropPainter.FrameKit.Shore,
+                PosterScene.IslandCove => Render.PropPainter.FrameKit.Beach,
+                PosterScene.DesertOasis => Render.PropPainter.FrameKit.Desert,
+                PosterScene.ReefAtDusk => Render.PropPainter.FrameKit.Reef,
+                PosterScene.CloudKingdom => Render.PropPainter.FrameKit.Cloud,
+                PosterScene.TownRooftops => Render.PropPainter.FrameKit.Roof,
+                _ => Render.PropPainter.FrameKit.Jungle,
+            };
+            // The open side is away from the hero; a centred hero gets two even frames.
+            var heroX = _focal?.X ?? _focalX;
+            var open = Math.Abs(heroX - 0.5) < 0.08 ? -_side : (heroX > 0.5 ? -1 : 1);
+            var bottom = kit == Render.PropPainter.FrameKit.Roof ? Ground(3).Y(0.5 + open * 0.45) + 0.02 : 1.0;
+            var strong = _layout == PosterLayout.Center ? r.Range(0.37, 0.41) : r.Range(0.43, 0.47);
+            var weak = _layout == PosterLayout.Center ? r.Range(0.3, 0.34) : r.Range(0.28, 0.32);
+            // A hero standing close to its edge gets a lower frame on that side.
+            if (Math.Abs(heroX - 0.5) > 0.24) weak *= 0.92;
+            Place(Prop.FrameCluster, 3, 0.5 + open * 0.52, bottom, strong, "frame-open", flip: open > 0, variant: (int)kit);
+            // The hero-side cluster is compressed sideways (+16): tall at the edge, never across the hero.
+            var heroBottom = kit == Render.PropPainter.FrameKit.Roof ? Ground(3).Y(0.5 - open * 0.45) + 0.02 : 1.0;
+            Place(Prop.FrameCluster, 3, 0.5 - open * 0.53, heroBottom, weak, "frame-hero", flip: open < 0, variant: (int)kit + 16);
+        }
+
+        /// <summary>Every poster carries a warm light beside its hero — a window, a lantern, a
+        /// campfire, a glowing anemone on the reef: the "safe place" a sleepy eye lands on,
+        /// and the value accent that makes the poster read as a picture, not wallpaper.</summary>
         private void EnsureWarmLight()
         {
-            if (_underwater || _props.Any(p => p.Lit)) return;
-            // Not a stamp: the lantern joins only cozy nights and a third of the rest.
-            if (_spec.Mood != PosterMood.Cozy && !R("warm-light").Chance(0.3)) return;
-            var near = Ground(3);
-            var x = _focal is { Depth: 3 } f ? f.X - _side * 0.17 : _focalX;
-            x = Math.Clamp(x, 0.12, 0.88);
-            Place(Prop.Lantern, 3, x, near.Y(x) + 0.012, 0.07, "warm-lantern", lit: true, variant: 0);
+            var hero = _focal;
+            // A cabin, tent or glowing mushroom is its own lamp; a far castle's windows or a
+            // boat's masthead light are too small to be the poster's focal glow.
+            if (hero is not null && hero.Lit && hero.Prop is Prop.Cabin or Prop.Tent or Prop.Mushroom) return;
+            if (hero is null && _props.Any(p => p.Lit && p.Depth >= 2)) return;
+            var r = R("warm-light");
+            var dir = _layout == PosterLayout.Center ? _side : (_focalX > 0.5 ? -1 : 1);
+            var hx = hero?.X ?? _focalX;
+            var reach = hero is null ? 0.0 : hero.Size * (hero.Prop is Prop.Whale or Prop.Dinosaur or Prop.FoxCurled ? 0.75 : 0.5) + 0.07;
+            var x = Math.Clamp(hx + dir * reach, 0.14, 0.86);
+            if (_underwater)
+            {
+                var floor = Ground(3);
+                Place(Prop.Anemone, 3, x, floor.Y(x) + 0.01, r.Range(0.1, 0.13), "warm-anemone", lit: true);
+                return;
+            }
+            var onMid = hero is { Depth: 2 } && hero.Prop is not (Prop.Whale or Prop.Otter or Prop.Boat or Prop.Sailboat or Prop.Balloon);
+            var ground = Ground(onMid ? 2 : 3);
+            var wild = _spec.Scene is PosterScene.ForestClearing or PosterScene.StarryHills or PosterScene.FireflyMeadow
+                or PosterScene.DesertOasis or PosterScene.MountainLake or PosterScene.IslandCove or PosterScene.JungleCanopy;
+            var depth = onMid ? 2 : 3;
+            if (wild && _spec.Scene != PosterScene.JungleCanopy && !(_spec.Scene == PosterScene.MountainLake && !onMid && r.Chance(0.5)))
+                Place(Prop.Campfire, depth, x, ground.Y(x) + 0.008, onMid ? 0.12 : 0.15, "warm-fire", lit: true);
+            else
+                Place(Prop.Lantern, depth, x, ground.Y(x) + 0.012, onMid ? 0.085 : 0.11, "warm-lantern", lit: true, variant: 0);
+        }
+
+        /// <summary>The light a lit prop casts: where its glow centres and how far its pool reaches.</summary>
+        private LightPlan LightFor(Placement p)
+        {
+            var (cy, radius, kind) = p.Prop switch
+            {
+                Prop.Campfire => (p.Y - p.Size * 0.3, 0.2 + p.Size * 0.6, LightKind.Campfire),
+                Prop.Lantern when p.Variant == 0 => (p.Y - p.Size * 0.45, 0.12 + p.Size, LightKind.Lantern),
+                Prop.Lantern => (p.Y - p.Size * 0.62, 0.1 + p.Size * 0.4, LightKind.Lantern),
+                Prop.Mushroom or Prop.Anemone => (p.Y - p.Size * 0.6, 0.06 + p.Size * 0.9, LightKind.Glow),
+                Prop.Boat => (p.Y - p.Size * 0.5, 0.06 + p.Size * 0.5, LightKind.Lantern),
+                Prop.Lighthouse => (p.Y - p.Size * 0.82, 0.06 + p.Size * 0.5, LightKind.Window),
+                _ => (p.Y - p.Size * 0.3, 0.04 + p.Size * 0.35, LightKind.Window),
+            };
+            var strength = p.Depth switch { 1 => 0.45, 2 => 0.85, _ => 1.0 };
+            return new LightPlan(p.X, cy, radius, strength, p.Depth, kind, p.Feature, ReferenceEquals(p, _focal) || p == _focal);
         }
 
         private Placement PlaceCreature(PosterFeature creature, TerrainProfile near, TerrainProfile mid, Rng r)
         {
             var x = _focalX;
-            var faceIn = _side > 0; // face toward the centre / the moon
+            var faceIn = _focalX > 0.5; // face toward the centre / the moon
+            var waterY = (_water?.Line ?? _horizon);
+            Placement OnNear(Prop prop, int variant, string label)
+            {
+                var size = HeroSize(prop, variant, r);
+                return Place(prop, 3, x, near.Y(x) + 0.008, size, label, flip: faceIn, variant: variant, feature: creature);
+            }
             switch (creature)
             {
                 case PosterFeature.Whale:
                     if (_underwater)
-                        return Place(Prop.Whale, 1, 0.5 - _side * 0.12, r.Range(0.44, 0.5), r.Range(0.42, 0.5), "whale", flip: !faceIn, variant: 1, feature: creature, tone: 0.1);
-                    return Place(Prop.Whale, 2, x, (_water?.Line ?? _horizon) + r.Range(0.07, 0.1), r.Range(0.16, 0.2), "whale", flip: faceIn, feature: creature);
+                        return Place(Prop.Whale, 2, 0.5 - _side * 0.08, r.Range(0.62, 0.66), HeroSize(Prop.Whale, 1, r) * 1.05, "whale", flip: !faceIn, variant: 1, feature: creature);
+                    return Place(Prop.Whale, 2, x, waterY + r.Range(0.12, 0.16), HeroSize(Prop.Whale, 0, r), "whale", flip: faceIn, feature: creature);
                 case PosterFeature.Otter:
-                    return Place(Prop.Otter, 2, x, (_water?.Line ?? _horizon) + r.Range(0.08, 0.12), r.Range(0.23, 0.27), "otter", flip: faceIn, feature: creature);
+                    return Place(Prop.Otter, 2, x, waterY + r.Range(0.13, 0.17), HeroSize(Prop.Otter, 0, r), "otter", flip: faceIn, feature: creature);
                 case PosterFeature.Turtle:
                     if (_underwater)
-                        return Place(Prop.Turtle, 2, x, r.Range(0.46, 0.54), r.Range(0.17, 0.21), "turtle", flip: faceIn, feature: creature);
-                    return Place(Prop.Turtle, 3, x, near.Y(x) + 0.008, r.Range(0.16, 0.2), "turtle", flip: faceIn, variant: 1, feature: creature);
+                        return Place(Prop.Turtle, 2, x, r.Range(0.6, 0.66), HeroSize(Prop.Turtle, 0, r), "turtle", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Turtle, 1, "turtle");
                 case PosterFeature.Owl:
                 {
-                    var ox = 0.5 + _side * 0.27;
-                    return Place(Prop.Owl, 3, ox, _horizon - 0.02 + r.Jitter(0.03), r.Range(0.15, 0.18), "owl", flip: _side < 0, feature: creature);
+                    // On a branch reaching out from a tree at the frame edge on its side.
+                    var ox = _layout == PosterLayout.Center ? _focalX : 0.5 + _side * 0.25;
+                    var size = HeroSize(Prop.Owl, 0, r);
+                    Place(Prop.Trunk, 3, 0.5 + _side * 0.5, 1.0, Math.Min(0.6, size * 1.6), "owl-tree", flip: _side < 0);
+                    return Place(Prop.Owl, 3, ox, Math.Min(0.82, near.Y(ox) - 0.1), size, "owl", flip: _side < 0, feature: creature);
                 }
                 case PosterFeature.Dinosaur:
-                    x = GroundedX(mid, x);
-                    return Place(Prop.Dinosaur, 2, x, mid.Y(x) + 0.01, r.Range(0.3, 0.36), "dinosaur", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Dinosaur, 0, "dinosaur");
                 case PosterFeature.Cat:
-                    return Place(Prop.Cat, 3, x, near.Y(x) + 0.004, r.Range(0.17, 0.2), "cat", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Cat, 0, "cat");
                 case PosterFeature.Camel:
-                    return Place(Prop.Camel, 3, x, near.Y(x) + 0.008, r.Range(0.24, 0.28), "camel", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Camel, 0, "camel");
                 case PosterFeature.Deer:
-                    return Place(Prop.Deer, 3, x, near.Y(x) + 0.008, r.Range(0.27, 0.31), "deer", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Deer, _spec.Mood is PosterMood.Sleepy or PosterMood.Calm || r.Chance(0.3) ? 1 : 0, "deer");
                 case PosterFeature.Bear:
-                    return Place(Prop.Bear, 3, x, near.Y(x) + 0.008, r.Range(0.26, 0.3), "bear", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Bear, 0, "bear");
                 case PosterFeature.Hedgehog:
-                    return Place(Prop.Hedgehog, 3, x, near.Y(x) + 0.008, r.Range(0.19, 0.22), "hedgehog", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Hedgehog, 0, "hedgehog");
                 case PosterFeature.Rabbit:
-                    return Place(Prop.Rabbit, 3, x, near.Y(x) + 0.008, r.Range(0.19, 0.22), "rabbit", flip: faceIn, feature: creature);
+                    return OnNear(Prop.Rabbit, 0, "rabbit");
                 case PosterFeature.Fox:
                 default:
                 {
                     var curled = _spec.Mood is PosterMood.Sleepy or PosterMood.Calm or PosterMood.Dreamy && r.Chance(0.45);
-                    return Place(curled ? Prop.FoxCurled : Prop.Fox, 3, x, near.Y(x) + 0.008,
-                        curled ? r.Range(0.2, 0.24) : r.Range(0.24, 0.28), "fox", flip: faceIn, feature: creature);
+                    return OnNear(curled ? Prop.FoxCurled : Prop.Fox, 0, "fox");
                 }
             }
         }
@@ -910,8 +1057,12 @@ public static class ScenePlanner
                 // Keep the whole streak clear of every cloud (it is drawn behind them anyway).
                 for (var tries = 0; tries < 8 && _clouds.Any(c => Math.Abs(c.X - sx) < c.Width * 0.7 + 0.12 && Math.Abs(c.Y - sy) < c.Height * 2 + 0.05); tries++)
                     sx = 0.5 + _side * r.Range(0.0, 0.3);
-                if (!_clouds.Any(c => Math.Abs(c.X - sx) < c.Width * 0.7 + 0.12 && Math.Abs(c.Y - sy) < c.Height * 2 + 0.05))
-                    _shooting = new ShootingStarPlan(sx, sy, _side > 0 ? 200 + r.Range(8, 22) : -20 - r.Range(8, 22), r.Range(0.14, 0.2));
+                // The story asked for the shooting star: a decorative cloud in its way steps aside
+                // (an asked-for cloud bank keeps at least one cloud).
+                bool Blocks(CloudPlan c) => Math.Abs(c.X - sx) < c.Width * 0.7 + 0.12 && Math.Abs(c.Y - sy) < c.Height * 2 + 0.05;
+                while (_clouds.Any(Blocks) && (_clouds.Count > 1 || !Has(PosterFeature.Clouds))) _clouds.Remove(_clouds.First(Blocks));
+                if (_clouds.Any(Blocks)) sy = Math.Max(TitleSafe.Bottom + 0.03, _clouds.Min(c => c.Y - c.Height * 2.2) - 0.06);
+                _shooting = new ShootingStarPlan(sx, sy, _side > 0 ? 200 + r.Range(8, 22) : -20 - r.Range(8, 22), r.Range(0.26, 0.32));
             }
         }
 
@@ -1063,7 +1214,7 @@ public static class ScenePlanner
 
             if (_fireflies)
             {
-                var n = 9 + r.Int(6);
+                var n = 13 + r.Int(6);
                 for (var i = 0; i < n; i++)
                 {
                     var depth = r.Chance(0.6) ? 2 : 3;
@@ -1071,7 +1222,7 @@ public static class ScenePlanner
                     var ground = Ground(depth).Y(x);
                     var y = ground - r.Range(0.02, 0.14);
                     if (y < _horizon - 0.06) y = _horizon - 0.06 + r.Range(0, 0.04);
-                    _ambient.Add(new AmbientParticle(AmbientKind.Firefly, depth, x, y, r.Range(0.004, 0.007) * (depth == 3 ? 1.3 : 1),
+                    _ambient.Add(new AmbientParticle(AmbientKind.Firefly, depth, x, y, r.Range(0.006, 0.01) * (depth == 3 ? 1.3 : 1),
                         r.Range(0.55, 0.95), r.Range(0, Math.PI * 2), r.Range(14, 28), r.Range(0.008, 0.018), Pack(ScenePalette.AmberSoft)));
                 }
             }
@@ -1089,13 +1240,13 @@ public static class ScenePlanner
 
             if (_snowing)
             {
-                for (var i = 0; i < 46; i++)
+                for (var i = 0; i < 70; i++)
                 {
                     var depth = 1 + r.Int(3);
                     var dTier = r.Next() switch { < 0.7 => 1, < 0.95 => 2, _ => 3 };   // most flakes far and tiny
                     depth = dTier;
                     _ambient.Add(new AmbientParticle(AmbientKind.Snowflake, depth, r.Range(-0.1, 1.1), r.Range(0, 1),
-                        0.0012 * depth + r.Range(0, 0.0008), (0.3 + depth * 0.15) * r.Range(0.8, 1.0), r.Range(0, Math.PI * 2),
+                        0.0018 * depth + r.Range(0, 0.0012), (0.38 + depth * 0.15) * r.Range(0.8, 1.0), r.Range(0, Math.PI * 2),
                         r.Range(22, 40) / depth, r.Range(0.01, 0.025), Pack(ScenePalette.Cream)));
                 }
             }
