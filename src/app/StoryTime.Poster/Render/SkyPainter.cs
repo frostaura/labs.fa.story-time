@@ -118,7 +118,7 @@ internal static class SkyPainter
         PaintMoon(canvas, plan, moon, vp);
     }
 
-    /// <summary>Two-term halo: a tight bloom plus a long Lorentzian tail, written straight
+    /// <summary>Two-term halo: a tight inner glow plus a long Lorentzian tail, written straight
     /// into the (still empty) layer as premultiplied, dithered pixels.</summary>
     private static void PaintHalo(SKBitmap bmp, PosterPlan plan, MoonPlan moon, PosterViewport vp)
     {
