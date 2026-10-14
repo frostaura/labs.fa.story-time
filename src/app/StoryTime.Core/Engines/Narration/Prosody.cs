@@ -196,13 +196,14 @@ public static class SoothingPlanner
                     gainDb += o.DialogueGainDb;
                     break;
                 case SegmentKind.Tag:
+                    // Tags sit at a fixed, lower pitch: they recede behind the dialogue.
                     rate = o.BaseRate + Variation(sentence, piece.SentenceIndex, o.RateVariation);
-                    pitch *= o.TagPitch * (1 + Variation(sentence, piece.SentenceIndex + 7919, o.PitchVariation));
+                    pitch *= o.TagPitch;
                     gainDb += o.TagGainDb;
                     break;
                 default:
                     rate = o.BaseRate + Variation(sentence, piece.SentenceIndex, o.RateVariation);
-                    pitch *= 1 + Variation(sentence, piece.SentenceIndex + 7919, o.PitchVariation);
+                    pitch *= 1 + PitchVariation(sentence, piece.SentenceIndex, o.PitchVariation);
                     break;
             }
             var endingDb = 0.0;
@@ -311,6 +312,16 @@ public static class SoothingPlanner
         h ^= unchecked((uint)index * 2654435761u);
         h = (h ^ (h >> 15)) * 2246822519u;
         var step = (int)((h >> 13) % 5) - 2;          // −2..+2
+        return step * max / 2f;
+    }
+
+    /// <summary>Deterministic per-sentence pitch offset, never zero: ±max/2 or ±max, so no
+    /// narration line sits exactly on the base register (review round 2).</summary>
+    public static float PitchVariation(string sentence, int index, float max)
+    {
+        if (max <= 0) return 0;
+        var step = Variation(sentence, index + 7919, 2f);   // −2..+2 in steps of 1
+        if (step == 0) step = (index & 1) == 0 ? 1f : -1f;
         return step * max / 2f;
     }
 

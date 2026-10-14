@@ -21,10 +21,10 @@ public sealed class NarrationPad
     public const double CycleSeconds = ChordSeconds * 4;
     public const double LowPassHz = 900.0;
     /// <summary>Detune between a tone's two oscillators. Small, and the second oscillator is
-    /// half the level of the first, so the pair shimmers instead of throbbing (review round 1:
-    /// two equal oscillators 5 cents apart cancelled every 1–2 s, a 5–8 dB throb).</summary>
+    /// well under the first (≈3 dB beat depth), so the pair shimmers instead of throbbing
+    /// (review rounds 1–2: equal or 1:0.5 pairs beat 5–10 dB at 0.3–1 Hz).</summary>
     public const double DetuneCents = 3.0;
-    public const double DetuneLevel = 0.5;
+    public const double DetuneLevel = 0.18;
     /// <summary>Upper harmonics in the wavetable, so the bed survives phone speakers that
     /// roll off below ~300 Hz (still under the 900 Hz low-pass).</summary>
     public const double Brightness = 0.6;

@@ -47,11 +47,11 @@ import json, sys, os
 out, voices = sys.argv[1], sys.argv[2:]
 rows = []
 b = json.load(open(os.path.join(out, "baseline-samantha.report.json")))
-print(f"{'sample':<20}{'sec':>7}{'wpm':>7}{'LUFS':>8}{'dBTP':>7}{'padLU':>7}{'pause|err| med/max ms':>24}{'≤80ms':>9}{'x RT':>7}")
+print(f"{'sample':<20}{'sec':>7}{'wpm':>7}{'LUFS':>8}{'dBTP':>7}{'padLU':>7}{'pause|err| med/max ms':>24}{'≤80 −45/−50':>14}{'x RT':>7}")
 print(f"{'baseline-samantha':<20}{b['seconds']:>7.1f}{'':>7}{b['integratedLufs']:>8.2f}{b['truePeakDbtp']:>7.2f}")
 for v in voices:
     r = json.load(open(os.path.join(out, v.lower() + ".report.json")))
     print(f"{v.lower():<20}{r['seconds']:>7.1f}{r['wpmStory']:>7.1f}{r['integratedLufs']:>8.2f}{r['truePeakDbtp']:>7.2f}"
-          f"{(r['padLuBelowVoice'] or 0):>7.1f}{str(r['pauseErrorMedianAbsMs'])+' / '+str(r['pauseErrorMaxAbsMs']):>24}{r['pausesWithin80ms']:>9}{r['realtimeFactor']:>7.1f}")
+          f"{(r['padLuBelowVoice'] or 0):>7.1f}{str(r['pauseErrorMedianAbsMs'])+' / '+str(r['pauseErrorMaxAbsMs']):>24}{r['pausesWithin80ms']+' '+r['pausesWithin80msStrict']:>14}{r['realtimeFactor']:>7.1f}")
 PY
 echo "outputs: $OUT"

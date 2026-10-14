@@ -46,7 +46,8 @@ public sealed record NarrationRenderResult
     public required double IntegratedLufs { get; init; }
     /// <summary>Delivered true peak, when <see cref="SoothingNarrator.MeasureOutputTruePeak"/> is on.</summary>
     public required double? TruePeakDbtp { get; init; }
-    /// <summary>Loudness the voice stem was normalised to (before the ending ramp), LUFS.</summary>
+    /// <summary>Loudness the voice stem was normalised to, LUFS — measured BEFORE the ending
+    /// ramp and the limiter, so the delivered voice reads slightly lower (≈0.3 LU).</summary>
     public required double VoiceLufs { get; init; }
     /// <summary>Linear pad gain applied (0 when the pad is off).</summary>
     public required double PadGain { get; init; }
@@ -138,17 +139,18 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             // ---- 2. layout ----
             var placements = new List<SegmentPlacement>(files.Count);
             // The silence a listener hears ends at the first AUDIBLE sound of the next line, so
-            // each spliced pause gives back that line's soft onset (the kept 30 ms plus any
-            // breathy lead-in ≥30 dB down; never below half the plan). The previous line's soft
-            // decay is not given back: the room tail rings through it, and the lab measured the
-            // perceived pause running ~45 ms short when both edges were subtracted.
-            long cursor = Math.Max(0, Frames(plan.HeadSeconds) - (files.Count > 0 ? files[0].SoftHead : 0));
+            // each spliced pause gives back that line's breathy lead-in (≥30 dB down) beyond the
+            // kept 30 ms — never below half the plan. The kept 30 ms and the previous line's
+            // decay are not given back: the room tail rings through the decay, and two review
+            // rounds measured pauses ~35–45 ms short whenever more was subtracted.
+            long cursor = Math.Max(0, Frames(plan.HeadSeconds) - (files.Count > 0 ? Math.Max(0, files[0].SoftHead - KeepFrames) : 0));
             for (var k = 0; k < files.Count; k++)
             {
                 if (k > 0)
                 {
                     var planned = Frames(plan.Segments[k].PauseBeforeSeconds);
-                    cursor += Math.Max(planned / 2, planned - files[k].SoftHead);
+                    var giveBack = Math.Max(0, files[k].SoftHead - KeepFrames);
+                    cursor += Math.Max(planned / 2, planned - giveBack);
                 }
                 placements.Add(new SegmentPlacement(k, plan.Segments[k].SentenceIndex, cursor, cursor + files[k].Frames,
                     k == 0 ? plan.HeadSeconds : plan.Segments[k].PauseBeforeSeconds,
@@ -301,9 +303,13 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
         public double Gain { get; set; } = 1.0;
     }
 
-    /// <summary>Utterances whose active level strays from the story median are nudged back,
-    /// at most this far (review round 1: short lines like "Hello, travellers." landed 2 dB low).</summary>
-    public const double LevelMatchMaxDb = 2.0;
+    private static readonly long KeepFrames = (long)Math.Round(AudioShaper.KeepSeconds * SampleRate);
+
+    /// <summary>Every utterance is brought to the story's median active level before
+    /// mastering (within this bound), so the dialogue / tag / ending offsets applied after
+    /// the chain land as planned (review round 2: a ±2 dB tolerance swamped the 1 dB
+    /// dialogue-vs-tag difference).</summary>
+    public const double LevelMatchMaxDb = 6.0;
 
     private static void MatchLevels(List<SegmentFile> files)
     {

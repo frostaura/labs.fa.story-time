@@ -163,8 +163,8 @@ public class MasteringStageTests
         Assert.InRange(Probe(180), 1.8, 2.8);           // warmth (+2.5 bell riding the HP skirt)
         Assert.InRange(Probe(1000), -0.6, 0.6);         // neutral mid
         Assert.InRange(Probe(3200), -2.6, -1.4);        // presence dip (+ the 7 kHz shelf's skirt)
-        Assert.InRange(Probe(8000), -8, -5);            // shelf + notch skirt + low-pass
-        Assert.InRange(Probe(9700), -12, -8.5);           // shelf + compact-voice fizz notch
+        Assert.InRange(Probe(8000), -10.5, -6);            // shelf + notch skirt + low-pass
+        Assert.InRange(Probe(9700), -16, -11);           // shelf + compact-voice fizz notch
         Assert.True(Probe(16000) < -9, "air and hiss rolled off");
     }
 

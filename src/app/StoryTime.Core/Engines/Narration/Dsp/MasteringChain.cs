@@ -66,7 +66,7 @@ public sealed record MasteringProfile
 
     /// <summary>The chain measured in the voice lab (voice-lab.md, 2026-10-14):
     /// <code>
-    /// HP 70 → +2.5 dB @180 (Q 0.9) → −1.5 dB @3.2k (Q 1) → de-ess → HS −3 dB @7k → notch −6 dB @9.7k → LP 12k
+    /// HP 70 → +2.5 dB @180 (Q 0.9) → −1.5 dB @3.2k (Q 1) → de-ess → HS −3 dB @7k → notch −9 dB @9.7k (Q 2.5) → LP 12k
     /// → comp −26 dB 2.5:1 12/180 ms knee 6 +2 → room 0.35 s / 10 ms / 200–5k / −17 dB
     /// → −18 LUFS, −2 dBTP; pad 28 LU under.
     /// </code></summary>
@@ -82,8 +82,8 @@ public sealed record MasteringProfile
         PostEq =
         [
             new EqBand(EqKind.HighShelf, 7000, -3.0),
-            // Compact voices carry a narrow fizz at ~9.7 kHz (+11–15 dB over 9 kHz, review round 1).
-            new EqBand(EqKind.Peaking, 9700, -6.0, 4.0),
+            // Compact voices carry a narrow fizz at ~9.7 kHz (+11–15 dB over 9 kHz, review rounds 1–2).
+            new EqBand(EqKind.Peaking, 9700, -9.0, 2.5),
             new EqBand(EqKind.LowPass, 12000),
         ],
     };

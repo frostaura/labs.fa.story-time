@@ -55,6 +55,8 @@ public sealed class SoothingNarratorTests : IDisposable
         "Morning was far away. The stars kept watch.\n\n" +
         "And so the forest slept. Goodnight, little fox. Goodnight.";
 
+    private const long Keep = 1440;   // AudioShaper.KeepSeconds at 48 kHz
+
     private static readonly VoiceChoice Serena = new() { VoiceId = "serena", Fallbacks = ["moira", "samantha"] };
 
     private static float[] ReadWav(string path)
@@ -80,12 +82,13 @@ public sealed class SoothingNarratorTests : IDisposable
     {
         var (result, plan, _) = await Render(SentenceSplitter.SplitScript(Story));
         Assert.Equal(plan.Segments.Count, result.Placements.Count);
-        // Perceived silence = spliced gap + the next line's soft (≥30 dB down) onset.
+        // Perceived silence = spliced gap + the next line's breathy onset beyond the kept 30 ms.
         var p = result.Placements;
-        Assert.Equal((long)Math.Round(plan.HeadSeconds * 48000), p[0].StartFrame + p[0].SoftHeadFrames);
+        long GiveBack(SegmentPlacement s) => Math.Max(0, s.SoftHeadFrames - Keep);
+        Assert.Equal((long)Math.Round(plan.HeadSeconds * 48000), p[0].StartFrame + GiveBack(p[0]));
         for (var k = 1; k < p.Count; k++)
         {
-            var perceived = (p[k].StartFrame - p[k - 1].EndFrame + p[k].SoftHeadFrames) / 48000.0;
+            var perceived = (p[k].StartFrame - p[k - 1].EndFrame + GiveBack(p[k])) / 48000.0;
             Assert.Equal(plan.Segments[k].PauseBeforeSeconds, perceived, 4);
             Assert.True(p[k].SoftHeadFrames >= 0.030 * 48000 - 1, "the kept 30 ms counts as soft");
         }
@@ -231,7 +234,7 @@ public sealed class SoothingNarratorTests : IDisposable
 
         // The silence across the seam is exactly the scene pause.
         var seam = (r0.TotalFrames - r0.Placements[^1].EndFrame)
-                   + r1.Placements[0].StartFrame + r1.Placements[0].SoftHeadFrames;
+                   + r1.Placements[0].StartFrame + Math.Max(0, r1.Placements[0].SoftHeadFrames - Keep);
         Assert.Equal(PauseMap.SceneSeconds, seam / 48000.0, 4);
 
         // The pad is continuous across the join: no jump larger than the pad's own motion.
@@ -249,7 +252,7 @@ public sealed class SoothingNarratorTests : IDisposable
         var (result, plan, fake) = await Render(teaser);
         Assert.Equal(3, result.Manifest.Timestamps.Count);
         Assert.DoesNotContain(plan.Segments, s => s.InEnding);
-        Assert.Equal(3.6 * 48000, result.Placements[0].StartFrame + result.Placements[0].SoftHeadFrames, 0);
+        Assert.Equal(3.6 * 48000, result.Placements[0].StartFrame + Math.Max(0, result.Placements[0].SoftHeadFrames - Keep), 0);
         Assert.All(fake.Requests, r => Assert.True(r.Rate >= 0.40f));
     }
 
