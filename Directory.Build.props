@@ -3,9 +3,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <!-- Every project, the MAUI head included: zero warnings is a build gate, not a goal. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- MAUI head exempt: XAML tooling noise -->
-    <TreatWarningsAsErrors Condition="'$(MSBuildProjectName)' == 'StoryTime.App'">false</TreatWarningsAsErrors>
     <Authors>FrostAura</Authors>
     <Product>StoryTime (working name)</Product>
     <NuGetAuditMode>direct</NuGetAuditMode>

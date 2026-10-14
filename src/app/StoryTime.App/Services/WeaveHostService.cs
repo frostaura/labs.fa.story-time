@@ -6,10 +6,9 @@ namespace StoryTime.App.Services;
 
 /// <summary>Hosts the StoryPipeline on a background task that survives page navigation.
 /// Checkpoint-resume covers app restarts (TryResumeAsync at start). Background survival is
-/// the platform anchor's job (IWeaveBackgroundAnchor): on Android the WeaveForegroundService
-/// + partial wake lock keep this Task's process alive and scheduled while the app is
-/// backgrounded or the screen is off; on iOS the coordinator buys a short grace window,
-/// checkpoints, and resumes. Events are marshaled to the UI thread.</summary>
+/// the platform anchor's job (IWeaveBackgroundAnchor): the iOS coordinator keeps the audible
+/// loom hum's playback session alive, buys a short grace window when it cannot, checkpoints,
+/// and resumes. Events are marshaled to the UI thread.</summary>
 public sealed class WeaveHostService : IWeaveHost, IDisposable
 {
     private readonly StoryPipeline _pipeline;
@@ -48,10 +47,9 @@ public sealed class WeaveHostService : IWeaveHost, IDisposable
 
         // Polite, contextual permission ask: the first weave is the exact moment the
         // "we'll send a gentle ping when it's ready" promise becomes real, so this is when
-        // POST_NOTIFICATIONS (Android 13+) / UNUserNotificationCenter authorization (iOS)
-        // is requested — once per app run; the OS de-duplicates after a decision. A denial
-        // never blocks the weave (the story-ready ping and the Android loom notification
-        // are simply suppressed; the foreground service itself still runs).
+        // UNUserNotificationCenter authorization is requested — once per app run; the OS
+        // de-duplicates after a decision. A denial never blocks the weave (the story-ready
+        // ping is simply suppressed).
         if (!_permissionAsked)
         {
             _permissionAsked = true;
@@ -170,8 +168,8 @@ public sealed class WeaveHostService : IWeaveHost, IDisposable
         finally
         {
             // Every exit — completion, gentle failure, cancel, resume-with-nothing —
-            // stops the hum instantly and releases the platform anchor (Android: service +
-            // wake lock stop; iOS: any background grace ends). Both idempotent by contract.
+            // stops the hum instantly and releases the platform anchor (any background
+            // grace ends). Both idempotent by contract.
             // Hum first: the ready ping should land into quiet, not over a fading loop.
             _hum?.OnWeaveEnded();
             _anchor?.WeaveEnded();

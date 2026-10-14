@@ -78,6 +78,7 @@ public partial class ShelfPage : ContentPage
     }
 
     /// <summary>Kid mode blocks back navigation — only the 2-second lock-pill hold exits.
-    /// (Android hardware/gesture back; the page is modal so iOS has no swipe-back.)</summary>
+    /// (The page is modal, so iOS offers no swipe-back; this keeps any routed back request
+    /// locked too.)</summary>
     protected override bool OnBackButtonPressed() => _kidMode.IsKidMode;
 }

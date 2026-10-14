@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- StoryTime is iOS-only: a standalone, server-less app on Apple's on-device models
+       (Foundation Models for text, AVSpeechSynthesizer for narration). -->
   <PropertyGroup>
-    <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+    <TargetFrameworks>net10.0-ios</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>StoryTime.App</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -13,21 +15,18 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+    <!-- iOS 26 is the floor: Apple Foundation Models (on-device text generation) ships there. -->
+    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
 
     <!-- SQLite + reflection paths need the interpreter on iOS; P/Invoke is unaffected -->
-    <MtouchInterpreter Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">all</MtouchInterpreter>
-  </PropertyGroup>
+    <MtouchInterpreter>all</MtouchInterpreter>
 
-  <!-- Xcode 26.6 ships an SDK the Microsoft.iOS pack mis-validates (E0191) — trimix/guild-proven -->
-  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <!-- The installed Xcode is newer than the Microsoft.iOS pack validates against (E0191) — trimix/guild-proven -->
     <ValidateXcodeVersion Condition="'$(ValidateXcodeVersion)' == ''">false</ValidateXcodeVersion>
   </PropertyGroup>
 
   <!-- iCloud-Drive xattrs break codesign ("resource fork ... detritus not allowed") — trimix/guild-proven -->
-  <Target Name="_StripBundleXattrsBeforeCodesign" BeforeTargets="_CodesignAppBundle"
-          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+  <Target Name="_StripBundleXattrsBeforeCodesign" BeforeTargets="_CodesignAppBundle">
     <Exec Command="xattr -cr &quot;$(OutDir)&quot;" ContinueOnError="true" />
   </Target>
 
@@ -49,17 +48,9 @@
     <PackageReference Include="Plugin.LocalNotification" Version="12.0.1" />
   </ItemGroup>
 
-  <!-- BiometricPrompt (parent-settings gate) -->
-  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
-    <PackageReference Include="Xamarin.AndroidX.Biometric" Version="1.1.0.27" />
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="../StoryTime.Core/StoryTime.Core.csproj" />
     <ProjectReference Include="../../shared/StoryTime.Contracts/StoryTime.Contracts.csproj" />
   </ItemGroup>
-
-  <!-- Native AI runtimes (llama.cpp, sherpa-onnx) + model asset wiring live in Native.props (Phase C owns it) -->
-  <Import Project="Native.props" Condition="Exists('Native.props')" />
 
 </Project>

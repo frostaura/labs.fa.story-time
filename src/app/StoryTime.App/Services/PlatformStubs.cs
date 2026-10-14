@@ -39,19 +39,10 @@ public sealed class LocalNotificationService : StoryTime.Core.Abstractions.INoti
     }
 }
 
-/// <summary>Identity encoder — returns the wav unchanged. Real AAC/m4a encoding
-/// (AVAssetWriter / MediaCodec) is Phase C's concern; the seam is honored now.</summary>
+/// <summary>Identity encoder — returns the wav unchanged. AAC/m4a encoding (AVAssetWriter)
+/// plugs in behind IAudioEncoder when rendered narration lands.</summary>
 public sealed class PassThroughAudioEncoder : IAudioEncoder
 {
     public Task<string> EncodeToCompressedAsync(string wavPath, CancellationToken ct) =>
         Task.FromResult(wavPath);
-}
-
-/// <summary>No models are present in Phase B — always not-ready, so DI selects the
-/// TemplateStoryEngine + platform TTS. Phase C replaces this registration with the real
-/// bundle/asset-pack/AppData resolver (recorded in docs/known-gaps.md).</summary>
-public sealed class ModelProviderStub : IModelProvider
-{
-    public Task<ModelAvailability> GetAvailabilityAsync(CancellationToken ct) =>
-        Task.FromResult(new ModelAvailability { LlmReady = false, TtsReady = false });
 }

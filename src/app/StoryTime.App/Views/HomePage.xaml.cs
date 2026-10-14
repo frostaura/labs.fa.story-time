@@ -40,9 +40,9 @@ public partial class HomePage : ContentPage
         // Any carousel refresh (appearing, weave-complete) resets the offset — de-prime
         // the snap index so the settling scroll can never fire a phantom tick.
         _vm.Stories.CollectionChanged += (_, _) => _carouselIndex = -1;
-        // A new story is inserted at index 0, but Android's RecyclerView anchors on the item
+        // A new story is inserted at index 0, but the native carousel anchors on the item
         // it was already showing, so tonight's story would sit off-screen to the left until
-        // the parent swiped back (observed on the emulator, 2026-07-31). Snap to the head.
+        // the parent swiped back (observed 2026-07-31). Snap to the head.
         _vm.HeadStoryChanged += (_, _) => Dispatcher.Dispatch(() =>
         {
             if (_vm.Stories.Count == 0) return;
@@ -112,7 +112,7 @@ public partial class HomePage : ContentPage
 
     /// <summary>Carousel snap geometry: card WidthRequest (220) + LinearItemsLayout
     /// ItemSpacing (16), in device-independent units — HorizontalOffset reports DIPs
-    /// (verified on the emulator: a ~200 px shift logs as ~77). Keep in sync with the
+    /// (verified on device: a ~200 px shift logs as ~77). Keep in sync with the
     /// XAML.</summary>
     private const double CarouselCellWidth = 220 + 16;
 
@@ -142,10 +142,10 @@ public partial class HomePage : ContentPage
             if (WeaveButton.IsEnabled)
             {
                 WeaveButton.Shadow = new Shadow { Brush = new SolidColorBrush(accent), Radius = 24, Opacity = 0.30f, Offset = new Point(0, 0) };
-                await WeaveButton.ScaleTo(1.015, 1900, Easing.SinInOut);
+                await WeaveButton.ScaleToAsync(1.015, 1900, Easing.SinInOut);
                 if (!_breathing) break;
                 WeaveButton.Shadow = new Shadow { Brush = new SolidColorBrush(accent), Radius = 16, Opacity = 0.16f, Offset = new Point(0, 0) };
-                await WeaveButton.ScaleTo(1.0, 1900, Easing.SinInOut);
+                await WeaveButton.ScaleToAsync(1.0, 1900, Easing.SinInOut);
             }
             else
             {
@@ -164,7 +164,7 @@ public partial class HomePage : ContentPage
     {
         var favoriteLabel = item.IsFavorite ? "Unfavorite" : "Favorite";
         UxTrace.Action("ContextMenu show");
-        var action = await DisplayActionSheet(item.Title, "Cancel", "Delete", "Share", favoriteLabel);
+        var action = await DisplayActionSheetAsync(item.Title, "Cancel", "Delete", "Share", favoriteLabel);
         switch (action)
         {
             case "Share":
@@ -179,7 +179,7 @@ public partial class HomePage : ContentPage
                 await _vm.ToggleFavoriteCommand.ExecuteAsync(item);
                 break;
             case "Delete":
-                var confirmed = await DisplayAlert("Delete this story?",
+                var confirmed = await DisplayAlertAsync("Delete this story?",
                     $"“{item.Title}” and its narration will be removed from this phone.", "Delete", "Keep");
                 if (confirmed) await _vm.DeleteStoryCommand.ExecuteAsync(item);
                 break;

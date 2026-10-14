@@ -7,6 +7,7 @@ using StoryTime.App.Services;
 using StoryTime.App.Views;
 using StoryTime.Core;
 using StoryTime.Core.Abstractions;
+using StoryTime.Core.Engines;
 
 namespace StoryTime.App;
 
@@ -18,7 +19,8 @@ public static class MauiProgram
 		builder
 			.UseMauiApp<App>()
 			.UseMauiCommunityToolkit()
-			.UseMauiCommunityToolkitMediaElement(isAndroidForegroundServiceEnabled: true)
+			// The required flag is the toolkit's foreground-media-service switch; iOS has no such service.
+			.UseMauiCommunityToolkitMediaElement(false)
 			.UseSkiaSharp()
 			.UseLocalNotification()
 			.ConfigureFonts(fonts =>
@@ -34,17 +36,10 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
-		// Hearth entries are underline-only — strip the platform chrome (iOS rounded-rect
-		// border, Android underline) so the XAML hairline BoxView is the only decoration.
+		// Hearth entries are underline-only — strip the UITextField rounded-rect border so
+		// the XAML hairline BoxView is the only decoration.
 		Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("HearthBorderless", (handler, _) =>
-		{
-#if IOS
-			handler.PlatformView.BorderStyle = UIKit.UITextBorderStyle.None;
-#elif ANDROID
-			handler.PlatformView.BackgroundTintList =
-				Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
-#endif
-		});
+			handler.PlatformView.BorderStyle = UIKit.UITextBorderStyle.None);
 
 		// ---- Platform implementations FIRST (Core's TryAdd* then fills the gaps) ----
 		// Story-change notifications must land on the UI thread: subscribers mutate
@@ -63,26 +58,12 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IHaptics, PlatformHaptics>();
 		builder.Services.AddSingleton<StoryTime.Core.Abstractions.INotificationService, LocalNotificationService>();
 		builder.Services.AddSingleton<IAudioEncoder, PassThroughAudioEncoder>();
-#if ANDROID
-		builder.Services.AddSingleton<IModelProvider, Platforms.Android.AndroidModelProvider>();
-#elif IOS
-		builder.Services.AddSingleton<IModelProvider, Platforms.iOS.IosModelProvider>();
-#else
-		builder.Services.AddSingleton<IModelProvider, ModelProviderStub>();
-#endif
 		builder.Services.AddSingleton<IPosterRasterizer, SkiaPosterRasterizer>();
-		builder.Services.AddSingleton<PlatformTtsEngine>();
-		// Model-gated engines resolve lazily on first weave (docs/native-integration.md):
-		// real llama.cpp/Kokoro when models are present, template/platform fallbacks otherwise.
-		builder.Services.AddSingleton<IStoryEngine, ModelGatedStoryEngine>();
-#if ANDROID || IOS
-		// Neural Kokoro (sherpa) when models resolve; platform TTS fallback otherwise.
-		builder.Services.AddSingleton<ITtsEngine, ModelGatedTtsEngine>();
-#else
-		builder.Services.AddSingleton<ITtsEngine>(sp => sp.GetRequiredService<PlatformTtsEngine>());
-#endif
-		builder.Services.AddSingleton<IAmbientPlayer, AmbientPlayer>();
-		builder.Services.AddSingleton<IVoiceSamplePlayer, VoiceSamplePlayer>(); // narrator preview one-shots   // Premium music bed (loops under narration)
+		// ---- Engines: the two swap points for the Apple on-device lanes ----
+		RegisterStoryEngine(builder.Services);
+		RegisterTtsEngine(builder.Services);
+		builder.Services.AddSingleton<IAmbientPlayer, AmbientPlayer>();          // Premium music bed (loops under narration)
+		builder.Services.AddSingleton<IVoiceSamplePlayer, VoiceSamplePlayer>();  // narrator preview one-shots
 		builder.Services.AddSingleton<MediaElementHost>();
 		builder.Services.AddSingleton<MediaElementNarrationPlayer>();
 		builder.Services.AddSingleton<LiveTtsNarrationPlayer>();
@@ -91,11 +72,7 @@ public static class MauiProgram
 		// The anchor is what keeps a weave alive when the app leaves the foreground; the hum
 		// is the audible ambient loop that plays while it weaves (and, on iOS, the active
 		// playback session that legitimately keeps the pipeline scheduled in the background).
-#if ANDROID
-		builder.Services.AddSingleton<IWeaveBackgroundAnchor, Platforms.Android.AndroidWeaveBackgroundAnchor>();
-#elif IOS
 		builder.Services.AddSingleton<IWeaveBackgroundAnchor, Platforms.iOS.WeaveBackgroundCoordinator>();
-#endif
 		// One cached loop per palette family in AppData — repeat weaves start instantly.
 		builder.Services.AddSingleton<StoryTime.Core.Audio.LoomHumTrackProvider>();
 		builder.Services.AddSingleton<LoomHumService>();
@@ -126,5 +103,26 @@ public static class MauiProgram
 		Routing.RegisterRoute(StoryTime.Core.ViewModels.Routes.ContentFilters, typeof(ContentFiltersPage));
 
 		return builder.Build();
+	}
+
+	/// <summary>Story-engine swap point. Today: the deterministic TemplateStoryEngine, so the
+	/// app runs end-to-end with no model and no network. The Apple-models lane replaces this
+	/// body with <c>AppleFoundationStoryEngine</c> (Foundation Models via the Swift shim,
+	/// iOS 26+), keeping TemplateStoryEngine as its fallback when the system model is
+	/// unavailable (Apple Intelligence off, device ineligible, model not yet downloaded).
+	/// Prompt text for it lives in Core/Engines/Prompts/StoryPrompts.cs.</summary>
+	static void RegisterStoryEngine(IServiceCollection services) =>
+		services.AddSingleton<IStoryEngine>(_ => new TemplateStoryEngine(() => Random.Shared.Next()));
+
+	/// <summary>Narration-engine swap point. Today: PlatformTtsEngine (MAUI TextToSpeech, live
+	/// playback, no rendered file). The narration lane replaces this body with
+	/// <c>AppleSpeechTtsEngine</c> (AVSpeechSynthesizer.WriteUtterance → PCM → Core
+	/// Engines/Narration: ProsodyDirector gaps + AudioShaper cozy mastering → WAV), keeping
+	/// PlatformTtsEngine registered as its fallback — LiveTtsNarrationPlayer resolves the
+	/// concrete PlatformTtsEngine for live-mode playback.</summary>
+	static void RegisterTtsEngine(IServiceCollection services)
+	{
+		services.AddSingleton<PlatformTtsEngine>();
+		services.AddSingleton<ITtsEngine>(sp => sp.GetRequiredService<PlatformTtsEngine>());
 	}
 }

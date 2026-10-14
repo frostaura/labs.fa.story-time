@@ -144,7 +144,6 @@ public sealed class BottomShelfHost : Grid
     /// indicator (same treatment as the weave mini-bar).</summary>
     private void ApplySafeAreaPadding()
     {
-#if IOS
         for (Element? p = Parent; p is not null; p = p.Parent)
         {
             if (p is ContentPage page)
@@ -155,7 +154,6 @@ public sealed class BottomShelfHost : Grid
                 break;
             }
         }
-#endif
     }
 
     private double OffscreenY => _sheet.Height > 0 ? _sheet.Height : (Height > 0 ? Height : 2000);
@@ -187,14 +185,14 @@ public sealed class BottomShelfHost : Grid
                 if (token != _transition) return;
             }
             if (_sheet.TranslationY <= 0) _sheet.TranslationY = OffscreenY;
-            _ = _scrim.FadeTo(0.55, 240, Easing.CubicOut);
-            await _sheet.TranslateTo(0, 0, 290, Easing.CubicOut);
+            _ = _scrim.FadeToAsync(0.55, 240, Easing.CubicOut);
+            await _sheet.TranslateToAsync(0, 0, 290, Easing.CubicOut);
         }
         else
         {
             if (!_sheet.IsVisible) return;
-            _ = _scrim.FadeTo(0, 220, Easing.CubicOut);
-            await _sheet.TranslateTo(0, OffscreenY, 260, Easing.CubicIn);
+            _ = _scrim.FadeToAsync(0, 220, Easing.CubicOut);
+            await _sheet.TranslateToAsync(0, OffscreenY, 260, Easing.CubicIn);
             if (token != _transition) return;
             _sheet.IsVisible = false;
             _scrim.IsVisible = false;
@@ -227,7 +225,7 @@ public sealed class BottomShelfHost : Grid
                 }
                 else
                 {
-                    _ = _sheet.TranslateTo(0, 0, 200, Easing.CubicOut);   // settle back, no bounce
+                    _ = _sheet.TranslateToAsync(0, 0, 200, Easing.CubicOut);   // settle back, no bounce
                 }
                 _lastDragY = 0;
                 break;

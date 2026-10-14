@@ -91,7 +91,7 @@ public static class SkiaPosterRenderer
     }
 
     /// <summary>Tiny tiled ±1-LSB luminance noise, lazily built once — layered over sky
-    /// gradients at very low alpha it breaks up Android's 8-bit banding without ever reading
+    /// gradients at very low alpha it breaks up 8-bit gradient banding without ever reading
     /// as film grain (the amplitude is below one perceptual step).</summary>
     private static readonly Lazy<SKBitmap> DitherTile = new(() =>
     {

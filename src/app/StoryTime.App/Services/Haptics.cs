@@ -1,22 +1,14 @@
 using StoryTime.Core.Abstractions;
 using StoryTime.Core.Services;
 
-#if IOS
 using UIKit;
-#endif
-#if ANDROID
-using Android.Content;
-using Android.OS;
-#endif
 
 namespace StoryTime.App.Services;
 
-/// <summary>IHaptics over the platform feedback engines. iOS: UIFeedbackGenerator family
+/// <summary>IHaptics over the UIFeedbackGenerator family
 /// (impact/selection/notification — automatically silent when the user disables System
 /// Haptics); Tick is a soft impact at 0.4 intensity, Celebrate a light→medium two-beat
-/// ~120 ms apart. Android: predefined VibrationEffects via VibratorManager/Vibrator
-/// (CLICK/TICK/HEAVY_CLICK/DOUBLE_CLICK — the OEM haptic engine honours system settings);
-/// Tick is EFFECT_TICK, Celebrate a two-pulse soft waveform (never the harsh double-click).
+/// ~120 ms apart.
 ///
 /// Coalescing (HapticTickLimiter, Core-tested): Tick ≥60 ms so scrubbing can't buzz; Light,
 /// Medium and Selection each carry their own short window so a press-down haptic (the
@@ -36,17 +28,13 @@ public sealed class PlatformHaptics : IHaptics
     private readonly HapticTickLimiter _mediumLimiter = new(HapticTickLimiter.MediumWindowMs);
     private readonly HapticTickLimiter _selectionLimiter = new(HapticTickLimiter.SelectionWindowMs);
 
-    /// <summary>Debug-only breadcrumb so a QA pass can verify calls fire on the emulator
-    /// (where haptics can't be felt): grep logcat / sim console for "TWHaptics". Suppressed
+    /// <summary>Debug-only breadcrumb so a QA pass can verify calls fire on the simulator
+    /// (where haptics can't be felt): grep the sim console for "TWHaptics". Suppressed
     /// (coalesced) calls log too, tagged "~coalesced", so the dedupe is provable.</summary>
     [System.Diagnostics.Conditional("DEBUG")]
     private static void Trace(string name)
     {
-#if ANDROID
-        Android.Util.Log.Debug("TWHaptics", name);
-#else
         Console.WriteLine($"TWHaptics {name}");
-#endif
     }
 
     // ---- IHaptics (command-level; coalesced against the press-down variants) ----------
@@ -123,14 +111,21 @@ public sealed class PlatformHaptics : IHaptics
         }
     }
 
-#if IOS
+    /// <summary>View-attached impact generator (the iOS 17.5+ API; the style-only
+    /// initializer is obsolete). Null before any UI exists — the haptic is then skipped.</summary>
+    private static UIImpactFeedbackGenerator? Impact(UIImpactFeedbackStyle style) =>
+        Microsoft.Maui.ApplicationModel.Platform.GetCurrentUIViewController()?.View is { } view
+            ? UIImpactFeedbackGenerator.GetFeedbackGenerator(style, view)
+            : null;
+
     private static void Perform(Kind kind)
     {
         switch (kind)
         {
             case Kind.Light:
             {
-                using var gen = new UIImpactFeedbackGenerator(UIImpactFeedbackStyle.Light);
+                using var gen = Impact(UIImpactFeedbackStyle.Light);
+                if (gen is null) return;
                 gen.Prepare();
                 gen.ImpactOccurred();
                 break;
@@ -144,7 +139,8 @@ public sealed class PlatformHaptics : IHaptics
             }
             case Kind.Medium:
             {
-                using var gen = new UIImpactFeedbackGenerator(UIImpactFeedbackStyle.Medium);
+                using var gen = Impact(UIImpactFeedbackStyle.Medium);
+                if (gen is null) return;
                 gen.Prepare();
                 gen.ImpactOccurred();
                 break;
@@ -166,7 +162,8 @@ public sealed class PlatformHaptics : IHaptics
             case Kind.Tick:
             {
                 // The lightest possible tap: a soft impact dialled down to 0.4 intensity.
-                using var gen = new UIImpactFeedbackGenerator(UIImpactFeedbackStyle.Soft);
+                using var gen = Impact(UIImpactFeedbackStyle.Soft);
+                if (gen is null) return;
                 gen.Prepare();
                 gen.ImpactOccurred(0.4f);
                 break;
@@ -174,12 +171,14 @@ public sealed class PlatformHaptics : IHaptics
             case Kind.Celebrate:
             {
                 // Gentle two-beat: light now, medium ~120 ms later — a quiet "ta-da", not a thud.
-                using (var first = new UIImpactFeedbackGenerator(UIImpactFeedbackStyle.Light))
+                using (var first = Impact(UIImpactFeedbackStyle.Light))
                 {
+                    if (first is null) return;
                     first.Prepare();
                     first.ImpactOccurred();
                 }
-                var second = new UIImpactFeedbackGenerator(UIImpactFeedbackStyle.Medium);
+                var second = Impact(UIImpactFeedbackStyle.Medium);
+                if (second is null) return;
                 second.Prepare();
                 _ = Task.Delay(120).ContinueWith(_ => MainThread.BeginInvokeOnMainThread(() =>
                 {
@@ -191,55 +190,4 @@ public sealed class PlatformHaptics : IHaptics
             }
         }
     }
-#elif ANDROID
-    private static void Perform(Kind kind)
-    {
-        try
-        {
-            // Predefined effects exist from API 29; below that stay silent rather than buzz crudely.
-            if (!OperatingSystem.IsAndroidVersionAtLeast(29)) return;
-
-            var context = Platform.AppContext;
-            Vibrator? vibrator;
-            if (OperatingSystem.IsAndroidVersionAtLeast(31))
-            {
-                var manager = context.GetSystemService(Context.VibratorManagerService) as VibratorManager;
-                vibrator = manager?.DefaultVibrator;
-            }
-            else
-            {
-#pragma warning disable CA1422 // VibratorService is the pre-31 path by design
-                vibrator = context.GetSystemService(Context.VibratorService) as Vibrator;
-#pragma warning restore CA1422
-            }
-            if (vibrator is null || !vibrator.HasVibrator) return;
-
-            if (kind == Kind.Celebrate)
-            {
-                // Gentle two-beat: two short soft pulses ~110 ms apart — deliberately NOT
-                // the OS EFFECT_DOUBLE_CLICK, which lands far too hard for bedtime.
-                var effect = vibrator.HasAmplitudeControl
-                    ? VibrationEffect.CreateWaveform([0, 18, 110, 26], [0, 90, 0, 160], -1)
-                    : VibrationEffect.CreateWaveform([0, 15, 110, 22], -1);
-                if (effect is not null) vibrator.Vibrate(effect);
-                return;
-            }
-
-            var predefined = kind switch
-            {
-                Kind.Selection or Kind.Tick => VibrationEffect.EffectTick,
-                Kind.Medium or Kind.Warning => VibrationEffect.EffectHeavyClick,
-                Kind.Success => VibrationEffect.EffectDoubleClick,
-                _ => VibrationEffect.EffectClick,
-            };
-            vibrator.Vibrate(VibrationEffect.CreatePredefined(predefined));
-        }
-        catch
-        {
-            // Haptics are decoration — never let them take the app down.
-        }
-    }
-#else
-    private static void Perform(Kind kind) { _ = kind; }
-#endif
 }

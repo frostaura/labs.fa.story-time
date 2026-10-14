@@ -8,7 +8,7 @@ namespace StoryTime.App.Platforms.iOS;
 /// <summary>iOS implementation of <see cref="IWeaveBackgroundAnchor"/> — the honest maximum
 /// iOS allows for a ~10-minute on-device weave (background-generation pass, 2026-07-31).
 ///
-/// <para>iOS has no equivalent of Android's foreground service. What it has, in descending
+/// <para>iOS has no long-running foreground-service primitive. What it has, in descending
 /// order of reliability, is what this class stacks:</para>
 /// <list type="number">
 /// <item><b>An active audio session.</b> While the loom hum is genuinely playing through a

@@ -137,17 +137,14 @@ public sealed class LoomHumService : IDisposable
     /// <para>Routed through the SAME configurator narration uses (Playback + SpokenAudio +
     /// AirPlay/A2DP options) so the hum can never leave the session in a shape that degrades
     /// narration's AirPlay route. The hum still writes NO Now Playing info — the lock screen
-    /// and any AirPlay receiver must show the story, never the hum. No-op on Android.</para></summary>
+    /// and any AirPlay receiver must show the story, never the hum.</para></summary>
     private static void EnsurePlaybackSession()
     {
-#if IOS
         Platforms.iOS.NativeAudio.ConfigureSession();
-#endif
     }
 
     private void ObserveInterruptions()
     {
-#if IOS
         AVFoundation.AVAudioSession.Notifications.ObserveInterruption((_, args) =>
         {
             if (args.InterruptionType != AVFoundation.AVAudioSessionInterruptionType.Began) return;
@@ -161,7 +158,6 @@ public sealed class LoomHumService : IDisposable
             }
             StopHum();
         });
-#endif
     }
 
     public void Dispose()

@@ -5,7 +5,7 @@ namespace StoryTime.App.Services;
 
 /// <summary>INavigator over Shell, always on the UI thread.
 /// Note: absolute Shell.GoToAsync("//home") from inside a pushed stack never completes on
-/// this MAUI version (observed on Android, 10.0.60) — going home is implemented as
+/// this MAUI version (observed with 10.0.60) — going home is implemented as
 /// pop-all-modals + PopToRootAsync instead.</summary>
 public sealed class ShellNavigator(IHaptics haptics) : INavigator
 {

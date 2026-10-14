@@ -4,11 +4,9 @@ namespace StoryTime.App.Services;
 
 /// <summary>Platform looping ambient-bed player that mixes WITH the narration player.
 ///
-/// iOS: AVAudioPlayer (NumberOfLoops = −1) on the app's shared audio session — the
+/// AVAudioPlayer (NumberOfLoops = −1) on the app's shared audio session — the
 /// MediaElement toolkit configures the Playback category for background narration and we
 /// deliberately do not touch the session, so both players coexist and mix natively.
-/// Android: Android.Media.MediaPlayer (Looping = true) with USAGE_MEDIA attributes; it mixes
-/// with MediaElement's ExoPlayer inside the same app without audio-focus arbitration.
 ///
 /// All starts fade in and all stops fade out over ~1.5 s; SetVolume ramps rather than steps.
 /// StopAsync returns immediately (the fade completes in the background) so closing the
@@ -145,48 +143,6 @@ public sealed class AmbientPlayer : IAmbientPlayer
 
     // ---------------- platform players ----------------
 
-#if ANDROID
-    private Android.Media.MediaPlayer? _mediaPlayer;
-
-    private void CreateAndPlayPlatformPlayer(string wavPath)
-    {
-        var player = new Android.Media.MediaPlayer();
-        player.SetAudioAttributes(new Android.Media.AudioAttributes.Builder()
-            .SetUsage(Android.Media.AudioUsageKind.Media)!
-            .SetContentType(Android.Media.AudioContentType.Music)!
-            .Build()!);
-        player.SetDataSource(wavPath);
-        player.Prepare();               // local wav — effectively instant
-        player.Looping = true;
-        player.SetVolume(0, 0);
-        player.Start();
-        _mediaPlayer = player;
-    }
-
-    private void ApplyPlatformVolume(double volume)
-    {
-        try
-        {
-            var v = (float)volume;
-            _mediaPlayer?.SetVolume(v, v);
-        }
-        catch (Java.Lang.IllegalStateException) { /* released underneath the ramp */ }
-    }
-
-    private void ReleasePlatformPlayer()
-    {
-        var player = _mediaPlayer;
-        _mediaPlayer = null;
-        if (player is null) return;
-        try
-        {
-            if (player.IsPlaying) player.Stop();
-        }
-        catch (Java.Lang.IllegalStateException) { }
-        player.Release();
-        player.Dispose();
-    }
-#elif IOS
     private AVFoundation.AVAudioPlayer? _audioPlayer;
 
     private void CreateAndPlayPlatformPlayer(string wavPath)
@@ -212,9 +168,4 @@ public sealed class AmbientPlayer : IAmbientPlayer
         player.Stop();
         player.Dispose();
     }
-#else
-    private void CreateAndPlayPlatformPlayer(string wavPath) { }
-    private void ApplyPlatformVolume(double volume) { }
-    private void ReleasePlatformPlayer() { }
-#endif
 }

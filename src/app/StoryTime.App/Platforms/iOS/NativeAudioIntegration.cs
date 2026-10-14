@@ -55,7 +55,7 @@ internal static class NativeAudio
             // low-quality HFP path and is deliberately NOT set).
             session.SetCategory(AVAudioSessionCategory.Playback, AVAudioSessionCategoryOptions.AllowBluetoothA2DP
                 | AVAudioSessionCategoryOptions.AllowAirPlay);
-            session.SetMode(AVAudioSession.ModeSpokenAudio, out _);
+            session.SetMode(AVAudioSessionMode.SpokenAudio.GetConstant()!, out _);
             session.SetActive(true);
             LogRoute("session configured");
         }
@@ -138,7 +138,8 @@ internal static class NativeAudio
     {
         try
         {
-            MPNowPlayingInfoCenter.DefaultCenter.NowPlaying = null;
+            // nil clears the entry (Apple semantics); the binding annotates the property non-null.
+            MPNowPlayingInfoCenter.DefaultCenter.NowPlaying = null!;
             Log("now-playing cleared");
         }
         catch (Exception) { }

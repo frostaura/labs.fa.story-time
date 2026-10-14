@@ -17,15 +17,13 @@ public sealed class MediaElementHost
 /// app's ONLY route to the platform's native audio stack.
 ///
 /// <para><b>Native-player integration (founder request 2026-07-31).</b> MediaElement plays
-/// through AVPlayer on iOS and ExoPlayer on Android, so AirPlay / AirPlay 2, Bluetooth,
-/// CarPlay, Android Auto and Cast are all reachable — but only if the story is announced to
+/// through AVPlayer, so AirPlay / AirPlay 2, Bluetooth and CarPlay are all reachable — but
+/// only if the story is announced to
 /// the system. Three things do that, and this class owns all three:</para>
 /// <list type="bullet">
 /// <item><b>Metadata</b> — <c>MetadataTitle</c> / <c>MetadataArtist</c> /
-/// <c>MetadataArtworkUrl</c> are the toolkit's cross-platform seam. On Android they populate
-/// the ExoPlayer <c>MediaSession</c> that Bluetooth, Android Auto and Cast read (the
-/// toolkit's media foreground service is already enabled in MauiProgram); on iOS the
-/// toolkit's coverage of Now Playing is partial, so we ALSO write
+/// <c>MetadataArtworkUrl</c> are the toolkit's cross-platform seam; its coverage of Now
+/// Playing is partial, so we ALSO write
 /// <c>MPNowPlayingInfoCenter</c> ourselves.</item>
 /// <item><b>Audio session</b> (iOS) — <c>Playback</c> + <c>SpokenAudio</c>, activated on load.
 /// <c>PlayAndRecord</c> would route to the earpiece and degrade AirPlay; <c>SpokenAudio</c> is
@@ -145,9 +143,9 @@ public sealed class MediaElementNarrationPlayer : INarrationPlayer
     private static string NarratorNameOf(StoryRecord story) => story.Voice.ToString();
 
     /// <summary>The story's flattened poster thumbnail, handed to the toolkit as a PLAIN
-    /// filesystem path rather than a <c>file://</c> URI: the Android implementation normalizes
-    /// a file path and reads it with a FileStream (its HttpClient branch is for real URLs),
-    /// and there is no network here to serve one from — offline-only is a product invariant.
+    /// filesystem path rather than a <c>file://</c> URI: the toolkit reads a local path
+    /// directly (its HttpClient branch is for real URLs), and there is no network here to
+    /// serve one from — offline-only is a product invariant.
     /// Empty when the story has no art yet (an unposterised resume); the toolkit tolerates
     /// that and simply shows no cover.</summary>
     private static string ArtworkUrlOf(StoryRecord story) =>
@@ -156,25 +154,16 @@ public sealed class MediaElementNarrationPlayer : INarrationPlayer
             : string.Empty;
 
     // ---------------- platform bridge ----------------
-    // Android needs nothing beyond the metadata properties above: the toolkit's ExoPlayer
-    // MediaSession + media foreground service (MauiProgram, isAndroidForegroundServiceEnabled)
-    // publish them to Bluetooth / Android Auto / Cast. iOS needs the session, Now Playing and
-    // the remote-command wiring done explicitly.
+    // iOS needs the audio session, Now Playing and the remote-command wiring done
+    // explicitly — the toolkit's metadata properties alone do not reach every surface.
 
     private void ConfigureNativeSession()
     {
-#if IOS
         Platforms.iOS.NativeAudio.ConfigureSession();
-#elif ANDROID
-        // Headphones out / Bluetooth speaker gone: Android keeps playing out of the phone
-        // speaker unless the app opts into the "becoming noisy" convention.
-        Platforms.Android.NativeAudioAndroid.EnsureBecomingNoisyWatcher(() => _ = PauseAsync());
-#endif
     }
 
     private void PublishNowPlaying(StoryRecord story, bool teaserOnly)
     {
-#if IOS
         var duration = teaserOnly ? 0 : story.DurationSeconds;
         Platforms.iOS.NativeAudio.SetNowPlaying(story.Title, NarratorNameOf(story),
             story.ThumbnailPath, duration, 0, 0);
@@ -188,26 +177,16 @@ public sealed class MediaElementNarrationPlayer : INarrationPlayer
             // speaker beside a sleeping child. The weave, if one is running, is untouched.
             onRouteLost: () => _ = PauseAsync());
         Platforms.iOS.NativeAudio.DumpNowPlaying();
-#else
-        _ = story;
-        _ = teaserOnly;
-#endif
     }
 
     private void PushPlaybackState(bool playing)
     {
-#if IOS
         Platforms.iOS.NativeAudio.UpdatePlaybackState(PositionSeconds, playing ? 1.0 : 0.0);
-#else
-        _ = playing;
-#endif
     }
 
     private static void ClearNativeNowPlaying()
     {
-#if IOS
         Platforms.iOS.NativeAudio.ClearNowPlaying();
-#endif
     }
 }
 
@@ -216,14 +195,14 @@ public sealed class MediaElementNarrationPlayer : INarrationPlayer
 /// per-sentence timestamps; seek snaps to the nearest sentence boundary.
 ///
 /// <para><b>No native-player integration here, deliberately.</b> This path speaks through
-/// <c>AVSpeechSynthesizer</c> / Android <c>TextToSpeech</c>, which are utterance engines, not
+/// <c>AVSpeechSynthesizer</c> live, which is an utterance engine, not
 /// media players: there is no seekable item to hand AVPlayer, no timeline an AirPlay receiver
 /// or a car head unit can scrub, and no meaningful Now Playing entry (the "duration" is an
 /// estimate from a words-per-second model, and a remote pause can only be honoured between
 /// sentences). Publishing a lock-screen entry over it would be a lie with a progress bar.
 /// So this player clears Now Playing on load and stays out of the way — recorded honestly in
-/// <c>docs/known-gaps.md</c>. It disappears entirely once every story has real Kokoro audio on
-/// disk, which is already the model-gated default.</para></summary>
+/// <c>docs/known-gaps.md</c>. It disappears entirely once every story has rendered audio on
+/// disk — the AVSpeechSynthesizer narration engine's job (MauiProgram.RegisterTtsEngine).</para></summary>
 public sealed class LiveTtsNarrationPlayer : INarrationPlayer
 {
     private readonly PlatformTtsEngine _tts;
@@ -259,9 +238,7 @@ public sealed class LiveTtsNarrationPlayer : INarrationPlayer
         StopInternal();
         // No seekable media item exists on this path — make sure a previous story's entry
         // isn't left on the lock screen / AirPlay receiver claiming to be this one.
-#if IOS
         Platforms.iOS.NativeAudio.ClearNowPlaying();
-#endif
         _voice = story.Voice;
         _sentences = StoryPipeline.SplitSentences(story.FullText);
         if (teaserOnly) _sentences = _sentences.Take(3).ToList();

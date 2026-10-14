@@ -17,7 +17,7 @@ namespace StoryTime.App.Controls;
 ///
 /// **The accelerometer is the ONLY motion source on any device that has one** (founder
 /// mandate, 2026-07-31). The figure-eight idle drift exists solely so a sensorless host
-/// (iOS simulator, emulator without sensor injection) is not a frozen rectangle; it is
+/// (the iOS simulator) is not a frozen rectangle; it is
 /// gated behind "sensor absent OR proven silent for 2 s", it is torn down the instant a
 /// real reading arrives, and once a reading has ever arrived it can never start again for
 /// the life of the view. If both loops could ever run at once the drift would overwrite the
@@ -35,7 +35,7 @@ public sealed class ParallaxPosterView : ContentView
     /// tracks the wrist rather than trailing it.</summary>
     private const double Alpha = 0.18;
 
-    /// <summary>Neutral hold attitude, in g. MAUI normalizes BOTH platforms to the Android
+    /// <summary>Neutral hold attitude, in g. MAUI Essentials normalizes the reading to one
     /// convention: the reading is a unit vector pointing along the device's world-up axis, so
     /// a phone held bolt upright in portrait reads (0, +1, 0) and one lying flat face-up
     /// reads (0, 0, +1). (iOS CoreMotion's raw sign is the opposite; Essentials flips it.
@@ -54,7 +54,7 @@ public sealed class ParallaxPosterView : ContentView
     /// implementation had neither: it fed raw gravity straight in at unity gain, so (a) the
     /// vertical channel sat at 0.80–0.90 of full deflection permanently and a hand-sized
     /// pitch change moved it ~2 px, and (b) a hand-sized roll of ±0.15 g moved the foreground
-    /// ~3.6 px and the sky ~0.6 px on a 226 pt poster — invisible. The Android-emulator QA
+    /// ~3.6 px and the sky ~0.6 px on a 226 pt poster — invisible. The sensor-injection QA
     /// that "proved" the earlier fix injected ±0.7 g on both axes at once, an attitude a hand
     /// never reaches, which is why it measured a healthy 89 px and looked correct.</summary>
     private const double TiltGain = 2.0;
@@ -372,7 +372,7 @@ public sealed class ParallaxPosterView : ContentView
         MainThread.BeginInvokeOnMainThread(ApplyOffsets);
     }
 
-    /// <summary>A started sensor that never delivers (some emulators, TCC-odd sims) would
+    /// <summary>A started sensor that never delivers (TCC-odd sims) would
     /// leave the poster frozen — after 2 s of silence, hand over to the drift loop. On real
     /// hardware this never fires; the first reading lands in tens of milliseconds.</summary>
     private void StartWatchdog()

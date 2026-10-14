@@ -19,7 +19,7 @@ public partial class App : Application
 		var shell = new AppShell();
 		// Run startup AFTER the Shell has actually loaded — navigating from Window.Created
 		// (before the platform view attaches) leaves Shell's stack in a state where every
-		// later pop/absolute navigation deadlocks (observed on Android, MAUI 10.0.60).
+		// later pop/absolute navigation deadlocks (observed with MAUI 10.0.60).
 		shell.Loaded += async (_, _) => await OnShellReadyAsync();
 
 		var window = new Window(shell);
@@ -39,10 +39,6 @@ public partial class App : Application
 		{
 			var store = _services.GetRequiredService<IStoryStore>();
 			await store.InitializeAsync();
-
-			// Platform copy split for the weave sheet (iOS: suspend/resume wording).
-			var weaveSheet = _services.GetRequiredService<StoryTime.Core.ViewModels.WeaveSheetViewModel>();
-			weaveSheet.IsIos = DeviceInfo.Platform == DevicePlatform.iOS;
 
 			// Resume a checkpointed weave from a previous run, if any (the sheet's
 			// mini-bar auto-surfaces from the first progress event).
@@ -71,6 +67,7 @@ public partial class App : Application
 			// and open the sheet expanded instead of navigating. "weaving-collapsed"
 			// docks the mini-bar instead (iOS sim QA is screenshot-only — TCC).
 			var qaRoute = Environment.GetEnvironmentVariable("STORYTIME_QA_ROUTE");
+			var weaveSheet = _services.GetRequiredService<StoryTime.Core.ViewModels.WeaveSheetViewModel>();
 			if (qaRoute == StoryTime.Core.ViewModels.Routes.Weaving)
 				await weaveSheet.ExpandForQaAsync();
 			else if (qaRoute == "weaving-collapsed")

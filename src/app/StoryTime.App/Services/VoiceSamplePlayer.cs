@@ -3,9 +3,9 @@ using StoryTime.Core.Abstractions;
 namespace StoryTime.App.Services;
 
 /// <summary>One-shot wav playback for the narrator ▶ preview rings. The root cause this
-/// class fixes (2026-07-31): RenderVoiceSampleAsync returns a rendered wav PATH once the
-/// neural TTS is active, and nothing ever played it — previews were silently dead on any
-/// device with models (the platform-TTS fallback masked it by speaking live).
+/// class fixes (2026-07-31): RenderVoiceSampleAsync returns a rendered wav PATH from any
+/// file-rendering TTS engine, and nothing ever played it — previews were silently dead
+/// (the platform-TTS fallback masked it by speaking live and returning no path).
 ///
 /// <para>Every exit path traces (tag "TWVoice", matching the Core-side preview trace) so a
 /// dead preview can never again look identical to a missing gesture. Playback stays
@@ -14,38 +14,9 @@ public sealed class VoiceSamplePlayer : IVoiceSamplePlayer
 {
     private static void Trace(string message)
     {
-#if ANDROID
-        Android.Util.Log.Debug("TWVoice", message);
-#else
         Console.WriteLine($"TWVoice {message}");
-#endif
     }
 
-#if ANDROID
-    private Android.Media.MediaPlayer? _player;
-
-    public Task PlayAsync(string wavPath, CancellationToken ct)
-    {
-        if (string.IsNullOrEmpty(wavPath)) { Trace("player: empty path, nothing to play"); return Task.CompletedTask; }
-        if (!File.Exists(wavPath)) { Trace($"player: file missing {wavPath}"); return Task.CompletedTask; }
-        try
-        {
-            // Cancel-and-replace: a repeat tap must interrupt the previous sample, not
-            // stack a second voice on top of it.
-            _player?.Release();
-            _player = new Android.Media.MediaPlayer();
-            _player.SetDataSource(wavPath);
-            _player.Prepare();
-            _player.Start();
-            Trace($"player: started {new FileInfo(wavPath).Length} bytes {wavPath}");
-        }
-        catch (Exception ex)
-        {
-            Trace($"player FAILED: {ex.GetType().Name}: {ex.Message}");
-        }
-        return Task.CompletedTask;
-    }
-#elif IOS
     private AVFoundation.AVAudioPlayer? _player;   // field ref: must outlive the call
 
     public Task PlayAsync(string wavPath, CancellationToken ct)
@@ -77,11 +48,4 @@ public sealed class VoiceSamplePlayer : IVoiceSamplePlayer
         }
         return Task.CompletedTask;
     }
-#else
-    public Task PlayAsync(string wavPath, CancellationToken ct)
-    {
-        Trace($"player: no platform implementation, skipped {wavPath}");
-        return Task.CompletedTask;
-    }
-#endif
 }

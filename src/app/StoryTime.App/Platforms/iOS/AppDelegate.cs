@@ -9,7 +9,7 @@ public class AppDelegate : MauiUIApplicationDelegate
 {
 	protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 
-	public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
+	public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
 	{
 		// BGTaskScheduler requires EVERY permitted identifier to be registered before the app
 		// finishes launching — registering later throws. This is the opportunistic weave

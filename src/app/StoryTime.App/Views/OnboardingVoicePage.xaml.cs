@@ -116,7 +116,7 @@ public partial class OnboardingVoicePage : ContentPage
                 title.TextColor = accent ? Token("Accent") : Token("Muted");
                 // The sample ring is a real control; Dim was too faint to read as one.
                 playGlyph.TextColor = accent ? Token("Accent") : Token("Muted");
-                // Rendering state: amber + dimmed. A neural sample takes seconds, so the tap
+                // Rendering state: amber + dimmed. A rendered sample takes seconds, so the tap
                 // must be visibly acknowledged before any audio exists.
                 var previewing = captured.IsPreviewing;
                 ring.Stroke = new SolidColorBrush(accent || previewing ? Token("Accent") : Token("Border"));

@@ -126,13 +126,11 @@ public partial class WeaveSheetHost : Grid
     /// content pads up by the same amount (spec: "height ~64 + safe area").</summary>
     private void ApplySafeAreaPadding()
     {
-#if IOS
         if (_page is null) return;
         var inset = Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page
             .SafeAreaInsets(_page.On<Microsoft.Maui.Controls.PlatformConfiguration.iOS>());
         MiniBar.HeightRequest = 64 + inset.Bottom;
         MiniBar.Padding = new Thickness(0, 0, 0, inset.Bottom);
-#endif
     }
 
     private void OnPageDisappearing(object? sender, EventArgs e)
@@ -231,7 +229,7 @@ public partial class WeaveSheetHost : Grid
             {
                 if (MiniBar.IsVisible)
                 {
-                    await MiniBar.TranslateTo(0, 90, 160, Easing.CubicIn);
+                    await MiniBar.TranslateToAsync(0, 90, 160, Easing.CubicIn);
                     if (token != _transition) return;
                     MiniBar.IsVisible = false;
                     MiniBar.TranslationY = 0;
@@ -239,16 +237,16 @@ public partial class WeaveSheetHost : Grid
                 Scrim.IsVisible = true;
                 SheetPanel.IsVisible = true;
                 if (SheetPanel.TranslationY <= 0) SheetPanel.TranslationY = OffscreenY;
-                _ = Scrim.FadeTo(0.55, 240, Easing.CubicOut);
-                await SheetPanel.TranslateTo(0, 0, 290, Easing.CubicOut);
+                _ = Scrim.FadeToAsync(0.55, 240, Easing.CubicOut);
+                await SheetPanel.TranslateToAsync(0, 0, 290, Easing.CubicOut);
                 break;
             }
             case WeaveSheetState.Collapsed:
             {
                 if (SheetPanel.IsVisible)
                 {
-                    _ = Scrim.FadeTo(0, 220, Easing.CubicOut);
-                    await SheetPanel.TranslateTo(0, OffscreenY, 260, Easing.CubicIn);
+                    _ = Scrim.FadeToAsync(0, 220, Easing.CubicOut);
+                    await SheetPanel.TranslateToAsync(0, OffscreenY, 260, Easing.CubicIn);
                     if (token != _transition) return;
                     SheetPanel.IsVisible = false;
                     Scrim.IsVisible = false;
@@ -256,22 +254,22 @@ public partial class WeaveSheetHost : Grid
                 UpdateMiniProgress();
                 MiniBar.TranslationY = 90;
                 MiniBar.IsVisible = true;
-                await MiniBar.TranslateTo(0, 0, 230, Easing.CubicOut);
+                await MiniBar.TranslateToAsync(0, 0, 230, Easing.CubicOut);
                 break;
             }
             default:   // Hidden — slide out whatever is on screen
             {
                 if (SheetPanel.IsVisible)
                 {
-                    _ = Scrim.FadeTo(0, 220, Easing.CubicOut);
-                    await SheetPanel.TranslateTo(0, OffscreenY, 260, Easing.CubicIn);
+                    _ = Scrim.FadeToAsync(0, 220, Easing.CubicOut);
+                    await SheetPanel.TranslateToAsync(0, OffscreenY, 260, Easing.CubicIn);
                     if (token != _transition) return;
                     SheetPanel.IsVisible = false;
                     Scrim.IsVisible = false;
                 }
                 if (MiniBar.IsVisible)
                 {
-                    await MiniBar.TranslateTo(0, 90, 200, Easing.CubicIn);
+                    await MiniBar.TranslateToAsync(0, 90, 200, Easing.CubicIn);
                     if (token != _transition) return;
                     MiniBar.IsVisible = false;
                     MiniBar.TranslationY = 0;
@@ -310,7 +308,7 @@ public partial class WeaveSheetHost : Grid
                 }
                 else
                 {
-                    _ = SheetPanel.TranslateTo(0, 0, 200, Easing.CubicOut);   // settle back, no bounce
+                    _ = SheetPanel.TranslateToAsync(0, 0, 200, Easing.CubicOut);   // settle back, no bounce
                 }
                 _lastDragY = 0;
                 break;
@@ -339,8 +337,8 @@ public partial class WeaveSheetHost : Grid
                    && _vm.State == WeaveSheetState.Collapsed && !_vm.IsDone && !_vm.IsFailed)
             {
                 var startedMs = Environment.TickCount64;
-                await EmberDot.FadeTo(0.35, 600, Easing.SinInOut);
-                await EmberDot.FadeTo(1.0, 600, Easing.SinInOut);
+                await EmberDot.FadeToAsync(0.35, 600, Easing.SinInOut);
+                await EmberDot.FadeToAsync(1.0, 600, Easing.SinInOut);
                 if (Environment.TickCount64 - startedMs < 600) await Task.Delay(600);
             }
         }

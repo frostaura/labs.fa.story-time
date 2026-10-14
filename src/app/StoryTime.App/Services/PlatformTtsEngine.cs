@@ -3,8 +3,8 @@ using StoryTime.Core.Abstractions;
 
 namespace StoryTime.App.Services;
 
-/// <summary>Honest degraded TTS mode until the neural stack (sherpa/Kokoro) lands.
-/// MAUI TextToSpeech can only speak live — it cannot render audio to a file — so
+/// <summary>Honest degraded TTS mode until the AVSpeechSynthesizer narration engine lands
+/// (swap point: MauiProgram.RegisterTtsEngine). MAUI TextToSpeech can only speak live — it cannot render audio to a file — so
 /// "synthesis" here produces NO audio file: it returns a manifest of sentences with
 /// estimated durations (words / 2.6 per second), and the Player runs in live-TTS mode
 /// (LiveTtsNarrationPlayer drives SpeakAsync sentence-by-sentence). Voices are the closest

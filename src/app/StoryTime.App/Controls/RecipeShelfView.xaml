@@ -14,7 +14,7 @@
          Aesthetics: the onboarding rows' language, compacted — amber+✓ selected chips,
          narrator radio rows with the ▶ sample ring, the series/one-shot underline pair. -->
     <!-- Content-sized up to the cap; the cap only bites when type metrics run tall
-         (iOS renders this content ~40dp taller than Android). Small phones scroll. -->
+         (iOS type metrics render this content tall). Small phones scroll. -->
     <ScrollView MaximumHeightRequest="700" VerticalScrollBarVisibility="Never">
         <VerticalStackLayout Spacing="0">
 
@@ -131,7 +131,7 @@
                                         <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
                                             <Setter Property="Stroke" Value="{StaticResource Accent}" />
                                         </DataTrigger>
-                                        <!-- Rendering: the ring goes amber and dims. A neural
+                                        <!-- Rendering: the ring goes amber and dims. A rendered
                                              sample takes seconds; the tap must be visibly
                                              acknowledged before any audio exists. -->
                                         <DataTrigger TargetType="Border" Binding="{Binding IsPreviewing}" Value="True">

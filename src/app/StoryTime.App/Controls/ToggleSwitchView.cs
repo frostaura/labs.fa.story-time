@@ -6,7 +6,7 @@ using StoryTime.App.Services;
 namespace StoryTime.App.Controls;
 
 /// <summary>Hearth 44×26 switch: amber when on, hairline capsule when off, sliding knob.
-/// (Per-instance shapes — style-shared Shape instances crash Android.)</summary>
+/// (Per-instance shapes — style-shared Shape instances are not safe to share.)</summary>
 public sealed class ToggleSwitchView : ContentView
 {
     public static readonly BindableProperty IsOnProperty = BindableProperty.Create(
@@ -33,8 +33,8 @@ public sealed class ToggleSwitchView : ContentView
         // target is not a target). Nothing visual changes.
         WidthRequest = 64;
         HeightRequest = 44;
-        // Explicit Transparent (not null) — an unpainted ContentViewGroup swallows
-        // nothing on Android, so the padding around the capsule would be dead.
+        // Explicit Transparent (not null) — an unpainted view does not hit-test, so the
+        // padding around the capsule would be dead.
         BackgroundColor = Colors.Transparent;
 
         _knob = new Ellipse
@@ -91,7 +91,7 @@ public sealed class ToggleSwitchView : ContentView
 
         var targetX = on ? 18.0 : 0.0;
         if (animate)
-            _knob.TranslateTo(targetX, 0, 160, Easing.CubicOut);
+            _knob.TranslateToAsync(targetX, 0, 160, Easing.CubicOut);
         else
             _knob.TranslationX = targetX;
     }
