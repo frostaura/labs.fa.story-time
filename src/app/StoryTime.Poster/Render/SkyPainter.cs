@@ -52,7 +52,8 @@ internal static class SkyPainter
             double g;
             if (underwater)
             {
-                if (hor.L > 0.3) hor = hor with { L = 0.3 };
+                // The surface light keeps the water's own hue (never a murky dusk yellow).
+                hor = (mid with { L = Math.Min(0.3, mid.L + 0.06) }).MapToGamut();
                 // Water column: brighter toward the surface, deepening to the reef floor.
                 var t = Math.Clamp(ny / horizon, 0, 1.2);
                 baseLab = t < 0.45
@@ -70,6 +71,9 @@ internal static class SkyPainter
                 var dh = (horizon - ny) / 0.2;
                 g = ny > horizon ? c.HorizonGlowStrength : c.HorizonGlowStrength * Math.Exp(-dh * dh);
             }
+            // A quiet scrim behind the title band: up to −0.03 L at the very top.
+            var scrim = 0.03 * (1 - Noise.SmoothStep(0.0, 0.34, ny));
+            if (scrim > 0) baseLab = baseLab with { L = baseLab.L - scrim };
             var (br, bg, bb) = baseLab.MapToGamut().ToLinearRgb();
             var row = y * w * 4;
             for (var x = 0; x < w; x++)
@@ -280,7 +284,7 @@ internal static class SkyPainter
                 if (g < 0.01) continue;
                 var n = Noise.Fbm2(along * 5 + 11, across * 9, mw.Seed, 4);
                 var lane = 1 - 0.55 * Math.Exp(-Math.Pow((across + 0.01 * Math.Sin(along * 7)) / (mw.Width * 0.18), 2));
-                var a = g * (0.25 + 0.75 * n * n) * lane * ext * 0.20;
+                var a = g * (0.45 + 0.55 * n) * lane * ext * 0.22;   // a soft band first, specks over it
                 if (TitleSafeFade(plan, nx, ny) is var tf && tf < 1) a *= tf;
                 var av = (byte)Math.Clamp(a * 255 + Dither(x, y) * 0.8, 0, 255);
                 if (av == 0) continue;
@@ -303,7 +307,7 @@ internal static class SkyPainter
         if (ny > t.Bottom + 0.06) return 1;
         var vertical = Noise.SmoothStep(t.Bottom + 0.06, t.Bottom - 0.02, ny);
         var horizontal = Noise.SmoothStep(t.Left - 0.08, t.Left + 0.06, nx) * (1 - Noise.SmoothStep(t.Right - 0.06, t.Right + 0.08, nx));
-        return 1 - 0.9 * vertical * horizontal;
+        return 1 - vertical * horizontal;
     }
 
     private static void PaintAurora(SKCanvas canvas, PosterPlan plan, AuroraPlan au, PosterViewport vp)

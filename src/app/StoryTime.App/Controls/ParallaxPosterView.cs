@@ -261,10 +261,10 @@ public sealed class ParallaxPosterView : ContentView
     }
 
     /// <summary>Vertical travel relative to horizontal. Full vertical travel pushed grounded
-    /// heroes off the bottom edge at one extreme (critique round 2); 0.6 keeps the pitch
+    /// heroes off the bottom edge at one extreme (critique rounds 2–4); 0.5 keeps the pitch
     /// response clearly alive (the founder's 2026-07-31 complaint was a PINNED vertical
     /// channel) while the foreground stays composed.</summary>
-    private const double VerticalFactor = 0.6;
+    private const double VerticalFactor = 0.5;
 
     private void ApplyOffsets()
     {

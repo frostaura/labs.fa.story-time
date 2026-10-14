@@ -441,3 +441,31 @@ MEDIUM fixes:
 - snow capped at 0.7 alpha, softer in front and dim behind the title;
 - framing pieces present 60% of the time;
 - a featured landmark becomes the subject (no duplicate castle).
+
+### Round 4
+
+HIGH defects remained:
+- **Creature drawing.** The deer read as a llama, the rabbit was oversized and staring, the
+  cat read as the Halloween icon, and the otter was a blob. All four are redrawn:
+  - a fawn with a teardrop body, hock bends, spots and a grazing pose half the time;
+  - a crouched loaf rabbit with a cream tail;
+  - a sleepy loaf cat with its tail wrapped round;
+  - a belly-up otter with a muzzle, paws and a shell.
+- **The oasis pool read as a pit.** It now mirrors the sky, is always lighter than the
+  sand, and has no hard rim.
+- **The title band.** No Milky Way stars inside it, the haze fully suppressed there, and a
+  −0.03 L scrim at the top of the sky.
+- **Reef surface wash.** It now keeps the water's own hue.
+- **Props in each other.** Big framing trees step out of the picture when they crowd a
+  subject. Footprints must sit fully on solid ground, so no tent overhangs water.
+
+MEDIUM fixes:
+- band crests have a soft blurred lip, not a 1 px outline;
+- snow in three depth tiers, mostly tiny and far;
+- a soft Milky Way band under the specks, with fewer of them;
+- shooting stars kept clear of clouds;
+- vertical travel 0.5× horizontal (three reviewers asked for ≤ ⅓; 0.5 keeps the pitch
+  channel alive per the founder);
+- lighter, always-lit castles in the clouds;
+- hand-cut edge wobble on silhouettes;
+- a fixed paper tooth.

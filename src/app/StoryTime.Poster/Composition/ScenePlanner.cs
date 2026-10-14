@@ -182,7 +182,7 @@ public static class ScenePlanner
         {
             // "Real ground" = solidly above the shoreline fade, with room for a footprint.
             var solid = Math.Min(0.92, _horizon + 0.22);
-            bool Ok(double v) => v is >= 0.08 and <= 0.92 && ground.Y(v - 0.05) < solid && ground.Y(v) < solid && ground.Y(v + 0.05) < solid;
+            bool Ok(double v) => v is >= 0.12 and <= 0.88 && ground.Y(v - 0.09) < solid && ground.Y(v) < solid && ground.Y(v + 0.09) < solid;
             if (Ok(x)) return x;
             for (var d = 0.02; d < 0.9; d += 0.02)
             {
@@ -549,7 +549,8 @@ public static class ScenePlanner
                     {
                         var depth = _spec.Scene is PosterScene.CloudKingdom ? 1 : 1;
                         var cx = 0.5 - _side * r.Range(0.12, 0.18);
-                        Place(Prop.Castle, depth, cx, Ground(1).Y(cx) + (_spec.Scene == PosterScene.CloudKingdom ? 0.03 : 0.012), r.Range(0.17, 0.22), "castle", feature: f, lit: true, tone: 0.42);
+                        Place(Prop.Castle, depth, cx, Ground(1).Y(cx) + (_spec.Scene == PosterScene.CloudKingdom ? 0.03 : 0.012), r.Range(0.17, 0.22), "castle", feature: f, lit: true,
+                            tone: _spec.Scene == PosterScene.CloudKingdom ? 0.3 : 0.42);
                         break;
                     }
                     case PosterFeature.Windmill:
@@ -706,7 +707,7 @@ public static class ScenePlanner
                 _ => (p.X - p.Size * 0.55, p.X + p.Size * 0.55, p.Y - p.Size, p.Y),
             };
             var subjects = _props.Where(p => p.Feature is not null && p.Prop is not (Prop.House or Prop.Flower or Prop.Mushroom or Prop.Birds)
-                                             || p.Lit || ReferenceEquals(p, _focal) || p.Prop == Prop.Pool).ToList();
+                                             || p.Lit || ReferenceEquals(p, _focal) || IsObstacle(p)).ToList();
             for (var pass = 0; pass < 3; pass++)
             for (var i = 0; i < subjects.Count; i++)
             for (var j = i + 1; j < subjects.Count; j++)
@@ -722,11 +723,21 @@ public static class ScenePlanner
                 if (overlapX <= 0 || overlapY <= 0) continue;
                 // Move the one that is not the focal subject.
                 // Move the one that is not the focal subject (a pool never moves).
-                var mover = b.Prop == Prop.Pool ? a : a.Prop == Prop.Pool ? b : ReferenceEquals(b, _focal) ? a : b;
+                if (IsObstacle(a) && IsObstacle(b)) continue;
+                // A framing tree that crowds a subject simply steps out of the picture.
+                var framer = IsObstacle(a) && a.Prop != Prop.Pool ? a : IsObstacle(b) && b.Prop != Prop.Pool ? b : null;
+                if (framer is not null)
+                {
+                    _props.Remove(framer);
+                    subjects.Remove(framer);
+                    i = Math.Min(i, subjects.Count - 1);
+                    break;
+                }
+                var mover = IsObstacle(b) ? a : IsObstacle(a) ? b : ReferenceEquals(b, _focal) ? a : b;
                 var other = ReferenceEquals(mover, a) ? b : a;
                 var dir = mover.X >= other.X ? 1 : -1;
                 if (mover.X + dir * overlapX > 0.9 || mover.X + dir * overlapX < 0.1) dir = -dir;
-                var nx = Math.Clamp(mover.X + dir * overlapX, 0.08, 0.92);
+                var nx = Math.Clamp(mover.X + dir * overlapX, 0.12, 0.88);
                 var ny = mover.Y;
                 if (mover.Prop is not (Prop.Boat or Prop.Sailboat or Prop.Otter or Prop.Whale or Prop.FishSchool or Prop.Balloon or Prop.Birds or Prop.Owl)
                     && !(mover.Prop == Prop.Turtle && mover.Variant == 0))
@@ -743,6 +754,11 @@ public static class ScenePlanner
                 if (ReferenceEquals(mover, _focal)) _focal = moved;
             }
         }
+
+        /// <summary>Fixed things subjects must not stand in: the oasis pool and big framing
+        /// trees/palms in the near layer.</summary>
+        private static bool IsObstacle(Placement p) =>
+            p.Prop == Prop.Pool || p.Feature is null && p.Depth == 3 && p.Size > 0.3 && p.Prop is Prop.Pine or Prop.Palm;
 
         private static double PosterEngineTravel(int depth) => PosterEngine.TravelFraction[Math.Clamp(depth, 0, 3)];
 
@@ -889,7 +905,12 @@ public static class ScenePlanner
             if (Has(PosterFeature.ShootingStar))
             {
                 var sx = 0.5 + _side * r.Range(0.06, 0.18);
-                _shooting = new ShootingStarPlan(sx, r.Range(TitleSafe.Bottom + 0.04, TitleSafe.Bottom + 0.1), _side > 0 ? 200 + r.Range(8, 22) : -20 - r.Range(8, 22), r.Range(0.14, 0.2));
+                var sy = r.Range(TitleSafe.Bottom + 0.04, TitleSafe.Bottom + 0.1);
+                // Keep the whole streak clear of every cloud (it is drawn behind them anyway).
+                for (var tries = 0; tries < 8 && _clouds.Any(c => Math.Abs(c.X - sx) < c.Width * 0.7 + 0.12 && Math.Abs(c.Y - sy) < c.Height * 2 + 0.05); tries++)
+                    sx = 0.5 + _side * r.Range(0.0, 0.3);
+                if (!_clouds.Any(c => Math.Abs(c.X - sx) < c.Width * 0.7 + 0.12 && Math.Abs(c.Y - sy) < c.Height * 2 + 0.05))
+                    _shooting = new ShootingStarPlan(sx, sy, _side > 0 ? 200 + r.Range(8, 22) : -20 - r.Range(8, 22), r.Range(0.14, 0.2));
             }
         }
 
@@ -930,7 +951,7 @@ public static class ScenePlanner
             var list = new List<StarPlan>();
             var rad = band.AngleDeg * Math.PI / 180;
             var (dx, dy) = (Math.Cos(rad), Math.Sin(rad));
-            for (var i = 0; i < 260; i++)
+            for (var i = 0; i < 150; i++)
             {
                 var t = r.Range(-0.9, 0.9);
                 var off = r.Bell() * band.Width * 0.45;
@@ -938,8 +959,8 @@ public static class ScenePlanner
                 var y = band.CenterY + dy * t + dx * off;
                 if (y > _horizon - 0.03 || y < -0.2 || x < -0.2 || x > 1.2) continue;
                 if (_moon is not null && Dist(x, y, _moon.X, _moon.Y) < _moon.R * 3) continue;
-                var inTitle = TitleSafe.Contains(x, y);
-                var alpha = r.Range(0.12, inTitle ? 0.3 : 0.5) * Noise.SmoothStep(_horizon - 0.02, _horizon - 0.15, y);
+                if (TitleSafe.Contains(x, y) || y < TitleSafe.Bottom + 0.03) continue;
+                var alpha = r.Range(0.12, 0.42) * Noise.SmoothStep(_horizon - 0.02, _horizon - 0.15, y);
                 if (alpha < 0.05) continue;
                 list.Add(new StarPlan(x, y, r.Range(0.0011, 0.0022), alpha, r.Chance(0.3) ? 1 : 0, false));
             }
@@ -1070,8 +1091,10 @@ public static class ScenePlanner
                 for (var i = 0; i < 46; i++)
                 {
                     var depth = 1 + r.Int(3);
+                    var dTier = r.Next() switch { < 0.7 => 1, < 0.95 => 2, _ => 3 };   // most flakes far and tiny
+                    depth = dTier;
                     _ambient.Add(new AmbientParticle(AmbientKind.Snowflake, depth, r.Range(-0.1, 1.1), r.Range(0, 1),
-                        0.0025 * depth + r.Range(0, 0.002), r.Range(0.45, 0.85) * (0.6 + depth * 0.15), r.Range(0, Math.PI * 2),
+                        0.0012 * depth + r.Range(0, 0.0008), (0.3 + depth * 0.15) * r.Range(0.8, 1.0), r.Range(0, Math.PI * 2),
                         r.Range(22, 40) / depth, r.Range(0.01, 0.025), Pack(ScenePalette.Cream)));
                 }
             }

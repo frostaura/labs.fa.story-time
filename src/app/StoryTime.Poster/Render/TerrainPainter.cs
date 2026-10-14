@@ -74,9 +74,10 @@ internal static class TerrainPainter
         if (band.Rim && c.RimStrength > 0)
         {
             var lx = plan.Moon is { } m ? m.X : 0.5;
-            var rimW = Math.Max(1f, vp.Unit * (band.Style == TerrainStyle.Cloud ? 0.007f : 0.0035f));
+            // A soft moonlit lip, not a drawn outline: wider and blurred, lower alpha.
+            var rimW = Math.Max(1.5f, vp.Unit * (band.Style == TerrainStyle.Cloud ? 0.009f : 0.006f));
             var near = band.Tone;
-            var alpha = c.RimStrength * (band.Style == TerrainStyle.Cloud ? 0.75 : 0.35 + 0.35 * near);
+            var alpha = c.RimStrength * (band.Style == TerrainStyle.Cloud ? 0.6 : 0.2 + 0.2 * near);
             using var shifted = new SKPath(path);
             shifted.Offset(0, rimW);
             canvas.Save();
@@ -85,6 +86,7 @@ internal static class TerrainPainter
             using var rim = new SKPaint
             {
                 IsAntialias = true,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, rimW * 0.45f),
                 Shader = SKShader.CreateLinearGradient(new SKPoint(vp.X(lx - 0.6), 0), new SKPoint(vp.X(lx + 0.6), 0),
                     [Paint.Sk(c.Rim, alpha * 0.35), Paint.Sk(c.Rim, alpha), Paint.Sk(c.Rim, alpha * 0.35)], SKShaderTileMode.Clamp),
             };

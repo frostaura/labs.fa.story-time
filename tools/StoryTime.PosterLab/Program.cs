@@ -116,7 +116,7 @@ foreach (var idx in previewIdx)
     var tilts = new[] { -1.0, 0.0, 1.0 };
     for (var k = 0; k < 3; k++)
     {
-        using var frame = PosterEngine.Composite(set, tilts[k], tilts[k] * 0.6, ambientTime: k * 1.7);  // the apps vertical factor
+        using var frame = PosterEngine.Composite(set, tilts[k], tilts[k] * 0.5, ambientTime: k * 1.7);  // the apps vertical factor
         strip.Canvas.DrawImage(frame, k * (452 + 8), 0);
     }
     using var snap = strip.Snapshot();
