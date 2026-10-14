@@ -67,21 +67,44 @@
                 <BoxView />
             </VerticalStackLayout>
 
-            <!-- Honest price row — no billing exists until the M4 decision -->
+            <!-- Price card: the App Store's own localized price, or the plain truth about
+                 why there isn't one (loading, not for sale here, store unreachable,
+                 purchases switched off). One payment, no subscription. -->
             <Border StrokeThickness="1" Stroke="{StaticResource Accent}" BackgroundColor="Transparent"
                     Padding="20,18" Margin="0,30,0,0">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="16" />
                 </Border.StrokeShape>
                 <VerticalStackLayout Spacing="6">
-                    <Label Style="{StaticResource UiText}" Text="Coming soon" />
-                    <Label Style="{StaticResource Body}"
-                           Text="Premium arrives with the full release. No card, no account, ever." />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Grid.Column="0" Style="{StaticResource UiText}" Text="{Binding PriceTitle}"
+                               VerticalOptions="Center" />
+                        <ActivityIndicator Grid.Column="1" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                                           Color="{StaticResource Accent}" HeightRequest="20" WidthRequest="20"
+                                           VerticalOptions="Center" />
+                    </Grid>
+                    <Label Style="{StaticResource Body}" Text="{Binding PriceBody}" />
                 </VerticalStackLayout>
             </Border>
 
-            <Label Style="{StaticResource Whisper}" HorizontalTextAlignment="Center" Margin="0,26,0,0"
-                   Text="Your free nights keep working exactly as promised." />
+            <!-- Buy (or Try again when the store let us down). The amber CTA is the one
+                 filled button on this page; Restore is a pill, per the affordance system. -->
+            <Button Margin="0,22,0,0" Text="{Binding PrimaryText}" Command="{Binding PrimaryCommand}"
+                    IsVisible="{Binding ShowPrimary}" />
+            <Button Style="{StaticResource PillButton}" HorizontalOptions="Center" Margin="0,14,0,0"
+                    Text="Restore purchase" Command="{Binding RestoreCommand}" IsVisible="{Binding ShowRestore}" />
+
+            <Label Style="{StaticResource Body}" HorizontalTextAlignment="Center" Margin="0,16,0,0"
+                   Text="{Binding Notice}">
+                <Label.Triggers>
+                    <DataTrigger TargetType="Label" Binding="{Binding Notice}" Value="">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                </Label.Triggers>
+            </Label>
+
+            <Label Style="{StaticResource Whisper}" HorizontalTextAlignment="Center" Margin="0,22,0,0"
+                   Text="Paid once through the App Store. Everything free keeps working, with or without Premium." />
 
             <!-- Debug-only quiet testing row (flips the local entitlement override).
                  Tappable ⇒ Accent, never Dim. -->

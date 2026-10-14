@@ -4,10 +4,10 @@ using StoryTime.Core.ViewModels;
 
 namespace StoryTime.App.Views;
 
-/// <summary>The honest paygate (founder-requested addition beyond the mockup — recorded in
-/// docs/design/mockup-spec.md). Reached from Settings UPGRADE →, the 15-minute slider gate
-/// upsell, and the Player Music · PREMIUM row. No billing exists until M4; the only unlock
-/// is the Debug-only testing row.</summary>
+/// <summary>The Premium page (founder-requested addition beyond the mockup — recorded in
+/// docs/design/mockup-spec.md): one on-device, one-off App Store purchase with Buy and
+/// Restore. Reached from Settings UPGRADE →, the 15-minute slider gate upsell, and the
+/// Player Music · PREMIUM row. Debug builds add a quiet local testing unlock.</summary>
 public partial class PremiumPage : ContentPage
 {
     private readonly PremiumViewModel _vm;
@@ -27,9 +27,23 @@ public partial class PremiumPage : ContentPage
         if (e.Status == TouchStatus.Started) PressHaptics.Light();
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
-        _vm.Activate();
+        try
+        {
+            await _vm.ActivateAsync();
+        }
+        catch (Exception)
+        {
+            // The view-model already maps every store failure to honest copy; a page
+            // event must never take the app down.
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _vm.Deactivate();
     }
 }

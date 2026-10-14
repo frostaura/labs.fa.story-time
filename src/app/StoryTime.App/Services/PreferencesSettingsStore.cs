@@ -14,6 +14,7 @@ public sealed class PreferencesSettingsStore : ISettingsStore
     private const string KeyCooldownAnchor = "tw.cooldown-anchor-mono";
     private const string KeyCooldownEnds = "tw.cooldown-ends-utc";
     private const string KeyDebugPremium = "tw.debug-premium-override";
+    private const string KeyPremiumPurchased = "tw.premium-purchased";
     private const string KeyMusicVolume = "tw.music-volume";
     private const string KeyContentFilter = "tw.content-filter";
 
@@ -73,6 +74,12 @@ public sealed class PreferencesSettingsStore : ISettingsStore
     {
         get => Preferences.Get(KeyDebugPremium, false);
         set => Preferences.Set(KeyDebugPremium, value);
+    }
+
+    public bool PremiumPurchased
+    {
+        get => Preferences.Get(KeyPremiumPurchased, false);
+        set => Preferences.Set(KeyPremiumPurchased, value);
     }
 
     public double MusicVolume

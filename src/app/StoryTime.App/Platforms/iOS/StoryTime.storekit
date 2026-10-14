@@ -1,0 +1,40 @@
+{
+  "identifier" : "6F2C1E7A-3B4D-4C5E-9A8B-1D2E3F4A5B6C",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "6739104512",
+      "localizations" : [
+        {
+          "description" : "15-minute stories, music under narration and shorter waits between stories. Paid once.",
+          "displayName" : "StoryTime Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "net.frostaura.storytime.premium",
+      "referenceName" : "StoryTime Premium",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6739104500",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
