@@ -119,7 +119,7 @@ public sealed class ScenePalette
         {
             PosterScene.DesertOasis => 0.19,
             PosterScene.CloudKingdom => 0.30,
-            PosterScene.ReefAtDusk => 0.17,
+            PosterScene.ReefAtDusk => 0.21,
             _ => 0.165,
         } + lift * 0.5;
         // Cozy warms the land a touch toward the hearth.
@@ -132,7 +132,8 @@ public sealed class ScenePalette
         var waterTop = horizon with { L = hL * 0.88 + lift, C = horizon.C * 0.9 };
         var waterDeep = zenith with { L = zL * 0.72 + lift, C = zenith.C * 0.9 };
 
-        var moon = Cream;
+        // A hair dimmer than the cream title, so the moon never out-shouts it.
+        var moon = Cream with { L = 0.885 };
         var moonGlowColor = Oklab.Mix(Cream.ToOklab(), horizon.ToOklab(), 0.35).ToOklch();
         var rim = spec.TimeOfDay == PosterTimeOfDay.Dusk
             ? new Oklch(0.72, 0.09, 55)
@@ -191,7 +192,7 @@ public sealed class ScenePalette
         PosterPalette.LanternGlow => (262, 48, 0.045, 0.034),
         PosterPalette.TidePool => (212, 175, 0.054, 0.038),
         PosterPalette.SnowHush => (256, 250, 0.045, 0.028),
-        PosterPalette.EmberSky => (352, 30, 0.052, 0.04),
+        PosterPalette.EmberSky => (22, 30, 0.036, 0.034),
         PosterPalette.MistValley => (236, 226, 0.032, 0.024),
         _ => (284, 278, 0.068, 0.040),
     };

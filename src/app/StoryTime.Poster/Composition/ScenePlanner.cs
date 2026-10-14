@@ -283,8 +283,11 @@ public static class ScenePlanner
 
             var floor = Band(3, Hills(0.975, 0.07, 1.4, "forest-floor"), 1.0, TerrainStyle.Earth);
             Grass(3, floor.Profile, 1.0, "forest-grass");
-            var edge = 0.5 - _side * 0.47; // big framing pine on the moon side, mostly in frame
-            Place(Prop.Pine, 3, edge, floor.Profile.Y(edge) + 0.03, r.Range(0.42, 0.5), "forest-frame", variant: 1);
+            if (r.Chance(0.6))
+            {
+                var edge = 0.5 - _side * 0.47; // big framing pine on the moon side, mostly in frame
+                Place(Prop.Pine, 3, edge, floor.Profile.Y(edge) + 0.03, r.Range(0.42, 0.5), "forest-frame", variant: 1);
+            }
             Place(Prop.Fern, 3, 0.5 - _side * 0.3, floor.Profile.Y(0.5 - _side * 0.3) + 0.012, 0.1, "forest-fern");
         }
 
@@ -349,8 +352,11 @@ public static class ScenePlanner
             var drift = Band(3, Hills(0.97, 0.07, 1.3, "snow-drift"), 1.0, TerrainStyle.Snow);
             var fx = 0.5 - _side * 0.30;
             Place(Prop.Fence, 3, fx, drift.Profile.Y(fx) + 0.012, 0.26, "snow-fence", flip: _side > 0);
-            var edge = 0.5 + _side * 0.47;
-            Place(Prop.Pine, 3, edge, drift.Profile.Y(edge) + 0.03, r.Range(0.46, 0.54), "snow-frame", variant: 3);
+            if (r.Chance(0.6))
+            {
+                var edge = 0.5 + _side * 0.47;
+                Place(Prop.Pine, 3, edge, drift.Profile.Y(edge) + 0.03, r.Range(0.46, 0.54), "snow-frame", variant: 3);
+            }
             _snowing = Has(PosterFeature.Snowfall) || r.Chance(0.6);
         }
 
@@ -364,12 +370,12 @@ public static class ScenePlanner
             var ox = 0.5 - _side * r.Range(0.12, 0.2);
             Place(Prop.Pool, 2, ox, mid.Profile.Y(ox) + 0.025, r.Range(0.2, 0.25), "oasis-pool", flip: false);
             // Palms root together on the far bank and fan apart at the crowns.
-            var palms = 2 + r.Int(2);
-            var bank = ox + r.Jitter(0.03);
+            var palms = 1 + r.Int(3);
+            var bank = ox + (r.Chance(0.5) ? 1 : -1) * r.Range(0.12, 0.15);   // on the bank beside the pool
             for (var i = 0; i < palms; i++)
             {
                 var px = bank + (i - (palms - 1) / 2.0) * 0.035;
-                Place(Prop.Palm, 2, px, mid.Profile.Y(px) - 0.022, r.Range(0.22, 0.3), $"oasis-palm-{i}", flip: px < bank);
+                Place(Prop.Palm, 2, px, mid.Profile.Y(px) + 0.008, r.Range(0.22, 0.3), $"oasis-palm-{i}", flip: px < bank);
             }
             Place(Prop.Reeds, 2, ox + 0.1, mid.Profile.Y(ox + 0.1) + 0.02, 0.07, "oasis-reeds");
             Band(3, Dunes(0.99, 0.12, 1.1, "desert-near"), 1.0, TerrainStyle.Sand);
@@ -393,8 +399,11 @@ public static class ScenePlanner
             }
             var beach = Band(3, Hills(0.98, 0.06, 1.3, "cove-beach", 2), 1.0, TerrainStyle.Sand);
             Grass(3, beach.Profile, 0.5, "cove-grass");
-            var px0 = 0.5 + _side * 0.46;
-            Place(Prop.Palm, 3, px0, beach.Profile.Y(px0) + 0.03, r.Range(0.6, 0.68), "cove-frame-palm", flip: _side > 0);
+            if (r.Chance(0.6))
+            {
+                var px0 = 0.5 + _side * 0.46;
+                Place(Prop.Palm, 3, px0, beach.Profile.Y(px0) + 0.03, r.Range(0.6, 0.68), "cove-frame-palm", flip: _side > 0);
+            }
         }
 
         private void StarryHills()
@@ -418,7 +427,7 @@ public static class ScenePlanner
             var r = R("reef");
             _underwater = true;
             _horizon = 0.73 + r.Jitter(0.03);
-            Band(1, Bumps(_horizon, 0.04, 0.09, 0.8, "reef-far"), 0.05, TerrainStyle.Reef, fog: 0.55, rim: false);
+            Band(1, Bumps(_horizon, 0.04, 0.09, 0.8, "reef-far"), 0.05, TerrainStyle.Reef, fog: 0.3, rim: false);
             var mid = Band(2, Bumps(_horizon + 0.12, 0.05, 0.11, 0.7, "reef-mid"), 0.55, TerrainStyle.Reef, fog: 0.2);
             Scatter(Prop.BranchCoral, 2, mid.Profile, -0.05, 1.05, 0.16, 0.10, 0.16, "reef-corals", 0.55,
                 [(_focalX - 0.12, _focalX + 0.12)], sink: 0.006);
@@ -539,8 +548,8 @@ public static class ScenePlanner
                     case PosterFeature.Castle:
                     {
                         var depth = _spec.Scene is PosterScene.CloudKingdom ? 1 : 1;
-                        var cx = 0.5 - _side * r.Range(0.05, 0.14);
-                        Place(Prop.Castle, depth, cx, Ground(1).Y(cx) + 0.012, r.Range(0.17, 0.22), "castle", feature: f, lit: true, tone: 0.42);
+                        var cx = 0.5 - _side * r.Range(0.12, 0.18);
+                        Place(Prop.Castle, depth, cx, Ground(1).Y(cx) + (_spec.Scene == PosterScene.CloudKingdom ? 0.03 : 0.012), r.Range(0.17, 0.22), "castle", feature: f, lit: true, tone: 0.42);
                         break;
                     }
                     case PosterFeature.Windmill:
@@ -560,7 +569,10 @@ public static class ScenePlanner
                         break;
                     }
                     case PosterFeature.Telescope:
-                        Place(Prop.Telescope, 2, x, mid.Y(x) + 0.006, asFocal ? 0.2 : 0.16, "telescope", flip: _side > 0, feature: f);
+                        if (_spec.Scene == PosterScene.TownRooftops)
+                            Place(Prop.Telescope, 3, x, near.Y(x) + 0.004, asFocal ? 0.18 : 0.14, "telescope", flip: _side > 0, feature: f);
+                        else
+                            Place(Prop.Telescope, 2, x, mid.Y(x) + 0.006, asFocal ? 0.2 : 0.16, "telescope", flip: _side > 0, feature: f);
                         break;
                     case PosterFeature.Boat:
                     case PosterFeature.Sailboat:
@@ -637,6 +649,13 @@ public static class ScenePlanner
         private void PlaceDefaultHero()
         {
             if (_focal is not null) return;
+            // A featured landmark (castle, lighthouse, village, train) already is the subject.
+            if (_props.FirstOrDefault(p => p.Feature is PosterFeature.Castle or PosterFeature.Lighthouse
+                    or PosterFeature.Train or PosterFeature.Windmill) is { } landmark)
+            {
+                _focal = landmark;
+                return;
+            }
             var r = R("hero");
             var mid = Ground(2);
             var near = Ground(3);
@@ -644,7 +663,7 @@ public static class ScenePlanner
             switch (_spec.Scene)
             {
                 case PosterScene.MoonlitSea or PosterScene.IslandCove or PosterScene.MountainLake when _water is not null:
-                    _focal = Place(Prop.Boat, 2, x, _water.Line + r.Range(0.07, 0.11), r.Range(0.12, 0.15), "hero-boat", lit: true);
+                    _focal = Place(Prop.Boat, 2, x, _water.Line + r.Range(0.07, 0.11), r.Range(0.16, 0.2), "hero-boat", lit: true);
                     break;
                 case PosterScene.ForestClearing or PosterScene.StarryHills or PosterScene.FireflyMeadow:
                     x = GroundedX(mid, x);
@@ -657,8 +676,8 @@ public static class ScenePlanner
                     break;
                 case PosterScene.CloudKingdom:
                 {
-                    var cx = 0.5 - _side * r.Range(0.05, 0.12);
-                    _focal = Place(Prop.Castle, 1, cx, Ground(1).Y(cx) + 0.012, r.Range(0.19, 0.23), "hero-castle", lit: true, tone: 0.45);
+                    var cx = 0.5 + _side * r.Range(0.15, 0.19);   // the castle takes the focal third
+                    _focal = Place(Prop.Castle, 1, cx, Ground(1).Y(cx) + 0.03, r.Range(0.19, 0.23), "hero-castle", lit: true, tone: 0.45);
                     break;
                 }
                 case PosterScene.JungleCanopy:
@@ -682,10 +701,11 @@ public static class ScenePlanner
                 Prop.FishSchool => (p.X - p.Size * 0.85, p.X + p.Size * 0.85, p.Y - p.Size * 0.3, p.Y + p.Size * 0.3),
                 Prop.Turtle when p.Variant == 0 => (p.X - p.Size * 0.5, p.X + p.Size * 0.62, p.Y - p.Size * 0.3, p.Y + p.Size * 0.45),
                 Prop.Balloon => (p.X - p.Size * 0.5, p.X + p.Size * 0.5, p.Y - p.Size * 0.6, p.Y + p.Size * 0.7),
+                Prop.Pool => (p.X - p.Size * 0.55, p.X + p.Size * 0.55, p.Y - p.Size * 0.12, p.Y + p.Size * 0.12),
                 _ => (p.X - p.Size * 0.55, p.X + p.Size * 0.55, p.Y - p.Size, p.Y),
             };
             var subjects = _props.Where(p => p.Feature is not null && p.Prop is not (Prop.House or Prop.Flower or Prop.Mushroom or Prop.Birds)
-                                             || p.Lit || ReferenceEquals(p, _focal)).ToList();
+                                             || p.Lit || ReferenceEquals(p, _focal) || p.Prop == Prop.Pool).ToList();
             for (var pass = 0; pass < 3; pass++)
             for (var i = 0; i < subjects.Count; i++)
             for (var j = i + 1; j < subjects.Count; j++)
@@ -700,7 +720,8 @@ public static class ScenePlanner
                 var overlapY = Math.Min(ba.B, bb.B) - Math.Max(ba.T, bb.T) + pad * 0.5;
                 if (overlapX <= 0 || overlapY <= 0) continue;
                 // Move the one that is not the focal subject.
-                var mover = ReferenceEquals(b, _focal) ? a : b;
+                // Move the one that is not the focal subject (a pool never moves).
+                var mover = b.Prop == Prop.Pool ? a : a.Prop == Prop.Pool ? b : ReferenceEquals(b, _focal) ? a : b;
                 var other = ReferenceEquals(mover, a) ? b : a;
                 var dir = mover.X >= other.X ? 1 : -1;
                 if (mover.X + dir * overlapX > 0.9 || mover.X + dir * overlapX < 0.1) dir = -dir;
@@ -722,13 +743,15 @@ public static class ScenePlanner
             }
         }
 
-        private static double PosterEngineTravel(int depth) => depth switch { 0 => 12 / 226.0, 1 => 20 / 226.0, 2 => 30 / 226.0, _ => 40 / 226.0 };
+        private static double PosterEngineTravel(int depth) => PosterEngine.TravelFraction[Math.Clamp(depth, 0, 3)];
 
         /// <summary>Every poster above water carries at least one small amber light: the "safe
         /// place" a sleepy eye lands on (Hearth's single warm accent).</summary>
         private void EnsureWarmLight()
         {
             if (_underwater || _props.Any(p => p.Lit)) return;
+            // Not a stamp: the lantern joins only cozy nights and a third of the rest.
+            if (_spec.Mood != PosterMood.Cozy && !R("warm-light").Chance(0.3)) return;
             var near = Ground(3);
             var x = _focal is { Depth: 3 } f ? f.X - _side * 0.17 : _focalX;
             x = Math.Clamp(x, 0.12, 0.88);
@@ -746,31 +769,31 @@ public static class ScenePlanner
                         return Place(Prop.Whale, 1, 0.5 - _side * 0.12, r.Range(0.44, 0.5), r.Range(0.42, 0.5), "whale", flip: !faceIn, variant: 1, feature: creature, tone: 0.1);
                     return Place(Prop.Whale, 2, x, (_water?.Line ?? _horizon) + r.Range(0.07, 0.1), r.Range(0.16, 0.2), "whale", flip: faceIn, feature: creature);
                 case PosterFeature.Otter:
-                    return Place(Prop.Otter, 2, x, (_water?.Line ?? _horizon) + r.Range(0.08, 0.12), r.Range(0.19, 0.23), "otter", flip: faceIn, feature: creature);
+                    return Place(Prop.Otter, 2, x, (_water?.Line ?? _horizon) + r.Range(0.08, 0.12), r.Range(0.23, 0.27), "otter", flip: faceIn, feature: creature);
                 case PosterFeature.Turtle:
                     if (_underwater)
                         return Place(Prop.Turtle, 2, x, r.Range(0.46, 0.54), r.Range(0.17, 0.21), "turtle", flip: faceIn, feature: creature);
                     return Place(Prop.Turtle, 3, x, near.Y(x) + 0.008, r.Range(0.16, 0.2), "turtle", flip: faceIn, variant: 1, feature: creature);
                 case PosterFeature.Owl:
                 {
-                    var ox = 0.5 + _side * 0.33;
+                    var ox = 0.5 + _side * 0.27;
                     return Place(Prop.Owl, 3, ox, _horizon - 0.02 + r.Jitter(0.03), r.Range(0.15, 0.18), "owl", flip: _side < 0, feature: creature);
                 }
                 case PosterFeature.Dinosaur:
                     x = GroundedX(mid, x);
                     return Place(Prop.Dinosaur, 2, x, mid.Y(x) + 0.01, r.Range(0.3, 0.36), "dinosaur", flip: faceIn, feature: creature);
                 case PosterFeature.Cat:
-                    return Place(Prop.Cat, 3, x, near.Y(x) + 0.004, r.Range(0.14, 0.17), "cat", flip: faceIn, feature: creature);
+                    return Place(Prop.Cat, 3, x, near.Y(x) + 0.004, r.Range(0.17, 0.2), "cat", flip: faceIn, feature: creature);
                 case PosterFeature.Camel:
                     return Place(Prop.Camel, 3, x, near.Y(x) + 0.008, r.Range(0.24, 0.28), "camel", flip: faceIn, feature: creature);
                 case PosterFeature.Deer:
-                    return Place(Prop.Deer, 3, x, near.Y(x) + 0.008, r.Range(0.24, 0.28), "deer", flip: faceIn, feature: creature);
+                    return Place(Prop.Deer, 3, x, near.Y(x) + 0.008, r.Range(0.27, 0.31), "deer", flip: faceIn, feature: creature);
                 case PosterFeature.Bear:
-                    return Place(Prop.Bear, 3, x, near.Y(x) + 0.008, r.Range(0.23, 0.27), "bear", flip: faceIn, feature: creature);
+                    return Place(Prop.Bear, 3, x, near.Y(x) + 0.008, r.Range(0.26, 0.3), "bear", flip: faceIn, feature: creature);
                 case PosterFeature.Hedgehog:
-                    return Place(Prop.Hedgehog, 3, x, near.Y(x) + 0.008, r.Range(0.16, 0.19), "hedgehog", flip: faceIn, feature: creature);
+                    return Place(Prop.Hedgehog, 3, x, near.Y(x) + 0.008, r.Range(0.19, 0.22), "hedgehog", flip: faceIn, feature: creature);
                 case PosterFeature.Rabbit:
-                    return Place(Prop.Rabbit, 3, x, near.Y(x) + 0.008, r.Range(0.16, 0.19), "rabbit", flip: faceIn, feature: creature);
+                    return Place(Prop.Rabbit, 3, x, near.Y(x) + 0.008, r.Range(0.19, 0.22), "rabbit", flip: faceIn, feature: creature);
                 case PosterFeature.Fox:
                 default:
                 {
@@ -801,11 +824,11 @@ public static class ScenePlanner
                 };
                 if (showMoon)
                 {
-                    var radius = time == PosterTimeOfDay.Moonlit ? r.Range(0.058, 0.072) : r.Range(0.042, 0.056);
+                    var radius = time == PosterTimeOfDay.Moonlit ? r.Range(0.042, 0.052) : r.Range(0.034, 0.044);
                     // Full or crescent only: a gibbous "bite" reads as an eclipse or a cookie.
                     var phase = time == PosterTimeOfDay.Moonlit ? 0 : r.Range(0.64, 0.76);
                     var mx = 0.5 - _side * r.Range(0.18, 0.32);
-                    var my = TitleSafe.Bottom + radius + r.Range(0.02, 0.12);
+                    var my = Math.Max(0.36, TitleSafe.Bottom + radius + 0.02) + r.Range(0, 0.1);
                     // Never behind a ridge: keep ≥1.8 radii above every far silhouette under it,
                     // sliding outward (then shrinking) until it fits.
                     for (var attempt = 0; attempt < 12; attempt++)

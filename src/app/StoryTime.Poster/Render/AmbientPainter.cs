@@ -58,7 +58,11 @@ public static class AmbientPainter
                 {
                     var fall = (p.Y + t / p.Period) % 1.08;
                     var x = p.X + p.Amp * Math.Sin(w * 0.8 * t + p.Phase);
-                    using var flake = Paint.Fill(color.WithAlpha((byte)Math.Clamp(p.Alpha * 255, 0, 255)));
+                    // Soft and dim behind the title band; never brighter than 0.7 anywhere.
+                    var a = Math.Min(0.7, p.Alpha) * (fall < 0.3 ? 0.35 : 1);
+                    using var blur = p.Depth >= 3 ? SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(0.4f, vp.S(p.Size) * 0.5f)) : null;
+                    using var flake = Paint.Fill(color.WithAlpha((byte)Math.Clamp(a * 255, 0, 255)));
+                    flake.MaskFilter = blur;
                     canvas.DrawCircle(vp.X(x) + off.X, vp.Y(fall - 0.04) + off.Y, Math.Max(0.6f, vp.S(p.Size)), flake);
                     break;
                 }

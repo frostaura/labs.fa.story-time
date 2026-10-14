@@ -602,7 +602,7 @@ internal static class PropPainter
         cap.Close();
         if (k.P.Lit)
         {
-            var glow = new Oklch(0.82, 0.08, 175);
+            var glow = new Oklch(0.8, 0.06, 80);
             Paint.Glow(k.C, x, y - s * 0.7f, s * 1.4f, Paint.Sk(glow), 0.28);
             k.Sil(stem);
             k.Flat(cap, glow.Lighter(-0.12), 0.95);
@@ -682,9 +682,15 @@ internal static class PropPainter
         k.C.DrawOval(rect, water);
         if (k.Plan.Moon is not null)
         {
-            using var glint = Paint.Fill(Paint.Sk(ScenePalette.Cream, 0.55));
-            for (var i = 0; i < 3; i++)
-                k.C.DrawRoundRect(x - s * (0.05f + i * 0.03f), y - s * 0.04f + i * s * 0.035f, s * (0.1f + i * 0.06f), Math.Max(0.8f, s * 0.008f), 1, 1, glint);
+            // One soft, horizontally smeared moon highlight — light on water, not a ladder.
+            using var glint = new SKPaint
+            {
+                IsAntialias = true,
+                Color = Paint.Sk(ScenePalette.Cream, 0.4),
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(0.8f, s * 0.02f)),
+            };
+            var gx = x + (float)(k.Plan.Moon!.X - k.P.X) * s * 0.4f;
+            k.C.DrawOval(gx, y - s * 0.01f, s * 0.16f, s * 0.018f, glint);
         }
     }
 
@@ -826,6 +832,19 @@ internal static class PropPainter
         Tower(x + keepW * 0.62f, s * 0.62f, s * 0.14f);
         Tower(x + (float)r.Jitter(0.05) * s, s * 0.9f, s * 0.12f);
         k.Sil(path, 0.03, 0.01);
+        // In a cloud kingdom the castle rises OUT of the clouds: a skirt of puffs over its foot.
+        if (k.Plan.Spec.Scene == PosterScene.CloudKingdom)
+        {
+            var band = k.Plan.Bands.FirstOrDefault(b => b.Depth == k.P.Depth);
+            if (band is not null)
+            {
+                using var skirt = new SKPath();
+                for (var i = -3; i <= 3; i++)
+                    skirt.AddCircle(x + i * s * 0.13f, y + s * 0.02f - (3 - Math.Abs(i)) * s * 0.012f, s * (0.1f + (float)r.Range(0, 0.04)));
+                using var merged = skirt.Simplify() ?? new SKPath(skirt);
+                Paint.Silhouette(k.C, merged, TerrainPainter.BandColor(k.Plan, band), ScenePalette.Cream, 0.35, 0, Math.Max(1f, s * 0.02f), 0.03, 0.03);
+            }
+        }
         // Turret caps catch the moon: a soft cream-tinted roof colour.
         var capColor = Oklab.Mix(k.Ink.ToOklab(), ScenePalette.Cream.ToOklab(), 0.3).ToOklch();
         Paint.Silhouette(k.C, caps, capColor, ScenePalette.Cream, 0.4, k.RimDx, k.RimDy, 0.03, 0.02);
@@ -1299,14 +1318,15 @@ internal static class PropPainter
         var (cx, cy, s) = (k.X, k.Y, k.S);
         using var path = new SKPath();
         // Branch from beyond the right edge (mirrored by flip for the left edge).
-        // A trunk just inside the nearer frame edge (in pre-flip coordinates when mirrored).
-        var trunkX = k.P.Flip ? 2 * cx - (k.Vp.X(0) + k.Vp.Unit * 0.02f) : k.Vp.X(1.0) - k.Vp.Unit * 0.02f;
+        // A slim tapered trunk just inside the nearer frame edge (pre-flip coordinates when
+        // mirrored): the branch is always held by something visible at every tilt.
+        var u = k.Vp.Unit;
+        var trunkX = k.P.Flip ? 2 * cx - (k.Vp.X(0) + u * 0.07f) : k.Vp.X(1.0) - u * 0.07f;
         var reach = Math.Max(trunkX - cx, s * 0.6f);
-        var far = trunkX + k.Vp.Unit * 2;
-        path.MoveTo(trunkX - s * 0.22f, k.Vp.Height + 4f);
-        path.CubicTo(trunkX - s * 0.16f, cy, trunkX - s * 0.2f, cy - s, trunkX - s * 0.14f, -4f);
-        path.LineTo(far, -4f);
-        path.LineTo(far, k.Vp.Height + 4f);
+        path.MoveTo(trunkX - u * 0.045f, k.Vp.Height + 4f);
+        path.CubicTo(trunkX - u * 0.03f, cy, trunkX - u * 0.035f, cy - s, trunkX - u * 0.025f, -4f);
+        path.LineTo(trunkX + u * 0.025f, -4f);
+        path.CubicTo(trunkX + u * 0.035f, cy - s, trunkX + u * 0.03f, cy, trunkX + u * 0.045f, k.Vp.Height + 4f);
         path.Close();
         path.MoveTo(cx - s * 0.5f, cy + s * 0.01f);
         path.QuadTo(cx + reach * 0.4f, cy - s * 0.06f, cx + reach, cy - s * 0.12f);

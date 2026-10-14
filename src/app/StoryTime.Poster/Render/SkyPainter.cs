@@ -29,7 +29,8 @@ internal static class SkyPainter
         var zen = c.SkyZenith.ToOklab();
         var mid = c.SkyMid.ToOklab();
         var hor = c.SkyHorizon.ToOklab();
-        var glow = c.HorizonGlow.ToOklab().ToLinearRgb();
+        // Underwater, the light from above is a quiet cool shimmer, never a murky dusk wash.
+        var glow = (plan.Underwater ? c.SkyHorizon.Lighter(0.05).ScaleC(0.8) : c.HorizonGlow).ToOklab().ToLinearRgb();
         var horizon = plan.Horizon;
         var underwater = plan.Underwater;
         var sunX = 0.5 + plan.Side * 0.22;
@@ -51,7 +52,7 @@ internal static class SkyPainter
             double g;
             if (underwater)
             {
-                if (hor.L > 0.36) hor = hor with { L = 0.36 };
+                if (hor.L > 0.3) hor = hor with { L = 0.3 };
                 // Water column: brighter toward the surface, deepening to the reef floor.
                 var t = Math.Clamp(ny / horizon, 0, 1.2);
                 baseLab = t < 0.45

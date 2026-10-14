@@ -193,11 +193,11 @@ public class RenderTests(ITestOutputHelper output)
             const int size = 226;
             using var set = PosterEngine.RenderLayers(spec, size, size);
             var vp = set.Viewport;
-            Assert.True(vp.BleedX >= set.Layers.Max(l => l.Travel), "bleed smaller than the deepest travel");
+            Assert.True(vp.BleedX >= set.Layers.Max(l => Math.Abs(l.Travel)), "bleed smaller than the largest travel");
             // Below the lowest point of the far silhouette (or the waterline), shifted by
             // the far layer's own travel, everything must be land or sea.
             var plan = set.Plan;
-            var farTravel = PosterEngine.TravelFraction[1];
+            var farTravel = Math.Abs(PosterEngine.TravelFraction[1]);
             var lowest = plan.Water is { } w ? w.Line
                 : plan.Bands.Where(b => b.Depth == 1 && b.Profile.Floor is null)
                     .Max(b => Enumerable.Range(0, 81).Max(k => b.Profile.Y(-0.2 + k * 0.0175)));

@@ -410,3 +410,34 @@ MEDIUM fixes:
 - Sleepy and Cozy moods more visible;
 - a smaller cat;
 - a rounder cove island.
+
+### Round 3
+
+All three lenses agreed on the top issue.
+
+- **Subjects and the warm light left the frame at a tilt extreme.** The founder's spread of
+  [12, 20, 30, 40] pt moved every layer the same way: a 40 pt camera pan with depth on top.
+  Travel is now **pivoted between far and mid**, at [−12, −4, +6, +16] pt. Depth comes from
+  the differences between layers, and those are preserved: sky against foreground is still
+  28 pt. The subject now barely moves, the sky visibly drifts the other way, and bleed
+  (and memory) roughly halves.
+- **Unsupported props.**
+  - The owl's tree is now a slim trunk kept inside the frame.
+  - The town telescope stands on the near roof.
+  - In the cloud kingdom, castles rise out of a skirt of cloud and take the focal third.
+  - Oasis palms stand on the bank beside the pool.
+- **Reef values.** The surface is no lighter than L 0.30 and its light is cool; the
+  seabed is lifted and less hazy.
+- **Cloud kingdom values.** They ran backwards: the ladder is now L 0.47 → 0.22 toward the
+  viewer.
+- **The moon outranked the subject.** It is smaller (diameter 7–10%), sits at y ≥ 0.36,
+  and is a hair dimmer than the title cream. Subjects are 10–20% larger.
+- **The lantern was a stamp.** It now joins only Cozy nights and about a third of the rest.
+
+MEDIUM fixes:
+- EmberSky retuned to a low-chroma rust;
+- the oasis glint is one soft highlight, not a ladder;
+- amber mushrooms;
+- snow capped at 0.7 alpha, softer in front and dim behind the title;
+- framing pieces present 60% of the time;
+- a featured landmark becomes the subject (no duplicate castle).

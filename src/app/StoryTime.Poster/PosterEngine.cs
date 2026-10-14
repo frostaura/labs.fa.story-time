@@ -56,15 +56,21 @@ public static class PosterEngine
     public const int ArtVersion = PosterEngineInfo.ArtVersion;
 
     /// <summary>Full-tilt travel per depth as a fraction of the poster's shorter side.
-    /// Calibrated on a physical iPhone against a 226 pt player poster (founder evidence,
-    /// 2026-07-31): [12, 20, 30, 40] pt. Below these the back layers read as static.</summary>
-    public static readonly double[] TravelFraction = [12 / 226.0, 20 / 226.0, 30 / 226.0, 40 / 226.0];
+    ///
+    /// The founder-calibrated spread on a 226 pt player poster (physical iPhone, 2026-07-31)
+    /// was [12, 20, 30, 40] pt — every layer moving the same way. Depth is sold by the
+    /// DIFFERENCES between layers, so the engine keeps those differences exactly but pivots
+    /// them about a point between far and mid (critique round 3): [−12, −4, +6, +16] pt.
+    /// Sky against foreground still spans 28 pt (more than the original 40−12), the sky now
+    /// visibly drifts against the frame, and the subject on the mid/near ground stays
+    /// composed instead of being carried off the edge by a 40 pt camera pan.</summary>
+    public static readonly double[] TravelFraction = [-12 / 226.0, -4 / 226.0, 6 / 226.0, 16 / 226.0];
 
     public static PosterPlan Plan(PosterSpec spec) => ScenePlanner.Plan(spec);
 
     /// <summary>Bleed in pixels so the fastest layer never exposes an edge at full tilt.</summary>
     public static int BleedFor(int visibleW, int visibleH, double travelScale) =>
-        travelScale <= 0 ? 0 : (int)Math.Ceiling(TravelFraction[^1] * Math.Min(visibleW, visibleH) * travelScale) + 2;
+        travelScale <= 0 ? 0 : (int)Math.Ceiling(TravelFraction.Max(Math.Abs) * Math.Min(visibleW, visibleH) * travelScale) + 2;
 
     public static PosterLayerSet RenderLayers(PosterSpec spec, int visibleW, int visibleH, double travelScale = 1.0,
         bool bakeAmbient = false) =>
