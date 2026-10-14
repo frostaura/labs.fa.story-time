@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.PremiumPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:views="clr-namespace:StoryTime.App.Views"
+    x:Name="Page"
+    x:DataType="vm:PremiumViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.PresentationMode="ModalAnimated">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="32,14,32,28" Spacing="0">
+            <VerticalStackLayout.GestureRecognizers>
+                <SwipeGestureRecognizer Direction="Down" Command="{Binding CloseCommand}" />
+            </VerticalStackLayout.GestureRecognizers>
+
+            <!-- Drag handle (tap or swipe down to close). The 4dp pill sits inside a 44dp
+                 grid so the target is a thumb, not a hairline. -->
+            <Grid HeightRequest="44" BackgroundColor="Transparent" Margin="0,0,0,4">
+                <BoxView WidthRequest="52" HeightRequest="4" CornerRadius="2"
+                         Color="{StaticResource Border}" HorizontalOptions="Center" VerticalOptions="Center" />
+                <Grid.GestureRecognizers>
+                    <!-- The swipe stays a recognizer (TouchBehavior does not do swipes); the
+                         tap-to-close moved into the behavior below so pointer-down exists. -->
+                    <SwipeGestureRecognizer Direction="Down" Command="{Binding CloseCommand}" />
+                </Grid.GestureRecognizers>
+                <Grid.Behaviors>
+                    <toolkit:TouchBehavior
+                        Command="{Binding Source={x:Reference Page}, Path=BindingContext.CloseCommand, x:DataType=views:PremiumPage}"
+                        CurrentTouchStatusChanged="OnPressDownLight" />
+                </Grid.Behaviors>
+            </Grid>
+
+            <!-- Back: same pill, same top-left position as every other screen. -->
+            <Button Style="{StaticResource BackPill}" Command="{Binding CloseCommand}" />
+
+            <Label Style="{StaticResource Eyebrow}" Text="STORYTIME · PREMIUM" Margin="0,26,0,22" />
+
+            <Label Style="{StaticResource Display}" Text="Longer nights, softer light." />
+            <Label Style="{StaticResource Body}" Margin="0,12,0,30"
+                   Text="Everything the loom already does, with a little more room to breathe." />
+
+            <!-- Benefits — hairline-divided rows, per the trial card blurb -->
+            <VerticalStackLayout Spacing="0">
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="2" Padding="0,14,0,14">
+                    <Label Grid.Row="0" Style="{StaticResource UiText}" FontSize="15" Text="15-minute stories" />
+                    <Label Grid.Row="1" Style="{StaticResource Caption}" Text="The long ones, for the slow nights." />
+                </Grid>
+                <BoxView />
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="2" Padding="0,14,0,14">
+                    <Label Grid.Row="0" Style="{StaticResource UiText}" FontSize="15" Text="Lock-screen art" />
+                    <Label Grid.Row="1" Style="{StaticResource Caption}" Text="Tonight's poster, waiting on the lock screen." />
+                </Grid>
+                <BoxView />
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="2" Padding="0,14,0,14">
+                    <Label Grid.Row="0" Style="{StaticResource UiText}" FontSize="15" Text="Music under narration" />
+                    <Label Grid.Row="1" Style="{StaticResource Caption}" Text="A soft bed of music beneath every voice." />
+                </Grid>
+                <BoxView />
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="2" Padding="0,14,0,14">
+                    <Label Grid.Row="0" Style="{StaticResource UiText}" FontSize="15" Text="15-minute rests" />
+                    <Label Grid.Row="1" Style="{StaticResource Caption}" Text="The loom rests 15 minutes between stories, not 30." />
+                </Grid>
+                <BoxView />
+            </VerticalStackLayout>
+
+            <!-- Honest price row — no billing exists until the M4 decision -->
+            <Border StrokeThickness="1" Stroke="{StaticResource Accent}" BackgroundColor="Transparent"
+                    Padding="20,18" Margin="0,30,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="6">
+                    <Label Style="{StaticResource UiText}" Text="Coming soon" />
+                    <Label Style="{StaticResource Body}"
+                           Text="Premium arrives with the full release. No card, no account, ever." />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Style="{StaticResource Whisper}" HorizontalTextAlignment="Center" Margin="0,26,0,0"
+                   Text="Your free nights keep working exactly as promised." />
+
+            <!-- Debug-only quiet testing row (flips the local entitlement override).
+                 Tappable ⇒ Accent, never Dim. -->
+            <Label x:Name="TestingRow" Style="{StaticResource TappableWhisper}" HorizontalTextAlignment="Center"
+                   Margin="0,22,0,0" IsVisible="False" Text="{Binding TestingRowText}">
+                <Label.Behaviors>
+                    <!-- Press-down Light answers the finger; the VM's Celebrate stays the
+                         TERMINAL outcome of the unlock (never coalesced) and lands after. -->
+                    <toolkit:TouchBehavior
+                        Command="{Binding Source={x:Reference Page}, Path=BindingContext.ToggleTestingUnlockCommand, x:DataType=views:PremiumPage}"
+                        CurrentTouchStatusChanged="OnPressDownLight"
+                        PressedOpacity="0.62" DefaultOpacity="1"
+                        PressedAnimationDuration="70" DefaultAnimationDuration="130" />
+                </Label.Behaviors>
+            </Label>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

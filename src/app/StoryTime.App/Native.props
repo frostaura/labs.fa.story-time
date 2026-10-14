@@ -1,0 +1,73 @@
+<Project>
+  <!--
+    Native AI runtimes for the MAUI heads (Phase C owns this file).
+
+    llama.cpp libs come from scripts/build-native.sh via $(STORYTIME_NATIVE_ROOT),
+    defaulting to $(HOME)/StoryTimeNative — always OUTSIDE the iCloud-synced tree.
+    sherpa-onnx natives: Android via the org.k2fsa.sherpa.onnx runtime NuGet packages
+    referenced by StoryTime.Core; iOS via the STATIC prebuilt xcframeworks below
+    (scripts/build-native.sh sherpa-ios stages them; binding is
+    Platforms/iOS/SherpaNativeIos.cs, DllImport("__Internal")).
+
+    Model binaries are NEVER packaged in Debug — the #if DEBUG LAN bootstrap
+    (DebugModelBootstrap) downloads them from scripts/serve-models.sh on first run.
+    Release bundling (MauiAsset / asset packs) is a later, deliberate step.
+  -->
+  <PropertyGroup>
+    <STORYTIME_NATIVE_ROOT Condition="'$(STORYTIME_NATIVE_ROOT)' == ''">$(HOME)/StoryTimeNative</STORYTIME_NATIVE_ROOT>
+  </PropertyGroup>
+
+  <!-- ============ Android: libllama.so + libggml*.so, arm64-v8a ============ -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' And Exists('$(STORYTIME_NATIVE_ROOT)/android-arm64')">
+    <AndroidNativeLibrary Include="$(STORYTIME_NATIVE_ROOT)/android-arm64/libllama.so" Abi="arm64-v8a" />
+    <AndroidNativeLibrary Include="$(STORYTIME_NATIVE_ROOT)/android-arm64/libggml.so" Abi="arm64-v8a" />
+    <AndroidNativeLibrary Include="$(STORYTIME_NATIVE_ROOT)/android-arm64/libggml-base.so" Abi="arm64-v8a" />
+    <AndroidNativeLibrary Include="$(STORYTIME_NATIVE_ROOT)/android-arm64/libggml-cpu.so" Abi="arm64-v8a" />
+  </ItemGroup>
+
+  <!-- ============ iOS: llama.xcframework (device + simulator), static ============ -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And Exists('$(STORYTIME_NATIVE_ROOT)/ios/llama.xcframework')">
+    <!-- upstream build-xcframework.sh emits DYNAMIC llama.framework slices; the app embeds+signs it -->
+    <NativeReference Include="$(STORYTIME_NATIVE_ROOT)/ios/llama.xcframework">
+      <Kind>Framework</Kind>
+      <SmartLink>false</SmartLink>
+    </NativeReference>
+  </ItemGroup>
+
+  <!-- ============ iOS: sherpa-onnx TTS, STATIC (device + simulator) ============
+       sherpa-onnx-v1.13.4 prebuilt release artifacts staged by scripts/build-native.sh
+       (sherpa-ios target). libsherpa-onnx.a is the merged all-deps archive (espeak-ng,
+       kaldi, phonemizers); onnxruntime.xcframework is a static framework consumed by it.
+       ForceLoad keeps the C-API objects present for simulator (JIT/interpreter) runs,
+       where DllImport("__Internal") resolves via dlsym instead of AOT-time linking. -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And Exists('$(STORYTIME_NATIVE_ROOT)/ios/sherpa-onnx.xcframework')">
+    <NativeReference Include="$(STORYTIME_NATIVE_ROOT)/ios/sherpa-onnx.xcframework">
+      <Kind>Static</Kind>
+      <ForceLoad>True</ForceLoad>
+      <SmartLink>false</SmartLink>
+      <LinkerFlags>-lc++</LinkerFlags>
+    </NativeReference>
+    <NativeReference Include="$(STORYTIME_NATIVE_ROOT)/ios/onnxruntime.xcframework">
+      <Kind>Framework</Kind>
+      <SmartLink>false</SmartLink>
+    </NativeReference>
+  </ItemGroup>
+
+  <!-- ============ iOS Debug: bake the Mac's Bonjour name for the model bootstrap ============
+       IosModelProvider's default LAN host becomes "<LocalHostName>.local:8787" so a physical
+       iPhone self-fetches models from scripts/serve-models.sh with no hand-written
+       model-server.txt (the file remains an override). Debug-only; Release bakes nothing. -->
+  <Target Name="_StoryTimeBakeModelServerHost"
+          BeforeTargets="GetAssemblyAttributes"
+          Condition="'$(Configuration)' == 'Debug' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <Exec Command="scutil --get LocalHostName" ConsoleToMSBuild="true" StandardOutputImportance="low" ContinueOnError="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_TwLocalHostName" />
+    </Exec>
+    <ItemGroup Condition="'$(_TwLocalHostName)' != ''">
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>StoryTime.ModelServerDefault</_Parameter1>
+        <_Parameter2>$(_TwLocalHostName).local:8787</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+</Project>

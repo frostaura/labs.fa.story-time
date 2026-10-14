@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.PlayerPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    xmlns:mct="clr-namespace:CommunityToolkit.Maui.Views;assembly=CommunityToolkit.Maui.MediaElement"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    x:Name="PlayerRoot"
+    x:DataType="vm:PlayerViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.PresentationMode="ModalAnimated">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Drag handle (tap, swipe down, or drag past the threshold to close; the drag
+             pan + its arming Tick live in code-behind). Lives OUTSIDE the ScrollView —
+             the scroll container swallows vertical pans on Android (same lesson as the
+             weave sheet's GrabZone). The grid widens the touch target beyond the pill. -->
+        <Grid x:Name="DragHandle" Grid.Row="0" HeightRequest="44" Margin="0,6,0,0"
+              BackgroundColor="Transparent">
+            <BoxView WidthRequest="52" HeightRequest="4" CornerRadius="2"
+                     Color="{StaticResource Border}" HorizontalOptions="Center" VerticalOptions="Center" />
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseCommand}" />
+                <SwipeGestureRecognizer Direction="Down" Command="{Binding CloseCommand}" />
+            </Grid.GestureRecognizers>
+            <!-- A drag handle is a gesture hint, not a button. The visible way out is the
+                 same pill as every other screen (founder affordance pass 2026-07-31);
+                 the handle keeps working for anyone who already knows the gesture. -->
+            <Button Style="{StaticResource PillButtonCompact}" Text="‹  Close"
+                    HorizontalOptions="Start" VerticalOptions="Center" Margin="32,0,0,0"
+                    Command="{Binding CloseCommand}" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="32,0,32,28" Spacing="0">
+                <VerticalStackLayout.GestureRecognizers>
+                    <SwipeGestureRecognizer Direction="Down" Command="{Binding CloseCommand}" />
+                </VerticalStackLayout.GestureRecognizers>
+
+                <!-- 4-layer parallax poster -->
+                <controls:ParallaxPosterView Poster="{Binding Poster}" WidthRequest="226" HeightRequest="226"
+                                             HorizontalOptions="Center" Margin="0,0,0,24" />
+
+                <Label Style="{StaticResource DisplaySmall}" FontSize="29" HorizontalTextAlignment="Center"
+                       Text="{Binding Title}" />
+                <Label Style="{StaticResource EyebrowAccent}" HorizontalTextAlignment="Center" Margin="0,10,0,0"
+                       Text="{Binding Eyebrow}" />
+                <Label Style="{StaticResource Caption}" HorizontalTextAlignment="Center" Margin="0,12,0,0"
+                       Text="{Binding RecapLine}" IsVisible="{Binding HasRecap}" />
+
+                <!-- Progress -->
+                <!-- 44dp tall so the seek/scrub target is a thumb (the hairline + 14dp
+                     thumb are unchanged, they just sit in a taller catch area). -->
+                <Grid x:Name="ProgressArea" HeightRequest="44" Margin="0,22,0,0" BackgroundColor="Transparent">
+                    <BoxView VerticalOptions="Center" />
+                    <BoxView x:Name="ProgressFill" HeightRequest="1" Color="{StaticResource Accent}"
+                             HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="0" />
+                    <Ellipse x:Name="ProgressThumb" WidthRequest="14" HeightRequest="14"
+                             Fill="{StaticResource AccentBrush}" HorizontalOptions="Start" VerticalOptions="Center" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label Grid.Column="0" Style="{StaticResource Whisper}" Text="{Binding PositionText}" />
+                    <Label Grid.Column="1" Style="{StaticResource Whisper}" Text="{Binding DurationText}" />
+                </Grid>
+
+                <!-- Controls. Stop and Replay were 14px Faint text labels with no container
+                     and a ~18dp target — the exact "unreadable, easy to miss" case the
+                     founder flagged. They are pills now; the amber play button keeps its
+                     64dp disc and gains a pressed state. -->
+                <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="18" Margin="0,20,0,0">
+                    <Button Grid.Column="0" Style="{StaticResource PillButtonCompact}" Text="■&#xFE0E;  Stop"
+                            HorizontalOptions="End" VerticalOptions="Center" Command="{Binding StopCommand}" />
+                    <Border x:Name="PlayDisc" Grid.Column="1" WidthRequest="64" HeightRequest="64" StrokeThickness="0"
+                            BackgroundColor="{StaticResource Accent}">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="32" />
+                        </Border.StrokeShape>
+                        <Border.Behaviors>
+                            <!-- Play/pause disc: Light at POINTER-DOWN, before the transport
+                                 state flips and the glyph swaps (anticipatory rule). -->
+                            <toolkit:TouchBehavior
+                                Command="{Binding Source={x:Reference PlayerRoot}, Path=BindingContext.PlayPauseCommand, x:DataType=ContentPage}"
+                                CurrentTouchStatusChanged="OnPressDownLight"
+                                PressedScale="0.93" DefaultScale="1"
+                                PressedOpacity="0.85" DefaultOpacity="1"
+                                PressedAnimationDuration="70" DefaultAnimationDuration="130" />
+                        </Border.Behaviors>
+                        <Label x:Name="PlayGlyph" Text="▶&#xFE0E;" FontSize="22" TextColor="{StaticResource InkOnAccent}"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <Button Grid.Column="2" Style="{StaticResource PillButtonCompact}" Text="↻&#xFE0E;  Replay"
+                            HorizontalOptions="Start" VerticalOptions="Center" Command="{Binding ReplayCommand}" />
+                </Grid>
+
+                <!-- Teaser approval -->
+                <Button Margin="0,26,0,0" Text="Sounds lovely — unlock for the shelf"
+                        Command="{Binding ApproveCommand}" IsVisible="{Binding IsAwaitingApproval}" />
+
+                <!-- Continue the series (design-state stub) -->
+                <Button Style="{StaticResource OutlinedButton}" Margin="0,22,0,0"
+                        Text="{Binding ContinueLabel}" Command="{Binding ContinueSeriesCommand}"
+                        IsVisible="{Binding IsSeries}" />
+
+                <!-- Mix rows (live hairline sliders; Voice disabled in live-TTS mode) -->
+                <Grid ColumnDefinitions="70,*" HeightRequest="46" Margin="0,26,0,0">
+                    <Label Grid.Column="0" Style="{StaticResource Caption}" Text="Voice" VerticalOptions="Center" />
+                    <controls:MixTrackView Grid.Column="1" VerticalOptions="Center"
+                                           Value="{Binding VoiceVolume, Mode=TwoWay}"
+                                           IsEnabled="{Binding IsVoiceRowEnabled}" />
+                </Grid>
+                <!-- Music, Premium-live: drags set the ambient bed volume in real time. -->
+                <Grid ColumnDefinitions="70,*" HeightRequest="46" IsVisible="{Binding IsMusicLive}">
+                    <Label Grid.Column="0" Style="{StaticResource Caption}" Text="Music" VerticalOptions="Center" />
+                    <controls:MixTrackView Grid.Column="1" VerticalOptions="Center"
+                                           Value="{Binding MusicVolume, Mode=TwoWay}" />
+                </Grid>
+                <!-- Music, locked: tapping the row opens the paygate page. -->
+                <!-- The whole row routes to the paygate, so the PREMIUM tag is Accent and
+                     the row is no longer dimmed into invisibility (was Opacity 0.55 with a
+                     Faint eyebrow — two dim signals stacked). -->
+                <Grid ColumnDefinitions="70,*,Auto" HeightRequest="48"
+                      IsVisible="{Binding IsMusicLocked}">
+                    <Grid.Behaviors>
+                        <!-- Locked mix row: Light at pointer-down, before the paygate pushes. -->
+                        <toolkit:TouchBehavior
+                            Command="{Binding Source={x:Reference PlayerRoot}, Path=BindingContext.OpenPremiumCommand, x:DataType=ContentPage}"
+                            CurrentTouchStatusChanged="OnPressDownLight"
+                            PressedBackgroundColor="{StaticResource SurfaceRaised}"
+                            DefaultBackgroundColor="Transparent"
+                            PressedAnimationDuration="60" DefaultAnimationDuration="120" />
+                    </Grid.Behaviors>
+                    <Label Grid.Column="0" Style="{StaticResource Caption}" Text="Music" VerticalOptions="Center" />
+                    <Grid Grid.Column="1" VerticalOptions="Center" Opacity="0.55">
+                        <BoxView />
+                    </Grid>
+                    <Label Grid.Column="2" Style="{StaticResource EyebrowAccent}" Text="PREMIUM →&#xFE0E;"
+                           VerticalOptions="Center" Margin="12,0,0,0" />
+                </Grid>
+
+                <Label Style="{StaticResource Whisper}" HorizontalTextAlignment="Center" Margin="0,26,0,0"
+                       Text="Ends gently. No cliffhangers, ever." />
+
+                <!-- Hidden MediaElement drives file-backed narration -->
+                <mct:MediaElement x:Name="Media" HeightRequest="0" WidthRequest="0" IsVisible="False"
+                                  ShouldAutoPlay="False" ShouldShowPlaybackControls="False" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIDeviceFamily</key>
+	<array>
+		<integer>1</integer>
+		<integer>2</integer>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>XSAppIconAssets</key>
+	<string>Assets.xcassets/appicon.appiconset</string>
+	<!-- Required for the parent-settings biometric gate. Without this key iOS terminates
+	     the app the moment LAContext evaluates Face ID on a real device. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>StoryTime asks Face ID so only a grown-up can open Parent settings.</string>
+	<!-- Background weave (2026-07-31).
+	     · audio — the loom hum is a real, audible ambient loop that plays WHILE a story
+	       weaves (founder decision; never an inaudible keep-alive). An active Playback
+	       session with this mode is what legitimately keeps the pipeline running with the
+	       screen off, and the parent can silence it from Control Center or the Music
+	       slider — which is treated as opting out for that weave.
+	     · processing — BGProcessingTaskRequest, the opportunistic "iOS hands us CPU later"
+	       resume path. Promised nowhere in the product copy; it is a bonus. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>processing</string>
+	</array>
+	<!-- Must match WeaveBackgroundCoordinator.ResumeTaskId. iOS throws at launch if a task
+	     is registered without being permitted here. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>net.frostaura.storytime.weave-resume</string>
+	</array>
+</dict>
+</plist>

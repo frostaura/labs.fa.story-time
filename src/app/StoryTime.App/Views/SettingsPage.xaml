@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:views="clr-namespace:StoryTime.App.Views"
+    x:Name="Page"
+    x:DataType="vm:SettingsViewModel"
+    Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <!-- Locked veil (biometric gate every entry) -->
+        <VerticalStackLayout Padding="32" Spacing="14" VerticalOptions="Center"
+                             IsVisible="{Binding IsUnlocked, Converter={StaticResource InvertedBoolConverter}}">
+            <Label Style="{StaticResource DisplaySmall}" HorizontalTextAlignment="Center" Text="A grown-up moment." />
+            <Label Style="{StaticResource Body}" HorizontalTextAlignment="Center"
+                   Text="Asked every time — little fingers can't wander in." />
+            <ActivityIndicator IsRunning="{Binding GateFailed, Converter={StaticResource InvertedBoolConverter}}"
+                               HorizontalOptions="Center" Margin="0,10,0,0" />
+            <!-- Gentle failure line — the gate never crashes, it just stays shut. -->
+            <Label Style="{StaticResource Caption}" HorizontalTextAlignment="Center"
+                   Text="We couldn't check it's you — try again." IsVisible="{Binding GateFailed}" />
+            <Button Style="{StaticResource OutlinedButton}" Text="Try again" Clicked="OnRetryClicked"
+                    IsVisible="{Binding GateFailed}" Margin="0,10,0,0" />
+            <Button Style="{StaticResource BackPill}" HorizontalOptions="Center"
+                    Command="{Binding CloseCommand}" Margin="0,6,0,0" />
+        </VerticalStackLayout>
+
+        <!-- Unlocked settings -->
+        <ScrollView IsVisible="{Binding IsUnlocked}">
+            <!-- Extra bottom padding keeps the back button clear of the docked weave mini-bar. -->
+            <VerticalStackLayout Padding="32,24,32,100" Spacing="0">
+
+                <!-- Back: same pill, same top-left position as Library / Content filters
+                     / Premium (the mini-bar owns the bottom edge). -->
+                <Button Style="{StaticResource BackPill}" Command="{Binding CloseCommand}" Margin="0,4,0,0" />
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0,24,0,26">
+                    <Label Grid.Column="0" Style="{StaticResource Eyebrow}" Text="PARENT SETTINGS" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="{Binding BadgeText}" FontFamily="OutfitMedium" FontSize="12"
+                           TextColor="{StaticResource Success}" VerticalOptions="Center" />
+                </Grid>
+
+                <Label Style="{StaticResource Body}" Text="Asked every time — little fingers can't wander in."
+                       Margin="0,0,0,24" />
+
+                <!-- Trial card -->
+                <Border StrokeThickness="1" Stroke="{StaticResource Accent}" BackgroundColor="Transparent"
+                        Padding="20,18" Margin="0,0,0,30">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="12">
+                        <Label Grid.Row="0" Grid.Column="0" Style="{StaticResource UiText}"
+                               Text="{Binding TrialLine}" VerticalOptions="Center" />
+                        <!-- Was 13px accent text on a bare label; now a real pill. -->
+                        <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource PillButtonAccentCompact}"
+                                Text="UPGRADE  →" Command="{Binding ShowUpgradeCommand}" />
+                        <Label Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource Caption}"
+                               Text="Premium adds 15-minute stories, a 15-minute loom, and music under every voice." />
+                    </Grid>
+                </Border>
+
+                <!-- Toggle rows. The switch control now carries 64×44 of transparent touch
+                     area around its 44×26 capsule (the visual is unchanged).
+                     "Quality analytics" was removed entirely by founder decision
+                     2026-07-31 — see docs/design/mockup-spec.md. -->
+                <Grid ColumnDefinitions="*,Auto" HeightRequest="64">
+                    <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                        <Label Style="{StaticResource UiText}" FontSize="15" Text="Approval step" />
+                        <Label Style="{StaticResource Caption}" Text="Hear the teaser before your kid does" />
+                    </VerticalStackLayout>
+                    <controls:ToggleSwitchView Grid.Column="1" VerticalOptions="Center"
+                                               IsOn="{Binding ApprovalStep}" />
+                </Grid>
+                <BoxView />
+                <Grid ColumnDefinitions="*,Auto" HeightRequest="64">
+                    <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                        <Label Style="{StaticResource UiText}" FontSize="15" Text="Story-ready notifications" />
+                        <Label Style="{StaticResource Caption}" Text="A gentle ping when the loom finishes" />
+                    </VerticalStackLayout>
+                    <controls:ToggleSwitchView Grid.Column="1" VerticalOptions="Center"
+                                               IsOn="{Binding StoryReadyNotifications}" />
+                </Grid>
+                <BoxView />
+
+                <!-- Profiles row + inline editor. Nav rows get a pressed state (TouchBehavior,
+                     bound through the named page — behaviors don't inherit BindingContext)
+                     and an Accent value + chevron; Dim was the sole signal before. -->
+                <Grid x:Name="ProfilesRow" ColumnDefinitions="*,Auto" HeightRequest="60">
+                    <Grid.Behaviors>
+                        <toolkit:TouchBehavior
+                            Command="{Binding Source={x:Reference Page}, Path=BindingContext.ToggleProfileEditorCommand, x:DataType=views:SettingsPage}"
+                            CurrentTouchStatusChanged="OnPressDownLight"
+                            PressedBackgroundColor="{StaticResource SurfaceRaised}"
+                            DefaultBackgroundColor="Transparent"
+                            PressedAnimationDuration="60" DefaultAnimationDuration="120" />
+                    </Grid.Behaviors>
+                    <Label Grid.Column="0" Style="{StaticResource UiText}" FontSize="15" Text="Profiles"
+                           VerticalOptions="Center" Margin="4,0,0,0" />
+                    <Label Grid.Column="1" Style="{StaticResource RowValue}"
+                           Text="{Binding ProfileName, StringFormat='{0}  ›'}" Margin="0,0,4,0" />
+                </Grid>
+                <VerticalStackLayout IsVisible="{Binding IsProfileEditorVisible}" Spacing="0" Margin="0,4,0,14">
+                    <Label Style="{StaticResource Eyebrow}" Text="NICKNAME" Margin="0,8,0,2" />
+                    <Entry FontSize="20" Text="{Binding ProfileName}" />
+                    <BoxView Color="{StaticResource Border}" Margin="0,2,0,16" />
+                    <Label Style="{StaticResource Eyebrow}" Text="AGE" Margin="0,0,0,8" />
+                    <HorizontalStackLayout x:Name="EditorAgeRow" Spacing="22" Margin="0,0,0,16" />
+                    <Label Style="{StaticResource Eyebrow}" Text="THEY LOVE" Margin="0,0,0,6" />
+                    <FlexLayout x:Name="EditorInterestWrap" Wrap="Wrap" Direction="Row" Margin="0,0,0,16" />
+                    <Button Style="{StaticResource OutlinedButton}" Text="Save profile"
+                            Command="{Binding SaveProfileCommand}" />
+                </VerticalStackLayout>
+                <BoxView />
+
+                <!-- Content filters (live row: shows the current level, opens the picker) -->
+                <Grid x:Name="FiltersRow" ColumnDefinitions="*,Auto" HeightRequest="60">
+                    <Grid.Behaviors>
+                        <toolkit:TouchBehavior
+                            Command="{Binding Source={x:Reference Page}, Path=BindingContext.OpenContentFiltersCommand, x:DataType=views:SettingsPage}"
+                            CurrentTouchStatusChanged="OnPressDownLight"
+                            PressedBackgroundColor="{StaticResource SurfaceRaised}"
+                            DefaultBackgroundColor="Transparent"
+                            PressedAnimationDuration="60" DefaultAnimationDuration="120" />
+                    </Grid.Behaviors>
+                    <Label Grid.Column="0" Style="{StaticResource UiText}" FontSize="15" Text="Content filters"
+                           VerticalOptions="Center" Margin="4,0,0,0" />
+                    <Label Grid.Column="1" Style="{StaticResource RowValue}"
+                           Text="{Binding ContentFilterName, StringFormat='{0}  ›'}" Margin="0,0,4,0" />
+                </Grid>
+                <BoxView />
+
+                <!-- Storage is READ-ONLY: it no longer wears a chevron, because a chevron
+                     on a row that does nothing is exactly the noise this pass removes. -->
+                <Grid ColumnDefinitions="*,Auto" HeightRequest="60">
+                    <Label Grid.Column="0" Style="{StaticResource UiText}" FontSize="15" Text="Storage"
+                           VerticalOptions="Center" Margin="4,0,0,0" />
+                    <Label Grid.Column="1" Style="{StaticResource Caption}" Text="{Binding StorageText}"
+                           VerticalOptions="Center" Margin="0,0,4,0" />
+                </Grid>
+                <BoxView />
+
+                <Label Style="{StaticResource Whisper}" HorizontalTextAlignment="Center" Margin="0,28,0,8"
+                       Text="Stories, voices and profiles never leave this phone." />
+
+            </VerticalStackLayout>
+        </ScrollView>
+        <!-- The upgrade coming-soon sheet is gone: UPGRADE → now routes to the Premium
+             page (founder-requested paygate; see docs/design/mockup-spec.md). -->
+
+        <!-- Weave sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
+        <controls:WeaveSheetHost />
+    </Grid>
+</ContentPage>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.OnboardingVoicePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:views="clr-namespace:StoryTime.App.Views"
+    x:Name="Page"
+    x:DataType="vm:OnboardingVoiceViewModel"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="*,Auto,Auto" Padding="32,24,32,28">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="0">
+
+                <Label Style="{StaticResource Eyebrow}" Text="STORYTIME · 2 OF 3" Margin="0,24,0,28" />
+
+                <Label Style="{StaticResource Display}" Text="A voice and a length." />
+                <Label Style="{StaticResource Body}" Margin="0,10,0,32"
+                       Text="No card until you decide to stay." />
+
+                <Label Style="{StaticResource Eyebrow}" Text="NARRATOR" Margin="0,0,0,4" />
+                <VerticalStackLayout x:Name="VoiceList" Spacing="0" Margin="0,0,0,30" />
+
+                <Label Style="{StaticResource Eyebrow}" Text="STORY LENGTH · MINUTES" Margin="0,0,0,6" />
+                <controls:LengthTrackView x:Name="LengthTrack" Margin="0,0,0,6"
+                                          SelectedLength="{Binding SelectedLength}" />
+                <Label Style="{StaticResource TappableWhisper}" Text="15-minute stories are part of Premium →&#xFE0E;"
+                       IsVisible="{Binding ShowPremiumHint}" Margin="0,2,0,8">
+                    <Label.Behaviors>
+                        <!-- Light at press-down, before the paygate page is pushed. -->
+                        <toolkit:TouchBehavior
+                            Command="{Binding Source={x:Reference Page}, Path=BindingContext.OpenPremiumCommand, x:DataType=views:OnboardingVoicePage}"
+                            CurrentTouchStatusChanged="OnPressDownLight"
+                            PressedOpacity="0.62" DefaultOpacity="1"
+                            PressedAnimationDuration="70" DefaultAnimationDuration="130" />
+                    </Label.Behaviors>
+                </Label>
+
+                <Label Style="{StaticResource Eyebrow}" Text="STORIES CONTINUE AS" Margin="0,22,0,12" />
+                <HorizontalStackLayout Spacing="28">
+                    <VerticalStackLayout Spacing="6">
+                        <!-- Series / one-shot are a picker pair; their press-down Selection
+                             and command are wired in code-behind (PressHaptics.Touch). -->
+                        <Label x:Name="SeriesLabel" Text="A series" FontFamily="OutfitRegular" FontSize="18" />
+                        <BoxView x:Name="SeriesUnderline" HeightRequest="2" Color="{StaticResource Accent}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Spacing="6">
+                        <Label x:Name="OneShotLabel" Text="One-shots" FontFamily="OutfitRegular" FontSize="18" />
+                        <BoxView x:Name="OneShotUnderline" HeightRequest="2" Color="Transparent" />
+                    </VerticalStackLayout>
+                </HorizontalStackLayout>
+                <Label Style="{StaticResource Body}" Margin="0,12,0,10" Text="{Binding ModeHint}" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Button Grid.Row="1" Margin="0,16,0,0" Text="Continue →" Command="{Binding ContinueCommand}" />
+        <!-- Shared BackPill: onboarding is the one place back sits under the CTA rather
+             than top-left, because there is no header row to hold it. -->
+        <Button Grid.Row="2" Style="{StaticResource BackPill}" HorizontalOptions="Center"
+                Margin="0,12,0,0" Command="{Binding BackCommand}" />
+    </Grid>
+</ContentPage>

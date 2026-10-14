@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.OnboardingRulesPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:services="clr-namespace:StoryTime.App.Services"
+    x:DataType="vm:OnboardingRulesViewModel"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="*,Auto,Auto" Padding="32,24,32,28">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="0">
+
+                <Label Style="{StaticResource Eyebrow}" Text="STORYTIME · 3 OF 3" Margin="0,24,0,28" />
+
+                <Label Style="{StaticResource Display}" Text="Three things, then bed." Margin="0,0,0,30" />
+
+                <!-- 1 -->
+                <Grid ColumnDefinitions="56,*" Padding="0,18">
+                    <Label Grid.Column="0" Text="1" FontFamily="OutfitLight" FontSize="30"
+                           TextColor="{StaticResource Accent}" VerticalOptions="Start" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="6">
+                        <Label Style="{StaticResource UiText}" Text="Seven nights free" />
+                        <Label Style="{StaticResource Body}"
+                               Text="A full week of stories, on us. No card until you decide to stay." />
+                    </VerticalStackLayout>
+                </Grid>
+                <BoxView />
+
+                <!-- 2 -->
+                <Grid ColumnDefinitions="56,*" Padding="0,18">
+                    <Label Grid.Column="0" Text="2" FontFamily="OutfitLight" FontSize="30"
+                           TextColor="{StaticResource Accent}" VerticalOptions="Start" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="6">
+                        <Label Style="{StaticResource UiText}" Text="You approve first" />
+                        <Label Style="{StaticResource Body}"
+                               Text="Every new story plays you a teaser before it reaches little ears." />
+                    </VerticalStackLayout>
+                </Grid>
+                <BoxView />
+
+                <!-- 3 -->
+                <Grid ColumnDefinitions="56,*" Padding="0,18">
+                    <Label Grid.Column="0" Text="3" FontFamily="OutfitLight" FontSize="30"
+                           TextColor="{StaticResource Accent}" VerticalOptions="Start" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="6">
+                        <Label Style="{StaticResource UiText}" Text="One story at a time" />
+                        <Label Style="{StaticResource Body}"
+                               Text="After each story the loom rests 30 minutes. Bedtime stays bedtime." />
+                    </VerticalStackLayout>
+                </Grid>
+                <BoxView />
+
+                <!-- whisper block -->
+                <VerticalStackLayout Spacing="4" Margin="0,26,0,10">
+                    <Label Style="{StaticResource Whisper}" Text="Hold a story to share, favorite, or delete." />
+                    <Label Style="{StaticResource Whisper}" Text="Hold the lock to leave the Kid Shelf." />
+                    <Label Style="{StaticResource Whisper}" Text="Your fingerprint opens the grown-up door." />
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Threshold action: onboarding's last step commits the profile and builds the
+             welcome story, so it answers with MEDIUM at press-down (same weight as the
+             weave CTA) rather than the style's default Light. The VM's own start Medium
+             coalesces away. Disabled while busy ⇒ Pressed never raises ⇒ no haptic. -->
+        <Button Grid.Row="1" Margin="0,16,0,8" Text="Start my 7 free nights"
+                services:PressHaptics.OnPressed="Medium"
+                Command="{Binding StartCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}" />
+        <Label Grid.Row="2" Style="{StaticResource Whisper}" HorizontalTextAlignment="Center"
+               Text="No account. No card. Just stories." />
+    </Grid>
+</ContentPage>

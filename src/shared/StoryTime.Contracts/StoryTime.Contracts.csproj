@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>StoryTime.Contracts</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- GBNF grammars + JSON schemas ship as embedded resources -->
+    <EmbeddedResource Include="Grammars/**/*.gbnf" />
+    <EmbeddedResource Include="Schemas/**/*.json" />
+  </ItemGroup>
+
+</Project>

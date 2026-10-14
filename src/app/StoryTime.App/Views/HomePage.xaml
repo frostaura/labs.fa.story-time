@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:views="clr-namespace:StoryTime.App.Views"
+    xmlns:services="clr-namespace:StoryTime.App.Services"
+    x:Name="Page"
+    x:DataType="vm:HomeViewModel"
+    Shell.NavBarIsVisible="False">
+
+    <Grid>
+    <ScrollView>
+        <VerticalStackLayout Padding="32,20,32,28" Spacing="0">
+
+            <!-- Header. Kid Shelf is a real pill now (was bare accent text); the avatar
+                 ring grew 32 → 40 so the settings door is a thumb, not a pinprick. -->
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14" Margin="0,16,0,26">
+                <Label Grid.Column="0" Style="{StaticResource Eyebrow}" Text="STORYTIME" VerticalOptions="Center" />
+                <Button Grid.Column="1" Style="{StaticResource PillButtonAccentCompact}"
+                        Text="☾&#xFE0E;  Kid Shelf" Command="{Binding OpenShelfCommand}" />
+                <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" StrokeThickness="1"
+                        Stroke="{StaticResource Accent}" BackgroundColor="Transparent"
+                        VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Label Text="{Binding AvatarInitial}" FontFamily="OutfitMedium" FontSize="15"
+                           TextColor="{StaticResource Accent}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Border.Behaviors>
+                        <!-- The biometric door: Light at PRESS-DOWN, prompt after (anticipatory
+                             rule). TouchBehavior instead of a bare tap so pointer-down exists. -->
+                        <toolkit:TouchBehavior
+                            Command="{Binding Source={x:Reference Page}, Path=BindingContext.OpenSettingsCommand, x:DataType=views:HomePage}"
+                            CurrentTouchStatusChanged="OnPressDownLight"
+                            PressedOpacity="0.62" DefaultOpacity="1"
+                            PressedAnimationDuration="70" DefaultAnimationDuration="130" />
+                    </Border.Behaviors>
+                </Border>
+            </Grid>
+
+            <Label Style="{StaticResource Body}" Text="{Binding Greeting}" />
+            <Label Style="{StaticResource Display}" FontSize="39" Text="{Binding Headline}" Margin="0,6,0,12" />
+            <!-- Summary line + the recipe shelf's entry point. The old "adjust ›" was a
+                 Dim tail on a Caption — invisible (founder, 2026-07-31). It is now a
+                 right-aligned Accent pill with a real 40dp target and a pressed state;
+                 the whole row stays tappable so the summary text itself still opens it. -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,26">
+                <Label Grid.Column="0" Style="{StaticResource Caption}" Text="{Binding SummaryLine}"
+                       VerticalOptions="Center" />
+                <Button Grid.Column="1" Style="{StaticResource PillButtonAccentCompact}"
+                        Text="Adjust  ›" Command="{Binding AdjustRecipeCommand}" />
+                <Grid.Behaviors>
+                    <!-- Whole-row target for the shelf; Light at press-down. A press that
+                         lands on the pill instead fires the pill's own press haptic, and
+                         the two coalesce inside PlatformHaptics. -->
+                    <toolkit:TouchBehavior
+                        Command="{Binding Source={x:Reference Page}, Path=BindingContext.AdjustRecipeCommand, x:DataType=views:HomePage}"
+                        CurrentTouchStatusChanged="OnPressDownLight" />
+                </Grid.Behaviors>
+            </Grid>
+
+            <!-- Hero CTA (breathing halo idle animation in code-behind). Medium at
+                 press-down — the biggest action in the app answers instantly; the VM's
+                 weave-start Medium coalesces away. -->
+            <Button x:Name="WeaveButton" HeightRequest="62" FontSize="17"
+                    services:PressHaptics.OnPressed="Medium"
+                    Text="{Binding WeaveButtonText}"
+                    Command="{Binding WeaveCommand}"
+                    Clicked="OnWeaveClicked"
+                    IsEnabled="{Binding CanWeave}" />
+
+            <controls:LengthTrackView x:Name="LengthTrack" Margin="0,22,0,4"
+                                      SelectedLength="{Binding SelectedLength}" />
+            <!-- Tappable, so it may not be Dim (affordance rule); Light at press-down. -->
+            <Label Style="{StaticResource TappableWhisper}" Text="15-minute stories are part of Premium →&#xFE0E;"
+                   Margin="0,4,0,0" IsVisible="{Binding ShowPremiumHint}">
+                <Label.Behaviors>
+                    <toolkit:TouchBehavior
+                        Command="{Binding Source={x:Reference Page}, Path=BindingContext.OpenPremiumCommand, x:DataType=views:HomePage}"
+                        CurrentTouchStatusChanged="OnPressDownLight"
+                        PressedOpacity="0.62" DefaultOpacity="1"
+                        PressedAnimationDuration="70" DefaultAnimationDuration="130" />
+                </Label.Behaviors>
+            </Label>
+
+            <!-- Recent & favorites — horizontal snapping poster carousel
+                 (deliberate reinterpretation of the mockup's list rows; founder decision
+                 2026-07-30, recorded in docs/design/mockup-spec.md). -->
+            <Grid ColumnDefinitions="*,Auto" Margin="0,30,0,12">
+                <Label Style="{StaticResource Eyebrow}" Text="RECENT &amp; FAVORITES" VerticalOptions="Center" />
+                <!-- Was 13px accent text with no container and a ~16dp tall target. -->
+                <Button Grid.Column="1" Style="{StaticResource PillButtonAccent}" Text="All  ›"
+                        Command="{Binding OpenLibraryCommand}" />
+            </Grid>
+            <CollectionView x:Name="Carousel" ItemsSource="{Binding Stories}" HeightRequest="302"
+                            SelectionMode="None" HorizontalScrollBarVisibility="Never"
+                            Margin="0,0,-32,0" Scrolled="OnCarouselScrolled">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Horizontal" ItemSpacing="16"
+                                       SnapPointsType="MandatorySingle" SnapPointsAlignment="Start" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:StoryListItem">
+                        <Grid x:Name="Card" WidthRequest="220" RowDefinitions="200,Auto,Auto" RowSpacing="0">
+                            <Grid.Behaviors>
+                                <!-- Behaviors don't inherit BindingContext; parameters bind
+                                     through the named card element instead of {Binding .}. -->
+                                <toolkit:TouchBehavior
+                                    Command="{Binding Source={x:Reference Page}, Path=RowTapCommand, x:DataType=views:HomePage}"
+                                    CommandParameter="{Binding BindingContext, Source={x:Reference Card}, x:DataType=Grid}"
+                                    LongPressCommand="{Binding Source={x:Reference Page}, Path=LongPressCommand, x:DataType=views:HomePage}"
+                                    LongPressCommandParameter="{Binding BindingContext, Source={x:Reference Card}, x:DataType=Grid}"
+                                    CurrentTouchStatusChanged="OnPressDownLight"
+                                    LongPressDuration="600"
+                                    PressedOpacity="0.62" DefaultOpacity="1"
+                                    PressedScale="0.98" DefaultScale="1"
+                                    PressedAnimationDuration="70" DefaultAnimationDuration="130" />
+                            </Grid.Behaviors>
+                            <Border Grid.Row="0" StrokeThickness="0"
+                                    BackgroundColor="{StaticResource SurfaceRaised}">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="16" />
+                                </Border.StrokeShape>
+                                <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill"
+                                       IsVisible="{Binding HasThumbnail}" />
+                            </Border>
+                            <Label Grid.Row="1" Text="{Binding Title}" FontFamily="OutfitRegular" FontSize="16"
+                                   TextColor="{StaticResource Cream}" LineBreakMode="TailTruncation"
+                                   Margin="2,12,2,0" />
+                            <HorizontalStackLayout Grid.Row="2" Spacing="6" Margin="2,4,2,0">
+                                <Label Text="{Binding MetaLine}" Style="{StaticResource Caption}" />
+                                <Label Text="♥&#xFE0E;" FontSize="12" TextColor="{StaticResource Accent}"
+                                       VerticalOptions="Center" IsVisible="{Binding IsFavorite}" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Style="{StaticResource Whisper}" HorizontalTextAlignment="Center" Margin="0,26,0,0"
+                   Text="Hold a story for share · favorite · delete" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+    <!-- Weave sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
+    <controls:WeaveSheetHost />
+
+    <!-- "Tonight's recipe" shelf — ABOVE the weave layer, so an open shelf slides up
+         over the docked mini-bar (bar dims under the scrim, inert until dismiss). It can
+         never open while the weave sheet is expanded (VM guard; no entry point visible).
+         Home-only by design: the Kid Shelf must not reach this. -->
+    <controls:BottomShelfHost IsOpen="{Binding Recipe.IsOpen}" CloseCommand="{Binding Recipe.CloseCommand}">
+        <controls:RecipeShelfView BindingContext="{Binding Recipe}" />
+    </controls:BottomShelfHost>
+    </Grid>
+</ContentPage>

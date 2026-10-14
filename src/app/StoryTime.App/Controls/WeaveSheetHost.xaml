@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Grid
+    x:Class="StoryTime.App.Controls.WeaveSheetHost"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    x:Name="SheetHost"
+    x:DataType="vm:WeaveSheetViewModel"
+    InputTransparent="True"
+    CascadeInputTransparent="False">
+
+    <!-- Overlay host for the weave sheet + mini-bar. Added as the TOP layer of every
+         non-modal page's root Grid; binds to the singleton WeaveSheetViewModel so
+         expand/collapse survives navigation. The root grid is input-transparent — only
+         the visible children (scrim / sheet / mini-bar) catch touches. -->
+    <Grid.Resources>
+        <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource Success}" />
+        <toolkit:IsStringNotNullOrEmptyConverter x:Key="IsNotEmptyConverter" />
+    </Grid.Resources>
+
+    <!-- Scrim: dims the page behind the expanded sheet (~55% BgPhone); tap collapses. -->
+    <BoxView x:Name="Scrim" Color="{StaticResource BgPhone}" Opacity="0" IsVisible="False">
+        <BoxView.Behaviors>
+            <!-- Light at POINTER-DOWN, before the collapse animation starts. -->
+            <toolkit:TouchBehavior
+                Command="{Binding Source={x:Reference SheetHost}, Path=BindingContext.CollapseCommand, x:DataType=vm:WeaveSheetViewModel}"
+                CurrentTouchStatusChanged="OnPressDownLight" />
+        </BoxView.Behaviors>
+    </BoxView>
+
+    <!-- Expanded sheet: near-full-height, slides up over the page. -->
+    <Border x:Name="SheetPanel" IsVisible="False" Margin="0,64,0,0"
+            BackgroundColor="{StaticResource BgPhone}"
+            Stroke="{StaticResource Hairline}" StrokeThickness="1">
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="20,20,0,0" />
+        </Border.StrokeShape>
+
+        <Grid RowDefinitions="Auto,*,Auto,Auto" Padding="32,10,32,20">
+
+            <!-- Grab zone: drag-handle (Player pattern) — tap or drag-down collapses. -->
+            <Grid x:Name="GrabZone" Grid.Row="0" HeightRequest="34" BackgroundColor="Transparent">
+                <BoxView WidthRequest="44" HeightRequest="4" CornerRadius="2"
+                         Color="{StaticResource Border}"
+                         HorizontalOptions="Center" VerticalOptions="Center" />
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding CollapseCommand}" />
+                </Grid.GestureRecognizers>
+            </Grid>
+
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Spacing="0">
+
+                    <Label Style="{StaticResource Eyebrow}" Text="{Binding EyebrowText}"
+                           Margin="0,12,0,16" />
+
+                    <Label Style="{StaticResource DisplaySmall}" Text="{Binding Headline}" />
+                    <Label Style="{StaticResource Body}" Text="{Binding SubText}" Margin="0,10,0,26" />
+
+                    <!-- The woven-thread progress bar (replaces the bland giant %). -->
+                    <controls:WeaveProgressBar x:Name="ProgressBar"
+                                               Progress="{Binding ProgressFraction}"
+                                               Margin="0,0,0,26" />
+
+                    <!-- Stage rows -->
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Stages}" Spacing="0">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:StageRow">
+                                <VerticalStackLayout Spacing="0">
+                                    <Grid ColumnDefinitions="*,Auto" HeightRequest="52">
+                                        <Label Grid.Column="0" FontFamily="OutfitRegular" FontSize="15"
+                                               Text="{Binding Name}" VerticalOptions="Center"
+                                               TextColor="{StaticResource Muted}" />
+                                        <Label Grid.Column="1" FontFamily="QuicksandRegular" FontSize="13"
+                                               Text="{Binding StateLabel}" VerticalOptions="Center">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Waiting">
+                                                    <Setter Property="TextColor" Value="{StaticResource Dim}" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Weaving">
+                                                    <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Done">
+                                                    <Setter Property="TextColor" Value="{StaticResource Success}" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                    </Grid>
+                                    <BoxView />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+
+                    <Label Style="{StaticResource Whisper}" Text="{Binding CooldownLine}" Margin="0,24,0,0" />
+
+                    <Label Style="{StaticResource Body}" TextColor="{StaticResource Success}"
+                           Text="{Binding FailureMessage}" IsVisible="{Binding IsFailed}" Margin="0,18,0,0" />
+
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <Button Grid.Row="2" Margin="0,14,0,4" Text="Story ready — play the teaser ▶&#xFE0E;"
+                    Command="{Binding PlayTeaserCommand}" IsVisible="{Binding ShowTeaserCta}" />
+            <!-- Both rows were bare ghost text (Faint, no container). They are pills now
+                 (founder affordance pass 2026-07-31): the stop row stays neutral-hairline
+                 so it never competes with the amber teaser CTA above it. -->
+            <VerticalStackLayout Grid.Row="3" Spacing="10">
+                <!-- Founder cancel: two-tap stop (arm → confirm), discards the half-woven story. -->
+                <Button Style="{StaticResource PillButtonCompact}" Text="{Binding StopLabel}"
+                        HorizontalOptions="Center"
+                        Command="{Binding StopWeaveCommand}" IsVisible="{Binding ShowStopRow}" />
+                <Button Style="{StaticResource PillButton}" Text="{Binding CloseLabel}"
+                        HorizontalOptions="Center"
+                        Command="{Binding CollapseCommand}" />
+            </VerticalStackLayout>
+        </Grid>
+    </Border>
+
+    <!-- Collapsed mini-bar: docked at the bottom, tap/swipe-up expands. -->
+    <!-- Uniform with the page (founder: no second color band); the amber progress line
+         and hairline are the only separation. -->
+    <Border x:Name="MiniBar" IsVisible="False" VerticalOptions="End" HeightRequest="64"
+            BackgroundColor="{StaticResource BgPhone}" StrokeThickness="0" Padding="0">
+        <Grid RowDefinitions="2,*">
+
+            <!-- Thin amber progress line across the top edge. -->
+            <Grid Grid.Row="0" x:Name="MiniProgressTrack">
+                <BoxView HeightRequest="2" Color="{StaticResource Hairline}" />
+                <BoxView x:Name="MiniProgressFill" HeightRequest="2" WidthRequest="0"
+                         Color="{StaticResource Accent}" HorizontalOptions="Start">
+                    <BoxView.Triggers>
+                        <DataTrigger TargetType="BoxView" Binding="{Binding IsDone}" Value="True">
+                            <Setter Property="Color" Value="{StaticResource Success}" />
+                        </DataTrigger>
+                    </BoxView.Triggers>
+                </BoxView>
+            </Grid>
+
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="14" Padding="22,0,22,0">
+                <Ellipse x:Name="EmberDot" Grid.Column="0" WidthRequest="10" HeightRequest="10"
+                         Fill="{StaticResource AccentBrush}" VerticalOptions="Center">
+                    <Ellipse.Triggers>
+                        <DataTrigger TargetType="Ellipse" Binding="{Binding IsDone}" Value="True">
+                            <Setter Property="Fill" Value="{StaticResource SuccessBrush}" />
+                        </DataTrigger>
+                    </Ellipse.Triggers>
+                </Ellipse>
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label Text="{Binding MiniTitle}" FontFamily="OutfitRegular" FontSize="14"
+                           TextColor="{StaticResource Cream}" LineBreakMode="TailTruncation">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding IsDone}" Value="True">
+                                <Setter Property="TextColor" Value="{StaticResource Success}" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                    <Label Text="{Binding MiniDetail}" FontFamily="QuicksandRegular" FontSize="12"
+                           TextColor="{StaticResource Faint}" LineBreakMode="TailTruncation"
+                           IsVisible="{Binding MiniDetail, Converter={StaticResource IsNotEmptyConverter}}" />
+                </VerticalStackLayout>
+            </Grid>
+        </Grid>
+        <Border.GestureRecognizers>
+            <TapGestureRecognizer Command="{Binding ExpandCommand}" />
+            <SwipeGestureRecognizer Direction="Up" Command="{Binding ExpandCommand}" />
+            <SwipeGestureRecognizer Direction="Down" Command="{Binding DismissFromMiniBarCommand}" />
+        </Border.GestureRecognizers>
+    </Border>
+
+</Grid>

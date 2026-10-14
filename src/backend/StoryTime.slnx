@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="StoryTime.Api.Tests/StoryTime.Api.Tests.csproj" />
-  <Project Path="StoryTime.Api/StoryTime.Api.csproj" />
-</Solution>

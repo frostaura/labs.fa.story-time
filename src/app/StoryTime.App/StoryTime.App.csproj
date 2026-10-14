@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>StoryTime.App</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <MauiXamlInflator>SourceGen</MauiXamlInflator>
+
+    <ApplicationTitle>StoryTime</ApplicationTitle>
+    <ApplicationId>net.frostaura.storytime</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+
+    <!-- SQLite + reflection paths need the interpreter on iOS; P/Invoke is unaffected -->
+    <MtouchInterpreter Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">all</MtouchInterpreter>
+  </PropertyGroup>
+
+  <!-- Xcode 26.6 ships an SDK the Microsoft.iOS pack mis-validates (E0191) — trimix/guild-proven -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <ValidateXcodeVersion Condition="'$(ValidateXcodeVersion)' == ''">false</ValidateXcodeVersion>
+  </PropertyGroup>
+
+  <!-- iCloud-Drive xattrs break codesign ("resource fork ... detritus not allowed") — trimix/guild-proven -->
+  <Target Name="_StripBundleXattrsBeforeCodesign" BeforeTargets="_CodesignAppBundle"
+          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <Exec Command="xattr -cr &quot;$(OutDir)&quot;" ContinueOnError="true" />
+  </Target>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.svg" Color="#201813" />
+    <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#201813" BaseSize="128,128" />
+    <MauiImage Include="Resources/Images/*" />
+    <MauiFont Include="Resources/Fonts/*" />
+    <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.60" />
+    <PackageReference Include="CommunityToolkit.Maui" Version="14.2.0" />
+    <PackageReference Include="CommunityToolkit.Maui.MediaElement" Version="10.0.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.119.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="Plugin.LocalNotification" Version="12.0.1" />
+  </ItemGroup>
+
+  <!-- BiometricPrompt (parent-settings gate) -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+    <PackageReference Include="Xamarin.AndroidX.Biometric" Version="1.1.0.27" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../StoryTime.Core/StoryTime.Core.csproj" />
+    <ProjectReference Include="../../shared/StoryTime.Contracts/StoryTime.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- Native AI runtimes (llama.cpp, sherpa-onnx) + model asset wiring live in Native.props (Phase C owns it) -->
+  <Import Project="Native.props" Condition="Exists('Native.props')" />
+
+</Project>

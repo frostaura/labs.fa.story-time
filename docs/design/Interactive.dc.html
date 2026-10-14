@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300..700&family=Quicksand:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15110D;color:#F3E9DC;font-family:'Quicksand',sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#E8A857;text-decoration:none}
+a:hover{color:#F2C580;text-decoration:underline}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;gap:56px;padding:48px 40px">
+
+  <!-- Journey rail -->
+  <div style="width:270px;flex-shrink:0;display:flex;flex-direction:column;gap:6px">
+    <div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#8A7460;margin-bottom:10px">TaleWeaver · Hearth · interactive storyboard</div>
+    <div style="font:300 34px 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:6px">Tap through<br>the evening</div>
+    <div style="font:400 13px/1.7 'Quicksand',sans-serif;color:#A08C78;margin-bottom:22px">Every glowing element in the phone is tappable. Or jump straight to a moment:</div>
+    <sc-for list="{{ steps }}" as="step" hint-placeholder-count="8">
+      <div onClick="{{ step.go }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;cursor:pointer;background:{{ step.bg }};border:1px solid {{ step.border }}" style-hover="border-color:#E8A857">
+        <span style="font:300 15px 'Outfit',sans-serif;color:{{ step.numColor }};width:22px">{{ step.num }}</span>
+        <span style="flex:1"><span style="display:block;font:400 14px 'Outfit',sans-serif;color:{{ step.titleColor }}">{{ step.title }}</span><span style="display:block;font:400 11px 'Quicksand',sans-serif;color:#8A7460">{{ step.sub }}</span></span>
+      </div>
+    </sc-for>
+    <div style="margin-top:22px;border-top:1px solid #32271D;padding-top:16px;font:400 12px/1.8 'Quicksand',sans-serif;color:#8A7460">
+      Now showing: <span style="color:#E8A857">{{ currentLabel }}</span><br>{{ currentHint }}
+    </div>
+  </div>
+
+  <!-- Phone -->
+  <div style="width:375px;height:812px;border-radius:52px;background:#201813;border:1px solid #4A3A2A;box-shadow:0 30px 60px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;position:relative">
+    <div style="display:flex;justify-content:space-between;padding:18px 30px 0;font:500 13px 'Outfit',sans-serif;color:#F3E9DC;flex-shrink:0"><span>9:41</span><span style="width:18px;height:9px;border-radius:3px;background:#F3E9DC;opacity:.8"></span></div>
+
+    <!-- 01 Profile -->
+    <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:28px">TaleWeaver <span style="color:#E8A857">· 1 of 3</span></div>
+        <h1 style="font:300 36px/1.2 'Outfit',sans-serif;margin:0 0 10px;color:#F3E9DC">Who's listening tonight?</h1>
+        <p style="font:400 14px/1.7 'Quicksand',sans-serif;color:#A08C78;margin:0 0 26px">It all stays on this phone. Never on our servers.</p>
+        <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin-bottom:6px">Nickname</div>
+        <div style="border-bottom:1px solid #4A3A2A;padding:8px 0 12px;font:300 26px 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:24px">Mila<span style="color:#E8A857">|</span></div>
+        <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin-bottom:12px">Age — tap one</div>
+        <div style="display:flex;gap:24px;margin-bottom:26px;font:300 22px 'Outfit',sans-serif">
+          <sc-for list="{{ ages }}" as="a" hint-placeholder-count="6">
+            <span onClick="{{ a.pick }}" style="cursor:pointer;color:{{ a.color }};border-bottom:{{ a.underline }};padding-bottom:4px">{{ a.n }}</span>
+          </sc-for>
+        </div>
+        <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin-bottom:6px">Loves stories about — tap to toggle</div>
+        <div style="display:flex;flex-direction:column;font:400 17px 'Outfit',sans-serif">
+          <sc-for list="{{ topics }}" as="t" hint-placeholder-count="4">
+            <div onClick="{{ t.toggle }}" style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #32271D;color:{{ t.color }};cursor:pointer" style-hover="color:#F2C580"><span>{{ t.name }}</span><span>{{ t.mark }}</span></div>
+          </sc-for>
+        </div>
+        <div style="flex:1"></div>
+        <div onClick="{{ goVoice }}" style="background:#E8A857;border-radius:14px;height:56px;display:flex;align-items:center;justify-content:center;font:500 16px 'Outfit',sans-serif;color:#201813;margin-bottom:30px;cursor:pointer;box-shadow:0 0 0 0 rgba(232,168,87,.4)" style-hover="box-shadow:0 0 24px 0 rgba(232,168,87,.35)">Continue →</div>
+      </div>
+    </sc-if>
+
+    <!-- 02 Voice & length -->
+    <sc-if value="{{ isVoice }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:26px">TaleWeaver <span style="color:#E8A857">· 2 of 3</span></div>
+        <h1 style="font:300 36px/1.2 'Outfit',sans-serif;margin:0 0 26px;color:#F3E9DC">A voice, and a length</h1>
+        <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin-bottom:4px">Narrator — tap to choose</div>
+        <div style="display:flex;flex-direction:column;font:400 17px 'Outfit',sans-serif">
+          <sc-for list="{{ voices }}" as="v" hint-placeholder-count="3">
+            <div onClick="{{ v.pick }}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #32271D;cursor:pointer">
+              <span style="color:{{ v.color }}">{{ v.label }}</span>
+              <span style="width:34px;height:34px;border-radius:50%;border:1px solid {{ v.ring }};display:flex;align-items:center;justify-content:center;font-size:11px;color:{{ v.ring }}">▶</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin:24px 0 16px">Usual length — <span style="color:#E8A857">{{ lengthLabel }}</span> · tap the track</div>
+        <div onClick="{{ cycleLength }}" style="height:14px;display:flex;align-items:center;cursor:pointer;margin:0 2px 8px">
+          <div style="height:2px;background:#32271D;position:relative;flex:1">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:{{ lengthPct }};background:#E8A857"></div>
+            <div style="position:absolute;left:{{ lengthPct }};top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:#E8A857"></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font:400 12px 'Outfit',sans-serif;color:#8A7460;margin-bottom:24px"><span>5</span><span>10</span><span>15 · Premium</span></div>
+        <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin-bottom:12px">Stories continue as — tap to switch</div>
+        <div style="display:flex;gap:30px;font:400 18px 'Outfit',sans-serif;margin-bottom:12px">
+          <span onClick="{{ pickSeries }}" style="cursor:pointer;color:{{ seriesColor }};border-bottom:{{ seriesUnderline }};padding-bottom:5px">A series</span>
+          <span onClick="{{ pickOneShot }}" style="cursor:pointer;color:{{ oneShotColor }};border-bottom:{{ oneShotUnderline }};padding-bottom:5px">One-shots</span>
+        </div>
+        <div style="font:400 13px/1.7 'Quicksand',sans-serif;color:#A08C78">{{ modeHint }}</div>
+        <div style="flex:1"></div>
+        <div onClick="{{ goRules }}" style="background:#E8A857;border-radius:14px;height:56px;display:flex;align-items:center;justify-content:center;font:500 16px 'Outfit',sans-serif;color:#201813;margin-bottom:12px;cursor:pointer" style-hover="box-shadow:0 0 24px 0 rgba(232,168,87,.35)">Continue →</div>
+        <div onClick="{{ goProfile }}" style="text-align:center;font:400 13px 'Outfit',sans-serif;color:#8A7460;margin-bottom:22px;cursor:pointer" style-hover="color:#E8A857">← back</div>
+      </div>
+    </sc-if>
+
+    <!-- 03 Rules -->
+    <sc-if value="{{ isRules }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:26px">TaleWeaver <span style="color:#E8A857">· 3 of 3</span></div>
+        <h1 style="font:300 36px/1.2 'Outfit',sans-serif;margin:0 0 26px;color:#F3E9DC">Three things, then bed</h1>
+        <div style="display:flex;gap:18px;padding:0 0 20px;border-bottom:1px solid #32271D;margin-bottom:20px">
+          <span style="font:300 28px 'Outfit',sans-serif;color:#E8A857">1</span>
+          <span><span style="display:block;font:500 16px 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:3px">Seven nights, free</span><span style="display:block;font:400 13px/1.6 'Quicksand',sans-serif;color:#A08C78">Try everything. No card until you decide to stay.</span></span>
+        </div>
+        <div style="display:flex;gap:18px;padding:0 0 20px;border-bottom:1px solid #32271D;margin-bottom:20px">
+          <span style="font:300 28px 'Outfit',sans-serif;color:#E8A857">2</span>
+          <span><span style="display:block;font:500 16px 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:3px">You approve first</span><span style="display:block;font:400 13px/1.6 'Quicksand',sans-serif;color:#A08C78">A short teaser plays before the full story. On by default — toggle it in Parent settings.</span></span>
+        </div>
+        <div style="display:flex;gap:18px;padding:0 0 20px;border-bottom:1px solid #32271D;margin-bottom:20px">
+          <span style="font:300 28px 'Outfit',sans-serif;color:#E8A857">3</span>
+          <span><span style="display:block;font:500 16px 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:3px">One story at a time</span><span style="display:block;font:400 13px/1.6 'Quicksand',sans-serif;color:#A08C78">A 30-minute rest follows each story — it keeps bedtime calm. Premium rests 15.</span></span>
+        </div>
+        <div style="font:400 13px/2 'Quicksand',sans-serif;color:#8A7460">Hold a story for options · swipe down to close a story · Kid Shelf locks settings behind your fingerprint · offline requests queue themselves</div>
+        <div style="flex:1"></div>
+        <div onClick="{{ goHome }}" style="background:#E8A857;border-radius:14px;height:56px;display:flex;align-items:center;justify-content:center;font:500 16px 'Outfit',sans-serif;color:#201813;margin-bottom:12px;cursor:pointer" style-hover="box-shadow:0 0 24px 0 rgba(232,168,87,.35)">Start my 7 free nights</div>
+        <div onClick="{{ goVoice }}" style="text-align:center;font:400 13px 'Outfit',sans-serif;color:#8A7460;margin-bottom:22px;cursor:pointer" style-hover="color:#E8A857">← back</div>
+      </div>
+    </sc-if>
+
+    <!-- 04 Home -->
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:24px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:34px">
+          <span style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase">TaleWeaver</span>
+          <span style="display:flex;gap:16px;align-items:center;font:400 13px 'Outfit',sans-serif">
+            <span onClick="{{ goShelf }}" style="color:#A08C78;cursor:pointer" style-hover="color:#E8A857">☾ Kid Shelf</span>
+            <span onClick="{{ goSettings }}" style="width:32px;height:32px;border-radius:50%;border:1px solid #E8A857;display:flex;align-items:center;justify-content:center;color:#E8A857;font-size:13px;cursor:pointer" style-hover="background:#E8A857;color:#201813">M</span>
+          </span>
+        </div>
+        <div style="font:400 14px 'Quicksand',sans-serif;color:#A08C78;margin-bottom:8px">Good evening.</div>
+        <h1 style="font:300 38px/1.18 'Outfit',sans-serif;margin:0 0 8px;color:#F3E9DC">Tonight's story<br>for Mila</h1>
+        <div style="font:400 13px 'Quicksand',sans-serif;color:#8A7460;margin-bottom:22px">{{ homeSummary }}</div>
+        <div onClick="{{ startWeave }}" style="background:#E8A857;border-radius:14px;height:62px;display:flex;align-items:center;justify-content:center;font:500 17px 'Outfit',sans-serif;color:#201813;margin-bottom:20px;cursor:pointer" style-hover="box-shadow:0 0 28px 0 rgba(232,168,87,.4)">Weave tonight's story</div>
+        <div style="display:flex;justify-content:space-between;font:500 11px 'Outfit',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#A08C78;margin-bottom:14px"><span>Length — tap track</span><span style="color:#E8A857">{{ lengthLabel }}</span></div>
+        <div onClick="{{ cycleLength }}" style="height:14px;display:flex;align-items:center;cursor:pointer;margin:0 2px 6px">
+          <div style="height:2px;background:#32271D;position:relative;flex:1">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:{{ lengthPct }};background:#E8A857"></div>
+            <div style="position:absolute;left:{{ lengthPct }};top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:#E8A857"></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font:400 12px 'Outfit',sans-serif;color:#8A7460;margin-bottom:26px"><span>5</span><span>10</span><span>15 · Premium</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #32271D;padding-bottom:12px;margin-bottom:2px">
+          <span style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78">Recent &amp; favorites</span>
+          <span style="font:400 13px 'Outfit',sans-serif;color:#E8A857">All →</span>
+        </div>
+        <div onClick="{{ openPlayer }}" style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #32271D;cursor:pointer" style-hover="background:#261C15">
+          <span style="display:flex;align-items:center;gap:14px"><span style="width:44px;height:44px;border-radius:10px;background:#3A2E52;position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;top:7px;right:7px;width:12px;height:12px;border-radius:50%;background:#F3E9DC"></span><span style="position:absolute;bottom:-10px;left:-8px;width:44px;height:24px;border-radius:50%;background:#281F3C"></span></span><span><span style="display:block;font:400 16px 'Outfit',sans-serif;color:#F3E9DC">The Moon Fox</span><span style="display:block;font:400 12px 'Quicksand',sans-serif;color:#8A7460">Series · Episode 4 · 9 min</span></span></span>
+          <span style="color:#E8A857;font-size:16px">▶</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #32271D">
+          <span style="display:flex;align-items:center;gap:14px"><span style="width:44px;height:44px;border-radius:10px;background:#1E3A40;position:relative;overflow:hidden;flex-shrink:0"><span style="position:absolute;top:7px;left:7px;width:11px;height:11px;border-radius:50%;background:#F3E9DC"></span><span style="position:absolute;bottom:6px;right:9px;width:6px;height:18px;background:#F3E9DC;border-radius:2px"></span></span><span><span style="display:block;font:400 16px 'Outfit',sans-serif;color:#F3E9DC">The Sleepy Lighthouse <span style="color:#E8A857;font-size:13px">♥</span></span><span style="display:block;font:400 12px 'Quicksand',sans-serif;color:#8A7460">One-shot · 7 min</span></span></span>
+          <span style="color:#8A7460;font-size:16px">›</span>
+        </div>
+        <div style="flex:1"></div>
+        <div style="text-align:center;font:400 12px 'Quicksand',sans-serif;color:#6E5844;margin-bottom:22px">Hold a story for share · favorite · delete</div>
+      </div>
+    </sc-if>
+
+    <!-- 05 Generating -->
+    <sc-if value="{{ isWeaving }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:28px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:52px">TaleWeaver <span style="color:#E8A857">· weaving</span></div>
+        <div style="font:300 88px/1 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:8px">{{ progress }}<span style="font-size:42px;color:#E8A857">%</span></div>
+        <h1 style="font:300 25px/1.3 'Outfit',sans-serif;margin:0 0 10px;color:#F3E9DC">{{ weaveTitle }}</h1>
+        <p style="font:400 14px/1.7 'Quicksand',sans-serif;color:#A08C78;margin:0 0 30px">Close the app if you like — we'll send a gentle ping when it's ready.</p>
+        <div style="display:flex;flex-direction:column;font:400 15px 'Outfit',sans-serif">
+          <sc-for list="{{ stages }}" as="st" hint-placeholder-count="4">
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #32271D;color:{{ st.color }}"><span>{{ st.name }}</span><span style="color:{{ st.stateColor }}">{{ st.state }}</span></div>
+          </sc-for>
+        </div>
+        <div style="font:400 13px/2 'Quicksand',sans-serif;color:#A08C78;margin-top:20px">After this story the loom rests 30 minutes — next weave at 8:12 pm.</div>
+        <div style="flex:1"></div>
+        <sc-if value="{{ weaveDone }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ openPlayer }}" style="background:#E8A857;border-radius:14px;height:56px;display:flex;align-items:center;justify-content:center;font:500 16px 'Outfit',sans-serif;color:#201813;margin-bottom:12px;cursor:pointer" style-hover="box-shadow:0 0 24px 0 rgba(232,168,87,.35)">Story ready — play the teaser ▶</div>
+        </sc-if>
+        <div onClick="{{ goHome }}" style="text-align:center;font:400 13px 'Outfit',sans-serif;color:#8A7460;margin-bottom:24px;cursor:pointer" style-hover="color:#E8A857">↓ back to home</div>
+      </div>
+    </sc-if>
+
+    <!-- 06 Player -->
+    <sc-if value="{{ isPlayer }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:10px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div onClick="{{ goHome }}" style="width:40px;height:4px;border-radius:2px;background:#4A3A2A;margin:0 auto 20px;cursor:pointer;padding:6px 20px;background-clip:content-box" style-hover="background-color:#E8A857"></div>
+        <div style="width:220px;height:220px;border-radius:20px;margin:0 auto 22px;position:relative;overflow:hidden;background:#3A2E52">
+          <span style="position:absolute;top:24px;right:26px;width:42px;height:42px;border-radius:50%;background:#F3E9DC"></span>
+          <span style="position:absolute;top:40px;left:32px;width:3px;height:3px;border-radius:50%;background:#F3E9DC;opacity:.7"></span>
+          <span style="position:absolute;bottom:-46px;left:-46px;width:220px;height:120px;border-radius:50%;background:#281F3C"></span>
+          <span style="position:absolute;bottom:32px;right:56px;width:20px;height:20px;border-radius:50% 50% 50% 0;background:#E8A857;transform:rotate(-45deg)"></span>
+          <span style="position:absolute;bottom:-58px;right:-54px;width:240px;height:120px;border-radius:50%;background:#1C1630"></span>
+        </div>
+        <div style="text-align:center;margin-bottom:4px"><span style="font:300 28px 'Outfit',sans-serif;color:#F3E9DC">The Moon Fox</span></div>
+        <div style="text-align:center;font:400 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#E8A857;margin-bottom:12px">Episode 4 · 4 layers · tilts with your phone</div>
+        <div style="text-align:center;font:400 13px/1.7 'Quicksand',sans-serif;color:#A08C78;margin-bottom:22px">Previously: Mila and the fox found the silver door beneath the pier…</div>
+        <div style="height:2px;background:#32271D;position:relative;margin:0 2px 8px">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:{{ playPct }};background:#E8A857"></div>
+          <div style="position:absolute;left:{{ playPct }};top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:#E8A857"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font:400 12px 'Outfit',sans-serif;color:#8A7460;margin-bottom:20px"><span>{{ playTime }}</span><span>09:48</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:32px;margin-bottom:20px">
+          <span onClick="{{ stopPlay }}" style="font:400 13px 'Outfit',sans-serif;color:#A08C78;cursor:pointer" style-hover="color:#E8A857">■ stop</span>
+          <span onClick="{{ togglePlay }}" style="width:64px;height:64px;border-radius:50%;background:#E8A857;display:flex;align-items:center;justify-content:center;font-size:19px;color:#201813;cursor:pointer" style-hover="box-shadow:0 0 28px rgba(232,168,87,.45)">{{ playIcon }}</span>
+          <span onClick="{{ restartPlay }}" style="font:400 13px 'Outfit',sans-serif;color:#A08C78;cursor:pointer" style-hover="color:#E8A857">↻ replay</span>
+        </div>
+        <div onClick="{{ continueSeries }}" style="border:1px solid #E8A857;border-radius:14px;height:52px;display:flex;align-items:center;justify-content:center;font:500 15px 'Outfit',sans-serif;color:#E8A857;margin-bottom:18px;cursor:pointer" style-hover="background:#2A2018">{{ continueLabel }}</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+          <span style="font:400 12px 'Outfit',sans-serif;color:#A08C78;width:40px">Voice</span>
+          <div style="flex:1;height:2px;background:#32271D;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:82%;background:#F3E9DC"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font:400 12px 'Outfit',sans-serif;color:#A08C78;width:40px">Music</span>
+          <div style="flex:1;height:2px;background:#32271D;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:30%;background:#6E5844"></div></div>
+          <span style="font:400 11px 'Outfit',sans-serif;letter-spacing:.12em;color:#E8A857">PREMIUM</span>
+        </div>
+        <div style="flex:1"></div>
+        <div onClick="{{ goHome }}" style="text-align:center;font:400 12px 'Quicksand',sans-serif;color:#6E5844;margin-bottom:22px;cursor:pointer" style-hover="color:#E8A857">swipe down to close — tap here</div>
+      </div>
+    </sc-if>
+
+    <!-- 07 Kid Shelf -->
+    <sc-if value="{{ isShelf }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h1 style="font:300 34px 'Outfit',sans-serif;margin:0;color:#F3E9DC">Mila's shelf</h1>
+          <span onClick="{{ goHome }}" style="font:400 12px 'Outfit',sans-serif;color:#8A7460;border:1px solid #4A3A2A;border-radius:999px;padding:8px 14px;cursor:pointer" style-hover="border-color:#E8A857;color:#E8A857">🔒 hold to exit</span>
+        </div>
+        <div style="font:400 14px 'Quicksand',sans-serif;color:#A08C78;margin-bottom:26px">Tap a story to listen again</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+          <div onClick="{{ openPlayer }}" style="cursor:pointer">
+            <div style="width:100%;height:140px;border-radius:16px;background:#3A2E52;position:relative;overflow:hidden"><span style="position:absolute;top:14px;right:14px;width:24px;height:24px;border-radius:50%;background:#F3E9DC"></span><span style="position:absolute;bottom:-26px;left:-28px;width:150px;height:70px;border-radius:50%;background:#281F3C"></span></div>
+            <div style="font:400 15px 'Outfit',sans-serif;color:#F3E9DC;margin:9px 0 2px">The Moon Fox</div>
+            <div style="font:400 12px 'Quicksand',sans-serif;color:#8A7460">Episode 4 · tap to play</div>
+          </div>
+          <div style="opacity:.9">
+            <div style="width:100%;height:140px;border-radius:16px;background:#1E3A40;position:relative;overflow:hidden"><span style="position:absolute;top:12px;left:14px;width:20px;height:20px;border-radius:50%;background:#F3E9DC"></span><span style="position:absolute;bottom:16px;right:22px;width:10px;height:40px;background:#F3E9DC;border-radius:3px"></span></div>
+            <div style="font:400 15px 'Outfit',sans-serif;color:#F3E9DC;margin:9px 0 2px">The Sleepy Lighthouse <span style="color:#E8A857;font-size:12px">♥</span></div>
+            <div style="font:400 12px 'Quicksand',sans-serif;color:#8A7460">Favorite</div>
+          </div>
+          <div style="opacity:.9">
+            <div style="width:100%;height:140px;border-radius:16px;background:#40303E;position:relative;overflow:hidden"><span style="position:absolute;top:14px;right:16px;width:20px;height:20px;border-radius:50%;background:#F3E9DC"></span><span style="position:absolute;bottom:30px;left:16px;width:40px;height:15px;border-radius:999px;background:#F3E9DC;opacity:.8"></span></div>
+            <div style="font:400 15px 'Outfit',sans-serif;color:#F3E9DC;margin:9px 0 2px">Cloud Harbor</div>
+            <div style="font:400 12px 'Quicksand',sans-serif;color:#8A7460">One-shot</div>
+          </div>
+          <div style="opacity:.9">
+            <div style="width:100%;height:140px;border-radius:16px;background:#28362A;position:relative;overflow:hidden"><span style="position:absolute;top:12px;left:14px;width:22px;height:22px;border-radius:50%;background:#F3E9DC"></span><span style="position:absolute;bottom:16px;right:22px;width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:34px solid #1A2620"></span></div>
+            <div style="font:400 15px 'Outfit',sans-serif;color:#F3E9DC;margin:9px 0 2px">The Whispering Pines <span style="color:#E8A857;font-size:12px">♥</span></div>
+            <div style="font:400 12px 'Quicksand',sans-serif;color:#8A7460">Favorite</div>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="height:1px;background:#32271D;margin-bottom:16px"></div>
+        <div style="text-align:center;font:400 13px/1.7 'Quicksand',sans-serif;color:#8A7460;margin-bottom:24px">New stories and settings are locked here.<br>A grown-up's fingerprint opens them.</div>
+      </div>
+    </sc-if>
+
+    <!-- 08 Settings -->
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h1 style="font:300 30px 'Outfit',sans-serif;margin:0;color:#F3E9DC">Parent settings</h1>
+          <span style="font:400 11px 'Outfit',sans-serif;letter-spacing:.1em;color:#9CB08A">✓ FACE ID</span>
+        </div>
+        <div style="font:400 13px 'Quicksand',sans-serif;color:#A08C78;margin-bottom:26px">Asked every time — little fingers can't wander in.</div>
+        <div style="border:1px solid #E8A857;border-radius:16px;padding:18px 20px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+            <span style="font:400 17px 'Outfit',sans-serif;color:#F3E9DC">Trial · 5 nights left</span>
+            <span style="font:500 12px 'Outfit',sans-serif;letter-spacing:.1em;color:#E8A857;cursor:pointer">UPGRADE →</span>
+          </div>
+          <div style="font:400 12px/1.7 'Quicksand',sans-serif;color:#A08C78">Premium adds long stories, lock-screen art, music under narration, 15-min rests.</div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #32271D">
+            <span><span style="display:block;font:400 16px 'Outfit',sans-serif;color:#F3E9DC">Approval step</span><span style="display:block;font:400 12px 'Quicksand',sans-serif;color:#8A7460">Teaser before full narration — tap to toggle</span></span>
+            <span onClick="{{ toggleApproval }}" style="width:44px;height:26px;border-radius:13px;background:{{ approvalBg }};position:relative;flex-shrink:0;cursor:pointer"><span style="position:absolute;top:3px;{{ approvalKnob }};width:20px;height:20px;border-radius:50%;background:{{ approvalKnobColor }}"></span></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #32271D">
+            <span><span style="display:block;font:400 16px 'Outfit',sans-serif;color:#F3E9DC">Story-ready notifications</span><span style="display:block;font:400 12px 'Quicksand',sans-serif;color:#8A7460">Ping when a weave finishes</span></span>
+            <span onClick="{{ toggleNotify }}" style="width:44px;height:26px;border-radius:13px;background:{{ notifyBg }};position:relative;flex-shrink:0;cursor:pointer"><span style="position:absolute;top:3px;{{ notifyKnob }};width:20px;height:20px;border-radius:50%;background:{{ notifyKnobColor }}"></span></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #32271D">
+            <span><span style="display:block;font:400 16px 'Outfit',sans-serif;color:#F3E9DC">Quality analytics</span><span style="display:block;font:400 12px 'Quicksand',sans-serif;color:#8A7460">Anonymous, PII masked</span></span>
+            <span onClick="{{ toggleAnalytics }}" style="width:44px;height:26px;border-radius:13px;background:{{ analyticsBg }};position:relative;flex-shrink:0;cursor:pointer"><span style="position:absolute;top:3px;{{ analyticsKnob }};width:20px;height:20px;border-radius:50%;background:{{ analyticsKnobColor }}"></span></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #32271D;font:400 16px 'Outfit',sans-serif;color:#F3E9DC"><span>Profiles</span><span style="color:#8A7460;font-size:14px">Mila ›</span></div>
+          <div style="display:flex;justify-content:space-between;padding:14px 0;font:400 16px 'Outfit',sans-serif;color:#F3E9DC"><span>Storage</span><span style="color:#8A7460;font-size:14px">142 MB, on device ›</span></div>
+        </div>
+        <div style="flex:1"></div>
+        <div onClick="{{ goHome }}" style="text-align:center;font:400 13px 'Outfit',sans-serif;color:#8A7460;margin-bottom:24px;cursor:pointer" style-hover="color:#E8A857">← back to home</div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    screen: 'profile', age: 5, topics: { Foxes: true, Ocean: true, Magic: true, Space: false },
+    voice: 'Ember', length: 10, mode: 'series',
+    progress: 0, playing: true, playSec: 134, continued: false,
+    approval: true, notify: true, analytics: false,
+  };
+  componentDidMount() {
+    this._t = setInterval(() => {
+      this.setState(s => {
+        const n = { ...s };
+        if (s.screen === 'weaving' && s.progress < 100) n.progress = Math.min(100, s.progress + 2);
+        if (s.screen === 'player' && s.playing && s.playSec < 588) n.playSec = s.playSec + 1;
+        return n;
+      });
+    }, 120);
+  }
+  componentWillUnmount() { clearInterval(this._t); }
+  go(screen) { this.setState(s => ({ screen, progress: screen === 'weaving' ? 0 : s.progress })); }
+  renderVals() {
+    const s = this.state;
+    const go = (name) => () => this.go(name);
+    const order = [
+      ['profile', '01', 'Profile', 'onboarding — who is listening'],
+      ['voice', '02', 'Voice & length', 'onboarding — narrator + duration'],
+      ['rules', '03', 'How it works', 'onboarding — trial, approval, cooldown'],
+      ['home', '04', 'Home', 'quick generate, two taps max'],
+      ['weaving', '05', 'Generating', 'pipeline runs in background'],
+      ['player', '06', 'Story player', 'parallax poster + narration'],
+      ['shelf', '07', 'Kid Shelf', 'browse-only, locked'],
+      ['settings', '08', 'Parent settings', 'biometric gate'],
+    ];
+    const steps = order.map(([key, num, title, sub]) => {
+      const cur = s.screen === key;
+      return { num, title, sub, go: go(key),
+        bg: cur ? '#2A2018' : 'transparent', border: cur ? '#E8A857' : '#32271D',
+        numColor: cur ? '#E8A857' : '#8A7460', titleColor: cur ? '#F3E9DC' : '#A08C78' };
+    });
+    const hints = {
+      profile: 'Tap an age, toggle interests, then Continue.',
+      voice: 'Pick a narrator, tap the track to change length.',
+      rules: 'The three house rules a parent must know.',
+      home: 'Tap "Weave" to generate, a story to play, ☾ for Kid Shelf, M for settings.',
+      weaving: 'Watch the pipeline finish, then play the teaser.',
+      player: 'Play/pause, stop, continue the series. Drag-handle closes.',
+      shelf: 'Everything else is locked — tap the lock to exit.',
+      settings: 'Toggles are live — try the approval step.',
+    };
+    const cur = order.find(o => o[0] === s.screen);
+    const topics = Object.keys(s.topics).map(name => ({
+      name, mark: s.topics[name] ? '✓' : '+',
+      color: s.topics[name] ? '#E8A857' : '#8A7460',
+      toggle: () => this.setState(p => ({ topics: { ...p.topics, [name]: !p.topics[name] } })),
+    }));
+    const ages = [3, 4, 5, 6, 7, 8].map(n => ({
+      n, pick: () => this.setState({ age: n }),
+      color: s.age === n ? '#E8A857' : '#6E5844',
+      underline: s.age === n ? '2px solid #E8A857' : '2px solid transparent',
+    }));
+    const voiceDefs = [['Ember', 'warm & unhurried'], ['Willow', 'soft & bright'], ['Sage', 'deep & gentle']];
+    const voices = voiceDefs.map(([name, desc]) => ({
+      label: (s.voice === name ? '● ' : '○ ') + name + ' — ' + desc,
+      color: s.voice === name ? '#E8A857' : '#8A7460',
+      ring: s.voice === name ? '#E8A857' : '#4A3A2A',
+      pick: () => this.setState({ voice: name }),
+    }));
+    const lengthPct = { 5: '10%', 10: '52%', 15: '96%' }[s.length];
+    const stageDefs = [['Outline', 15], ['Scenes · stitch · polish', 55], ['Poster — 4 layers', 85], ['Narration — teaser first', 100]];
+    const stages = stageDefs.map(([name, at], i) => {
+      const prev = i === 0 ? 0 : stageDefs[i - 1][1];
+      const state = s.progress >= at ? 'done' : s.progress >= prev ? 'weaving…' : 'waiting';
+      return { name, state,
+        color: state === 'waiting' ? '#6E5844' : '#F3E9DC',
+        stateColor: state === 'weaving…' ? '#E8A857' : state === 'done' ? '#9CB08A' : '#6E5844' };
+    });
+    const mm = String(Math.floor(s.playSec / 60)).padStart(2, '0');
+    const ss = String(s.playSec % 60).padStart(2, '0');
+    const toggle = (key) => () => this.setState(p => ({ [key]: !p[key] }));
+    const sw = (on) => ({
+      bg: on ? '#E8A857' : '#32271D',
+      knob: on ? 'right:3px' : 'left:3px',
+      knobColor: on ? '#201813' : '#8A7460',
+    });
+    const a = sw(s.approval), n = sw(s.notify), an = sw(s.analytics);
+    return {
+      steps, currentLabel: cur[1] + ' · ' + cur[2], currentHint: hints[s.screen],
+      isProfile: s.screen === 'profile', isVoice: s.screen === 'voice', isRules: s.screen === 'rules',
+      isHome: s.screen === 'home', isWeaving: s.screen === 'weaving', isPlayer: s.screen === 'player',
+      isShelf: s.screen === 'shelf', isSettings: s.screen === 'settings',
+      goProfile: go('profile'), goVoice: go('voice'), goRules: go('rules'), goHome: go('home'),
+      goShelf: go('shelf'), goSettings: go('settings'),
+      startWeave: () => this.setState({ screen: 'weaving', progress: 0 }),
+      openPlayer: () => this.setState({ screen: 'player', playing: true }),
+      ages, topics, voices,
+      lengthLabel: s.length + ' min', lengthPct,
+      cycleLength: () => this.setState(p => ({ length: { 5: 10, 10: 15, 15: 5 }[p.length] })),
+      pickSeries: () => this.setState({ mode: 'series' }),
+      pickOneShot: () => this.setState({ mode: 'oneshot' }),
+      seriesColor: s.mode === 'series' ? '#E8A857' : '#8A7460',
+      seriesUnderline: s.mode === 'series' ? '2px solid #E8A857' : '2px solid transparent',
+      oneShotColor: s.mode === 'oneshot' ? '#E8A857' : '#8A7460',
+      oneShotUnderline: s.mode === 'oneshot' ? '2px solid #E8A857' : '2px solid transparent',
+      modeHint: s.mode === 'series' ? 'One gentle world, two minutes at a time. A Story Bible remembers every name.' : 'A brand-new standalone tale every night.',
+      homeSummary: Object.keys(s.topics).filter(k => s.topics[k]).join(' · ') + ' · ' + s.voice + "'s voice · " + s.length + ' min',
+      progress: s.progress, weaveDone: s.progress >= 100,
+      weaveTitle: s.progress >= 100 ? "Mila's story is ready." : "Weaving Mila's story…",
+      playPct: Math.min(100, (s.playSec / 588) * 100).toFixed(1) + '%',
+      playTime: mm + ':' + ss, playIcon: s.playing ? '❚❚' : '▶',
+      togglePlay: toggle('playing'),
+      stopPlay: () => this.setState({ playing: false, playSec: 0 }),
+      restartPlay: () => this.setState({ playing: true, playSec: 0 }),
+      continueLabel: s.continued ? 'Weaving 2 more minutes… ✓' : 'Continue the series · +2 min',
+      continueSeries: () => this.setState({ continued: true }),
+      toggleApproval: toggle('approval'), approvalBg: a.bg, approvalKnob: a.knob, approvalKnobColor: a.knobColor,
+      toggleNotify: toggle('notify'), notifyBg: n.bg, notifyKnob: n.knob, notifyKnobColor: n.knobColor,
+      toggleAnalytics: toggle('analytics'), analyticsBg: an.bg, analyticsKnob: an.knob, analyticsKnobColor: an.knobColor,
+    };
+  }
+}
+</script>
+</body>
+</html>

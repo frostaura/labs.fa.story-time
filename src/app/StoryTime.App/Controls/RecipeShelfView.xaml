@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="StoryTime.App.Controls.RecipeShelfView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    x:Name="Shelf"
+    x:DataType="vm:RecipeShelfViewModel">
+
+    <!-- "Tonight's recipe" — the compact shelf content hosted by BottomShelfHost on Home.
+         Every control here LIVE-persists through RecipeShelfViewModel (no Save button).
+         Aesthetics: the onboarding rows' language, compacted — amber+✓ selected chips,
+         narrator radio rows with the ▶ sample ring, the series/one-shot underline pair. -->
+    <!-- Content-sized up to the cap; the cap only bites when type metrics run tall
+         (iOS renders this content ~40dp taller than Android). Small phones scroll. -->
+    <ScrollView MaximumHeightRequest="700" VerticalScrollBarVisibility="Never">
+        <VerticalStackLayout Spacing="0">
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,8,0,18">
+                <Label Style="{StaticResource Eyebrow}" Text="TONIGHT'S RECIPE" VerticalOptions="Center" />
+                <!-- Whisper while a weave runs: the loom already has tonight's snapshot. -->
+                <Label Grid.Column="1" Style="{StaticResource Whisper}" Text="for the next story"
+                       VerticalOptions="Center" IsVisible="{Binding IsWeaving}" />
+            </Grid>
+
+            <!-- Section 1 · interests -->
+            <Label Style="{StaticResource Eyebrow}" Text="LOVES STORIES ABOUT" Margin="0,0,0,12" />
+            <FlexLayout x:Name="InterestWrap" Wrap="Wrap" Direction="Row" JustifyContent="Start"
+                        BindableLayout.ItemsSource="{Binding Interests}" Margin="0,0,0,10">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InterestOption">
+                        <Border x:Name="Chip" StrokeThickness="1" BackgroundColor="Transparent"
+                                Padding="12,6" Margin="0,0,8,8">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="999" />
+                            </Border.StrokeShape>
+                            <Border.Stroke>
+                                <SolidColorBrush Color="{StaticResource Hairline}" />
+                            </Border.Stroke>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="Stroke" Value="{StaticResource Accent}" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <HorizontalStackLayout Spacing="6">
+                                <Label FontFamily="QuicksandRegular" FontSize="13" Text="+"
+                                       TextColor="{StaticResource Muted}" VerticalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Text" Value="✓&#xFE0E;" />
+                                            <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                                <Label FontFamily="OutfitRegular" FontSize="14" Text="{Binding Name}"
+                                       TextColor="{StaticResource Muted}" VerticalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </HorizontalStackLayout>
+                            <Border.Behaviors>
+                                <!-- Chip = picker: Selection at POINTER-DOWN, then the toggle.
+                                     Bound through x:Reference Shelf, NOT RelativeSource: an
+                                     AncestorType-to-ViewModel binding does not resolve inside a
+                                     BindableLayout DataTemplate, which left every command here
+                                     null (founder bug 2026-07-31 — see the ▶ ring below). -->
+                                <toolkit:TouchBehavior
+                                    Command="{Binding Source={x:Reference Shelf}, Path=BindingContext.ToggleInterestCommand, x:DataType=controls:RecipeShelfView}"
+                                    CommandParameter="{Binding BindingContext, Source={x:Reference Chip}, x:DataType=Border}"
+                                    CurrentTouchStatusChanged="OnPressDownSelection" />
+                            </Border.Behaviors>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </FlexLayout>
+
+            <BoxView Margin="0,0,0,16" />
+
+            <!-- Section 2 · narrator (onboarding rows, compact; ▶ ring plays the sample) -->
+            <Label Style="{StaticResource Eyebrow}" Text="NARRATOR" Margin="0,0,0,2" />
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Voices}" Spacing="0">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:VoiceOption">
+                        <Grid ColumnDefinitions="Auto,*,Auto" HeightRequest="52">
+                            <Label Grid.Column="0" Text="●" FontSize="10" Margin="0,0,12,0"
+                                   TextColor="{StaticResource Dim}" VerticalOptions="Center">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                            <Label x:Name="VoiceTitle" Grid.Column="1" Text="{Binding DisplayLine}" FontFamily="OutfitRegular"
+                                   FontSize="16" TextColor="{StaticResource Muted}" VerticalOptions="Center">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                                <Label.Behaviors>
+                                    <toolkit:TouchBehavior
+                                        Command="{Binding Source={x:Reference Shelf}, Path=BindingContext.SelectVoiceCommand, x:DataType=controls:RecipeShelfView}"
+                                        CommandParameter="{Binding BindingContext, Source={x:Reference VoiceTitle}, x:DataType=Label}"
+                                        CurrentTouchStatusChanged="OnPressDownSelection" />
+                                </Label.Behaviors>
+                            </Label>
+                            <!-- ▶ PREVIEW RING (founder bug 2026-07-31: "does nothing, no haptic").
+                                 The gesture lives on this 48dp TRANSPARENT wrapper, not on the
+                                 40dp visible ring: 40dp was under the 44dp minimum, and the ring
+                                 Border sitting on top with no recognizer of its own would eat any
+                                 touch that landed on it. The Border is input-transparent so every
+                                 touch in the 48dp square reaches this Grid. -->
+                            <Grid x:Name="RingTarget" Grid.Column="2" WidthRequest="48" HeightRequest="48"
+                                  BackgroundColor="Transparent" VerticalOptions="Center">
+                                <Border WidthRequest="40" HeightRequest="40" StrokeThickness="1"
+                                        BackgroundColor="Transparent"
+                                        HorizontalOptions="Center" VerticalOptions="Center"
+                                        InputTransparent="True">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="999" />
+                                    </Border.StrokeShape>
+                                    <Border.Stroke>
+                                        <SolidColorBrush Color="{StaticResource Border}" />
+                                    </Border.Stroke>
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Stroke" Value="{StaticResource Accent}" />
+                                        </DataTrigger>
+                                        <!-- Rendering: the ring goes amber and dims. A neural
+                                             sample takes seconds; the tap must be visibly
+                                             acknowledged before any audio exists. -->
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsPreviewing}" Value="True">
+                                            <Setter Property="Stroke" Value="{StaticResource Accent}" />
+                                            <Setter Property="Opacity" Value="0.45" />
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                    <Label Text="▶&#xFE0E;" FontSize="11" Margin="2,0,0,0"
+                                           HorizontalOptions="Center" VerticalOptions="Center"
+                                           InputTransparent="True"
+                                           TextColor="{StaticResource Muted}">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                </Border>
+                                <Grid.Behaviors>
+                                    <!-- ROOT CAUSE of "the preview buttons do nothing" (founder,
+                                         2026-07-31): this used to be a TapGestureRecognizer bound
+                                         with {RelativeSource AncestorType={x:Type vm:RecipeShelfViewModel}},
+                                         which does NOT resolve inside a BindableLayout DataTemplate.
+                                         The Command was null, so the tap did nothing AND was not
+                                         consumed — it fell through to the Home carousel underneath
+                                         and opened a story instead. Bound through x:Reference Shelf
+                                         it resolves, and the TouchBehavior consumes the touch.
+                                         Light fires at pointer-down, ahead of the sample render. -->
+                                    <toolkit:TouchBehavior
+                                        Command="{Binding Source={x:Reference Shelf}, Path=BindingContext.PlaySampleCommand, x:DataType=controls:RecipeShelfView}"
+                                        CommandParameter="{Binding BindingContext, Source={x:Reference RingTarget}, x:DataType=Grid}"
+                                        CurrentTouchStatusChanged="OnPressDownLight" />
+                                </Grid.Behaviors>
+                            </Grid>
+                        </Grid>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <BoxView Margin="0,6,0,16" />
+
+            <!-- Section 3 · series mode (onboarding underline pair + its one-line hint) -->
+            <Label Style="{StaticResource Eyebrow}" Text="STORIES CONTINUE AS" Margin="0,0,0,12" />
+            <HorizontalStackLayout Spacing="28">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="A series" FontFamily="OutfitRegular" FontSize="17"
+                           TextColor="{StaticResource Muted}">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding IsSeries}" Value="True">
+                                <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                    <BoxView HeightRequest="2" Color="Transparent">
+                        <BoxView.Triggers>
+                            <DataTrigger TargetType="BoxView" Binding="{Binding IsSeries}" Value="True">
+                                <Setter Property="Color" Value="{StaticResource Accent}" />
+                            </DataTrigger>
+                        </BoxView.Triggers>
+                    </BoxView>
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SetSeriesCommand}">
+                            <TapGestureRecognizer.CommandParameter>
+                                <x:Boolean>True</x:Boolean>
+                            </TapGestureRecognizer.CommandParameter>
+                        </TapGestureRecognizer>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <VerticalStackLayout.Behaviors>
+                        <toolkit:TouchBehavior CurrentTouchStatusChanged="OnPressDownSelection" />
+                    </VerticalStackLayout.Behaviors>
+                </VerticalStackLayout>
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="One-shots" FontFamily="OutfitRegular" FontSize="17"
+                           TextColor="{StaticResource Accent}">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding IsSeries}" Value="True">
+                                <Setter Property="TextColor" Value="{StaticResource Muted}" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                    <BoxView HeightRequest="2" Color="{StaticResource Accent}">
+                        <BoxView.Triggers>
+                            <DataTrigger TargetType="BoxView" Binding="{Binding IsSeries}" Value="True">
+                                <Setter Property="Color" Value="Transparent" />
+                            </DataTrigger>
+                        </BoxView.Triggers>
+                    </BoxView>
+                    <VerticalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding SetSeriesCommand}">
+                            <TapGestureRecognizer.CommandParameter>
+                                <x:Boolean>False</x:Boolean>
+                            </TapGestureRecognizer.CommandParameter>
+                        </TapGestureRecognizer>
+                    </VerticalStackLayout.GestureRecognizers>
+                    <VerticalStackLayout.Behaviors>
+                        <toolkit:TouchBehavior CurrentTouchStatusChanged="OnPressDownSelection" />
+                    </VerticalStackLayout.Behaviors>
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+            <Label Style="{StaticResource Whisper}" Text="{Binding ModeHint}" Margin="0,10,0,6" />
+
+            <!-- A visible way out. The drag handle and scrim still work, but a gesture is
+                 not an affordance (founder pass 2026-07-31). -->
+            <Button Style="{StaticResource PillButton}" Text="Done" HorizontalOptions="Center"
+                    Margin="0,14,0,4" Command="{Binding CloseCommand}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentView>

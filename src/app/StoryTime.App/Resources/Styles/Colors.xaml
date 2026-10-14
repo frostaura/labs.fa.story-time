@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Hearth token sheet - docs/design/mockup-spec.md is the contract. -->
+    <Color x:Key="BgApp">#15110D</Color>
+    <Color x:Key="BgPhone">#201813</Color>
+    <Color x:Key="Hairline">#32271D</Color>
+    <Color x:Key="Border">#4A3A2A</Color>
+    <Color x:Key="Accent">#E8A857</Color>
+    <Color x:Key="AccentHover">#F2C580</Color>
+    <Color x:Key="AccentHalo">#66E8A857</Color>
+    <Color x:Key="InkOnAccent">#201813</Color>
+    <Color x:Key="Cream">#F3E9DC</Color>
+    <Color x:Key="Muted">#A08C78</Color>
+    <Color x:Key="Faint">#8A7460</Color>
+    <Color x:Key="Dim">#6E5844</Color>
+    <Color x:Key="Success">#9CB08A</Color>
+    <Color x:Key="SurfaceRaised">#2A2018</Color>
+
+    <SolidColorBrush x:Key="BgPhoneBrush" Color="{StaticResource BgPhone}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}" />
+    <SolidColorBrush x:Key="HairlineBrush" Color="{StaticResource Hairline}" />
+
+</ResourceDictionary>

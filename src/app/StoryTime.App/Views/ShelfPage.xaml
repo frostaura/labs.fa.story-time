@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.ShelfPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    x:Name="ShelfRoot"
+    x:DataType="vm:ShelfViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.PresentationMode="ModalAnimated">
+
+    <Grid>
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="32,24,32,24">
+
+        <!-- Header: headline + lock pill -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,18,0,6">
+            <Label Grid.Column="0" Style="{StaticResource Display}" FontSize="32" Text="{Binding Headline}" />
+            <!-- Lock pill, grown to the shared pill metrics (44 tall, 18 padding) with
+                 Muted text — it was a 30dp capsule of Faint text nobody could find
+                 (founder affordance pass 2026-07-31). Still hairline, still quiet. -->
+            <Border x:Name="LockPill" Grid.Column="1" StrokeThickness="1" Stroke="{StaticResource Border}"
+                    BackgroundColor="Transparent" Padding="18,0" HeightRequest="44"
+                    MinimumHeightRequest="44" VerticalOptions="Start">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22" />
+                </Border.StrokeShape>
+                <Border.Behaviors>
+                    <!-- The child-lock: LONG-PRESS 2 SECONDS exits; taps do nothing.
+                         Behaviors do not inherit BindingContext — bind through the page.
+                         Code-behind hooks the touch status for the hold-start Light tick. -->
+                    <toolkit:TouchBehavior
+                        x:Name="LockTouch"
+                        LongPressCommand="{Binding BindingContext.ExitShelfCommand, Source={x:Reference ShelfRoot}, x:DataType=ContentPage}"
+                        LongPressDuration="2000" />
+                </Border.Behaviors>
+                <Label Text="🔒 hold to exit" FontFamily="OutfitMedium" FontSize="13"
+                       TextColor="{StaticResource Muted}" VerticalOptions="Center" />
+            </Border>
+        </Grid>
+
+        <Label Grid.Row="1" Style="{StaticResource Body}" Text="Tap a story to listen again." Margin="0,0,0,18" />
+
+        <!-- 2-col poster grid -->
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Tiles}" SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="2" HorizontalItemSpacing="16" VerticalItemSpacing="20" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:StoryListItem">
+                    <VerticalStackLayout x:Name="Tile" Spacing="8">
+                        <VerticalStackLayout.Behaviors>
+                            <!-- Pressed state on the tile (behaviors don't inherit
+                                 BindingContext — bind through the named page + tile). -->
+                            <toolkit:TouchBehavior
+                                Command="{Binding Source={x:Reference ShelfRoot}, Path=BindingContext.ReplayCommand, x:DataType=ContentPage}"
+                                CommandParameter="{Binding BindingContext, Source={x:Reference Tile}, x:DataType=VerticalStackLayout}"
+                                CurrentTouchStatusChanged="OnPressDownLight"
+                                PressedOpacity="0.62" DefaultOpacity="1"
+                                PressedScale="0.98" DefaultScale="1"
+                                PressedAnimationDuration="70" DefaultAnimationDuration="130" />
+                        </VerticalStackLayout.Behaviors>
+                        <Border StrokeThickness="0" BackgroundColor="{StaticResource SurfaceRaised}"
+                                HeightRequest="146">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill"
+                                   IsVisible="{Binding HasThumbnail}" />
+                        </Border>
+                        <Label Text="{Binding Title}" FontFamily="OutfitRegular" FontSize="15"
+                               TextColor="{StaticResource Cream}" LineBreakMode="TailTruncation" />
+                        <HorizontalStackLayout Spacing="6" Margin="0,-4,0,0">
+                            <Label Text="{Binding MetaLine}" Style="{StaticResource Caption}" />
+                            <Label Text="♥&#xFE0E;" FontSize="11" TextColor="{StaticResource Accent}"
+                                   VerticalOptions="Center" IsVisible="{Binding IsFavorite}" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Label Grid.Row="3" Style="{StaticResource Whisper}" HorizontalTextAlignment="Center" Margin="0,16,0,0"
+               Text="New stories and settings are locked here. A grown-up's fingerprint opens them." />
+    </Grid>
+
+    <!-- Weave sheet + mini-bar overlay. Kid-safe by construction: the sheet shows only
+         stages + cooldown here — the teaser CTA hides in kid mode (ShowTeaserCta). -->
+    <controls:WeaveSheetHost />
+    </Grid>
+</ContentPage>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="StoryTime.App.Views.LibraryPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:controls="clr-namespace:StoryTime.App.Controls"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:views="clr-namespace:StoryTime.App.Views"
+    x:Name="Page"
+    x:DataType="vm:LibraryViewModel"
+    Shell.NavBarIsVisible="False">
+
+    <Grid>
+    <Grid RowDefinitions="Auto,*,Auto" Padding="32,24,32,24">
+        <!-- Back lives top-left of the header on EVERY screen that has one (the weave
+             mini-bar docks over the bottom edge, so back can never live down there).
+             Was a bare Faint "← back" ghost on the right; now the shared BackPill. -->
+        <VerticalStackLayout Grid.Row="0" Spacing="0" Margin="0,12,0,18">
+            <Button Style="{StaticResource BackPill}" Command="{Binding BackCommand}" />
+            <Label Style="{StaticResource Eyebrow}" Text="STORYTIME · LIBRARY" Margin="0,22,0,6" />
+            <Label Style="{StaticResource Display}" FontSize="32" Text="{Binding Headline}" />
+        </VerticalStackLayout>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Stories}" Spacing="0">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:StoryListItem">
+                        <VerticalStackLayout Spacing="0">
+                            <!-- TouchBehavior (not a bare tap) so the row has a real pressed
+                                 state. Behaviors don't inherit BindingContext — bind through
+                                 the named page + row elements (the HomePage carousel lesson). -->
+                            <Grid x:Name="Row" ColumnDefinitions="44,16,*,Auto" HeightRequest="68" Padding="0,0,4,0">
+                                <Grid.Behaviors>
+                                    <toolkit:TouchBehavior
+                                        Command="{Binding Source={x:Reference Page}, Path=BindingContext.OpenCommand, x:DataType=views:LibraryPage}"
+                                        CommandParameter="{Binding BindingContext, Source={x:Reference Row}, x:DataType=Grid}"
+                                        CurrentTouchStatusChanged="OnPressDownLight"
+                                        PressedBackgroundColor="{StaticResource SurfaceRaised}"
+                                        DefaultBackgroundColor="Transparent"
+                                        PressedAnimationDuration="60" DefaultAnimationDuration="120" />
+                                </Grid.Behaviors>
+                                <Border Grid.Column="0" WidthRequest="44" HeightRequest="44" StrokeThickness="0"
+                                        BackgroundColor="{StaticResource SurfaceRaised}" VerticalOptions="Center">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="10" />
+                                    </Border.StrokeShape>
+                                    <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill"
+                                           IsVisible="{Binding HasThumbnail}" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="2" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding Title}" FontFamily="OutfitRegular" FontSize="16"
+                                           TextColor="{StaticResource Cream}" LineBreakMode="TailTruncation" />
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Label Text="{Binding MetaLine}" Style="{StaticResource Caption}" />
+                                        <Label Text="♥&#xFE0E;" FontSize="12" TextColor="{StaticResource Accent}"
+                                               VerticalOptions="Center" IsVisible="{Binding IsFavorite}" />
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                                <!-- Accent, not Dim: on a row with no container of its own the
+                                     colour IS the affordance. -->
+                                <Label Grid.Column="3" Text="›" FontSize="18" TextColor="{StaticResource Accent}"
+                                       VerticalOptions="Center" Margin="10,0,0,0" />
+                            </Grid>
+                            <BoxView />
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom spacer keeps the last list row clear of the docked weave mini-bar. -->
+        <BoxView Grid.Row="2" HeightRequest="72" Color="Transparent" />
+    </Grid>
+
+    <!-- Weave sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
+    <controls:WeaveSheetHost />
+    </Grid>
+</ContentPage>

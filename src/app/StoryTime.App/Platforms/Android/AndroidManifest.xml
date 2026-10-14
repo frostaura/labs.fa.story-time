@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
+		<!-- Background weave anchor. Declared by hand (not via [Service]) because the
+		     specialUse type REQUIRES a nested <property> justification element, which the
+		     .NET Android [Service] attribute cannot emit (dotnet/android#8729). The class
+		     carries a matching [Register] name so the ACW lines up.
+
+		     Type choice: specialUse, not dataSync / mediaProcessing / shortService.
+		     shortService caps at ~3 min (weaves run 3-15) and ANRs the app if the cap is
+		     blown. dataSync is transfer-shaped (upload/download/backup/local file
+		     processing) — on-device LLM+TTS inference is none of those, and apps targeting
+		     Android 15+ get a cumulative 6 h / 24 h budget on it plus an onTimeout->ANR
+		     contract, with Google actively steering apps off the type. mediaProcessing fits
+		     only the narration stage and carries the same 6 h budget. specialUse is the
+		     documented catch-all for valid cases the other types do not cover, has no
+		     system timeout, and trades that for a manual Play review of the justification
+		     below (Stage-7 compliance gate owns the submission + demo video). -->
+		<service
+			android:name="net.frostaura.storytime.WeaveForegroundService"
+			android:exported="false"
+			android:stopWithTask="false"
+			android:foregroundServiceType="specialUse">
+			<property
+				android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+				android:value="User-initiated on-device generative compute. When a parent taps &quot;weave tonight's story&quot;, the app runs a bundled small language model and a neural text-to-speech model entirely on the device to write and narrate one bedtime story (typically 3-15 minutes of continuous computation). The service exists only to let that single user-requested job finish while the phone is in the parent's pocket or the screen is off; it ends the moment the story is ready, fails or is cancelled. No network is used at any point - the app has no servers and no accounts." />
+		</service>
+	</application>
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.INTERNET" />
+	<!-- Story-ready local notifications (API 33+) -->
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<!-- Biometric gate for parent settings -->
+	<uses-permission android:name="android.permission.USE_BIOMETRIC" />
+	<!-- Semantic haptics (PlatformHaptics — predefined VibrationEffects need it too) -->
+	<uses-permission android:name="android.permission.VIBRATE" />
+	<!-- Background weave: foreground service + its specialUse type (API 34+ requires the
+	     per-type permission), plus the partial wake lock that keeps the CPU scheduled with
+	     the screen off. Released in every exit path; capped at 45 min regardless. -->
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+	<uses-permission android:name="android.permission.WAKE_LOCK" />
+</manifest>
