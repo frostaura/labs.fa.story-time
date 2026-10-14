@@ -186,9 +186,12 @@ public sealed partial class OnboardingVoiceViewModel : ObservableObject
     private readonly IVoiceSamplePlayer _samplePlayer;
     private readonly VoicePreviewRunner _preview;
 
+    private readonly IStorytellerVoices? _storytellerVoices;
+
     public OnboardingVoiceViewModel(OnboardingState state, INavigator navigator, ITtsEngine tts, IEntitlements entitlements,
-        IHaptics haptics, IVoiceSamplePlayer samplePlayer)
+        IHaptics haptics, IVoiceSamplePlayer samplePlayer, IStorytellerVoices? storytellerVoices = null)
     {
+        _storytellerVoices = storytellerVoices;
         _state = state;
         _navigator = navigator;
         _tts = tts;
@@ -288,6 +291,17 @@ public sealed partial class OnboardingVoiceViewModel : ObservableObject
         _state.Profile.Voice = Voices.First(v => v.IsSelected).Voice;
         _state.Profile.Length = SelectedLength;
         _state.Profile.Mode = IsSeries ? StoryMode.Series : StoryMode.OneShot;
+        // Founder rule 2026-10-14: no finishing onboarding on a compact voice — the
+        // storyteller-voice step blocks until a premium/enhanced voice is installed.
+        if (_storytellerVoices is { } voices)
+        {
+            voices.Refresh();
+            if (!voices.HasStorytellerVoice)
+            {
+                await _navigator.GoToAsync($"{Routes.StorytellerVoice}?purpose=onboarding");
+                return;
+            }
+        }
         await _navigator.GoToAsync(Routes.OnboardingRules);
     }
 

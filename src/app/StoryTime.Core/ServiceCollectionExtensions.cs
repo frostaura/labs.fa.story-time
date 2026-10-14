@@ -57,6 +57,8 @@ public static class ServiceCollectionExtensions
         services.TryAddTransient<OnboardingProfileViewModel>();
         services.TryAddTransient<OnboardingVoiceViewModel>();
         services.TryAddTransient<OnboardingRulesViewModel>();
+        services.TryAddTransient<StorytellerVoiceViewModel>();
+        services.TryAddSingleton<INetworkStatus, UnknownNetworkStatus>();
         services.TryAddTransient<HomeViewModel>();
         // Owned by HomeViewModel (one per Home instance): the "Tonight's recipe" shelf.
         services.TryAddTransient<RecipeShelfViewModel>();

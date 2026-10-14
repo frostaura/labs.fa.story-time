@@ -26,10 +26,11 @@ public interface IStoryEngine
     Task<string> RepairPassageAsync(ChildProfile profile, string passage, string reason, CancellationToken ct);
 }
 
-/// <summary>Sentence-batch TTS. Implementations: PlatformTtsEngine (MAUI TextToSpeech — the
-/// current default) and, from the narration lane, an AVSpeechSynthesizer engine that renders
-/// to PCM and runs it through Engines/Narration (ProsodyDirector + AudioShaper cozy
-/// mastering). Swap point: MauiProgram.RegisterTtsEngine.</summary>
+/// <summary>Sentence-batch TTS. Implementations: AppleSpeechTtsEngine (AVSpeechSynthesizer
+/// rendered per utterance to PCM, then the SoothingNarrator chain in Engines/Narration:
+/// segmentation, measured pause map, mastering, loudness, pad) — the default — and
+/// PlatformTtsEngine (MAUI TextToSpeech, live only) as its fallback. Swap point:
+/// MauiProgram.RegisterTtsEngine.</summary>
 public interface ITtsEngine
 {
     string Name { get; }
@@ -38,8 +39,8 @@ public interface ITtsEngine
     /// <summary>Render sentences to a single audio file; returns manifest with per-sentence timestamps.</summary>
     Task<NarrationManifest> SynthesizeAsync(IReadOnlyList<string> sentences, NarratorVoice voice, string outputPath,
         IProgress<double>? progress, CancellationToken ct);
-    /// <summary>Paragraph-aware synthesis: engines that shape prosody (ProsodyDirector) honor
-    /// paragraph boundaries as longer scene-beat pauses. Default falls back to the flat call,
+    /// <summary>Paragraph-aware synthesis: engines that shape prosody (SoothingPlanner) honor
+    /// paragraph and scene boundaries as longer pauses. Default falls back to the flat call,
     /// so existing engines (PlatformTtsEngine) need no change.</summary>
     Task<NarrationManifest> SynthesizeAsync(NarrationScript script, NarratorVoice voice, string outputPath,
         IProgress<double>? progress, CancellationToken ct)
@@ -68,11 +69,29 @@ public sealed class NarrationScript
     /// concatenated story. Additive 2026-07-31.</summary>
     public bool AppendFinalTail { get; init; } = true;
 
+    /// <summary>Indices that open a new SCENE (a subset of <see cref="ParagraphStartSet"/>):
+    /// explicit scene-break lines ("***", "⁂", "~") or a run of two or more blank lines.
+    /// Narration renders them as the long scene-change pause. Additive 2026-10-14.</summary>
+    public HashSet<int> SceneStartSet { get; init; } = [];
+
+    /// <summary>True for an excerpt of a story (the teaser): it still gets a head and a
+    /// tail, but never the bedtime ending treatment (slow-down ramp, goodnight cadence),
+    /// because its last sentence is not the story's last. Set by <see cref="Take"/>.
+    /// Additive 2026-10-14.</summary>
+    public bool IsExcerpt { get; init; }
+
+    /// <summary>Where this script starts on the whole story's timeline (seconds). The
+    /// overlapped pipeline sets it per window so time-continuous layers (the narration
+    /// pad's chord loop) join seamlessly across concatenated part WAVs. Additive 2026-10-14.</summary>
+    public double TimelineOffsetSeconds { get; init; }
+
     /// <summary>Script for the first <paramref name="count"/> sentences (teaser).</summary>
     public NarrationScript Take(int count) => new()
     {
         SentenceList = SentenceList.Take(count).ToList(),
         ParagraphStartSet = ParagraphStartSet.Where(i => i < count).ToHashSet(),
+        SceneStartSet = SceneStartSet.Where(i => i < count).ToHashSet(),
+        IsExcerpt = true,
     };
 }
 

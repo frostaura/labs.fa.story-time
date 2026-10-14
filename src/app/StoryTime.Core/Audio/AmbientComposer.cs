@@ -56,7 +56,7 @@ public static class AmbientComposer
     private const double DetuneCents = 2.4;
     private const double TargetRms = 0.06;      // ≈ −24.4 dBFS
     private const double PeakCeiling = 0.5;     // ≈ −6.0 dBFS
-    private const int WavetableSize = 4096;
+    internal const int WavetableSize = 4096;
 
     public static AmbientLoop Render(AmbientContext ctx)
     {
@@ -177,7 +177,7 @@ public static class AmbientComposer
         }
     }
 
-    private static double[] BuildPadWavetable(double brightness)
+    internal static double[] BuildPadWavetable(double brightness)
     {
         var table = new double[WavetableSize];
         for (var i = 0; i < WavetableSize; i++)
@@ -401,7 +401,7 @@ public static class AmbientComposer
         for (var i = 0; i < n; i++) { left[i] *= scale; right[i] *= scale; }
     }
 
-    private static double MidiToHz(int midi) => 440.0 * Math.Pow(2.0, (midi - 69) / 12.0);
+    internal static double MidiToHz(int midi) => 440.0 * Math.Pow(2.0, (midi - 69) / 12.0);
 
     private static ulong MixSeed(AmbientContext ctx, AmbientCharacter character)
     {

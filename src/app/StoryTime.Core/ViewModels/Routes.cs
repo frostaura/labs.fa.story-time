@@ -8,6 +8,9 @@ public static class Routes
     public const string OnboardingProfile = "onboarding-profile";
     public const string OnboardingVoice = "onboarding-voice";
     public const string OnboardingRules = "onboarding-rules";
+    /// <summary>The mandatory storyteller-voice step (premium voice download). Takes
+    /// <c>?purpose=onboarding|repair|settings</c>.</summary>
+    public const string StorytellerVoice = "storyteller-voice";
     /// <summary>QA-only pseudo-route: no page behind it any more (the Weaving page became
     /// the weave sheet, 2026-07-30). App.OnShellReadyAsync intercepts it and opens Home
     /// with the sheet expanded instead of navigating.</summary>
