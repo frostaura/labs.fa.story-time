@@ -55,7 +55,7 @@ public class StorytellerVoiceViewModelTests
         _voices.Refresh();                                   // AvailableVoicesDidChange / foreground re-check
         Assert.True(vm.IsReady);
         Assert.Contains("Serena", vm.Status);
-        Assert.Equal([Routes.OnboardingRules], _navigator.Routes);
+        Assert.Equal([$"../{Routes.OnboardingRules}"], _navigator.Routes);
     }
 
     [Fact]

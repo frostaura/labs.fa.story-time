@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- The mandatory storyteller-voice step (founder rule 2026-10-14): Serena (Premium) must be
+     installed before stories can be made. Full-screen modal so it cannot be swiped away;
+     the back pill is hidden when the app sent the parent here because Serena went missing. -->
+<ContentPage
+    x:Class="StoryTime.App.Views.StorytellerVoicePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
+    xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+    x:DataType="vm:StorytellerVoiceViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.PresentationMode="ModalAnimated"
+    ios:Page.ModalPresentationStyle="FullScreen"
+    BackgroundColor="{StaticResource BgPhone}">
+
+    <Grid RowDefinitions="*,Auto,Auto" Padding="32,24,32,28">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="0">
+
+                <Label Style="{StaticResource Eyebrow}" Text="{x:Static vm:StorytellerVoiceViewModel.Eyebrow}" Margin="0,24,0,24" />
+                <Label Style="{StaticResource Display}" Text="{x:Static vm:StorytellerVoiceViewModel.TitleText}" />
+                <Label Style="{StaticResource Body}" Text="{Binding Lead}" Margin="0,12,0,22" />
+
+                <!-- Steps (numbered rows built in code-behind from the VM's step list). -->
+                <VerticalStackLayout x:Name="StepList" Spacing="0" IsVisible="{Binding IsWaiting}" />
+
+                <!-- Download-size notice, worded from the OS path monitor (no network calls). -->
+                <Border StrokeThickness="1" Stroke="{StaticResource Border}" BackgroundColor="{StaticResource SurfaceRaised}"
+                        Padding="18,14" Margin="0,18,0,0" IsVisible="{Binding IsWaiting}">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14" />
+                    </Border.StrokeShape>
+                    <Label Style="{StaticResource Caption}" Text="{Binding NetworkNotice}" />
+                </Border>
+
+                <!-- Status: waiting (with a re-check) or found (with a sample). -->
+                <Border StrokeThickness="1" Stroke="{StaticResource Accent}" BackgroundColor="Transparent"
+                        Padding="20,18" Margin="0,18,0,8">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="14">
+                        <HorizontalStackLayout Spacing="12">
+                            <ActivityIndicator IsRunning="{Binding IsWaiting}" IsVisible="{Binding IsWaiting}"
+                                               Color="{StaticResource Accent}" HeightRequest="18" WidthRequest="18" />
+                            <Label Style="{StaticResource UiText}" Text="{Binding Status}" VerticalOptions="Center"
+                                   LineBreakMode="WordWrap" MaximumWidthRequest="280" />
+                        </HorizontalStackLayout>
+                        <Button Style="{StaticResource OutlinedButton}" Text="{x:Static vm:StorytellerVoiceViewModel.CheckAgainText}"
+                                Command="{Binding CheckAgainCommand}" IsVisible="{Binding IsWaiting}" />
+                        <Button Style="{StaticResource PillButtonAccent}" Text="▶&#xFE0E;  Play a sample"
+                                Command="{Binding PlaySampleCommand}" IsVisible="{Binding IsReady}" />
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Button Grid.Row="1" Margin="0,16,0,0" Text="{Binding ContinueText}" Command="{Binding ContinueCommand}" />
+        <Button Grid.Row="2" Style="{StaticResource BackPill}" HorizontalOptions="Center" Margin="0,12,0,0"
+                Command="{Binding BackCommand}" IsVisible="{Binding ShowBack}" />
+    </Grid>
+</ContentPage>

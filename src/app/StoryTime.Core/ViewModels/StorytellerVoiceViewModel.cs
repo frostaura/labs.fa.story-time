@@ -259,7 +259,8 @@ public sealed partial class StorytellerVoiceViewModel : ObservableObject
         switch (Purpose)
         {
             case StorytellerVoicePurpose.Onboarding:
-                await _navigator.GoToAsync(Routes.OnboardingRules).ConfigureAwait(true);
+                // The step is a modal: dismiss it and continue onboarding in one hop.
+                await _navigator.GoToAsync($"../{Routes.OnboardingRules}").ConfigureAwait(true);
                 break;
             case StorytellerVoicePurpose.Repair:
                 await _navigator.GoToAsync(Routes.Home).ConfigureAwait(true);

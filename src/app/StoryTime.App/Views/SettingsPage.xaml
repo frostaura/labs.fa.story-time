@@ -86,6 +86,7 @@
                                                IsOn="{Binding StoryReadyNotifications}" />
                 </Grid>
                 <BoxView />
+                <controls:StorytellerVoiceRow /><BoxView />
 
                 <!-- Profiles row + inline editor. Nav rows get a pressed state (TouchBehavior,
                      bound through the named page — behaviors don't inherit BindingContext)

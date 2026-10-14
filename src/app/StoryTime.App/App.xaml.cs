@@ -62,6 +62,16 @@ public partial class App : Application
 				return;
 			}
 
+			// Founder rule (2026-10-14): no stories without the storyteller voice. If Serena
+			// (Premium) was removed in Settings, route back to the step — unless a QA cold-start
+			// route was asked for, which always wins.
+			var qaRouteRequested = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("STORYTIME_QA_ROUTE"));
+			if (!qaRouteRequested && _services.GetService<IStorytellerVoices>() is { HasStorytellerVoice: false })
+			{
+				await Shell.Current.GoToAsync($"{StoryTime.Core.ViewModels.Routes.StorytellerVoice}?purpose=repair");
+				return;
+			}
+
 			// QA hook: cold-start any route (STORYTIME_QA_ROUTE; SIMCTL_CHILD_ prefix on iOS sim).
 			// "weaving" is special since the page became the weave sheet: stay on Home
 			// and open the sheet expanded instead of navigating. "weaving-collapsed"
