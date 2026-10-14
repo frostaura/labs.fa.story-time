@@ -120,7 +120,7 @@ public class RenderTests(ITestOutputHelper output)
             if (plan.Focal is { } f && f.Depth == 3 && plan.Spec.Scene != PosterScene.ReefAtDusk)
             {
                 if (plan.Layout == PosterLayout.Center) Assert.True(Math.Abs(f.X - 0.5) <= 0.08, $"{plan.Spec.Scene} {f.Prop} centred hero at {f.X:0.00}");
-                else Assert.InRange(Math.Abs(f.X - 0.5), 0.10, 0.40);
+                else Assert.True(Math.Abs(f.X - 0.5) is >= 0.05 and <= 0.40, $"{plan.Spec.Scene} {f.Prop} third hero at {f.X:0.00}");   // wide heroes sit nearer the centre to stay in frame
             }
         }
     }

@@ -68,7 +68,7 @@ public sealed class ScenePalette
         var haze = Haze.ToOklab();
         var baseColor = Snowy
             ? Snow with { L = Snow.L - 0.06 * t }
-            : near with { L = near.L + (1 - t) * 0.05 };
+            : near with { L = near.L + (1 - t) * 0.08 };
         var mixed = Oklab.Mix(baseColor.ToOklab(), haze, Math.Clamp((1 - t) * (0.72 + HazeAmount * 0.25), 0, 0.92));
         return mixed.ToOklch();
     }

@@ -29,9 +29,10 @@ internal static partial class PropPainter
     {
         Prop.FoxCurled => 0.62,
         Prop.Whale => variant == 1 ? 0.54 : 0.86,
-        Prop.Turtle => variant == 1 ? 0.66 : 0.7,
+        Prop.Turtle => variant == 1 ? 0.6 : 0.7,
         Prop.FishSchool => 0.9,
-        Prop.Hedgehog => 0.7,
+        Prop.Hedgehog => 0.76,
+        Prop.Otter => 0.85,
         Prop.Camel => 0.96,
         _ => 1.0,
     };
@@ -545,46 +546,37 @@ internal static partial class PropPainter
         Whiskers(k, f, 0.18, 0.6, 0.12, cream);
     }
 
+    /// <summary>A round little hedgehog: a soft dome of tufted spines in two tones, a cream
+    /// face with a pointed snout and a button nose, a small ear and a blush.</summary>
     private static void Hedgehog(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var spine = Local(k, 0.46, 0.055, 55);
-        var face = Local(k, 0.8, 0.05, 70);
+        var spine = Local(k, 0.48, 0.06, 55);
+        var face = Local(k, 0.82, 0.05, 72);
         var ink = Ink(spine);
-        Contact(k, 0.5);
-        // Spines: a scalloped dome of soft rounded points.
-        using var dome = new SKPath();
-        using (var core = Blob(f, (-0.5, 0.04), (-0.52, 0.28), (-0.36, 0.56), (-0.06, 0.66), (0.2, 0.54), (0.26, 0.26), (0.18, 0.04))) dome.AddPath(core);
+        Contact(k, 0.42);
+        foreach (var fu in new[] { -0.22, 0.2 })
+        {
+            using var foot = Oval(f, fu, 0.03, 0.06, 0.035);
+            Coat(k, foot, face.Lighter(-0.12), 0.5);
+        }
+        using var body = Blob(f, (-0.46, 0.06), (-0.5, 0.34), (-0.32, 0.62), (-0.02, 0.74), (0.24, 0.62), (0.36, 0.34), (0.3, 0.06), (0.0, 0.0));
+        Coat(k, body, spine);
         for (var i = 0; i < 13; i++)
         {
-            var a = Math.PI * (0.98 - i * 0.85 / 12);
-            var cu = -0.14 + Math.Cos(a) * 0.38;
-            var cv = 0.16 + Math.Sin(a) * 0.5;
-            using var spike = Blob(f, (cu - 0.055, cv - 0.02), (cu + Math.Cos(a) * 0.09, cv + Math.Sin(a) * 0.09), (cu + 0.055, cv + 0.02));
-            dome.AddPath(spike);
+            var a = Math.PI * (0.98 - i * 0.62 / 12);
+            var cu = -0.06 + Math.Cos(a) * 0.42;
+            var cv = 0.34 + Math.Sin(a) * 0.36;
+            using var tuft = Oval(f, cu, cv, 0.075, 0.045, a * 180 / Math.PI - 90);
+            Coat(k, tuft, spine.Lighter(i % 2 == 0 ? 0.05 : -0.03), 0.35, 0.5);
         }
-        using var spines = dome.Simplify() ?? new SKPath(dome);
-        Coat(k, spines, spine);
-        using var tips = Paint.Stroke(Paint.Sk(face, 0.4), Math.Max(0.6f, k.S * 0.01f));
-        var r = new Rng(k.P.Seed ^ 0xED6Eu);
-        for (var i = 0; i < 9; i++)
-        {
-            var u = r.Range(-0.45, 0.1);
-            var v = r.Range(0.25, 0.65);
-            k.C.DrawLine(f.U(u), f.V(v), f.U(u - 0.04), f.V(v + 0.05), tips);
-        }
-        using var head = Blob(f, (0.04, 0.06), (0.02, 0.4), (0.2, 0.58), (0.44, 0.48), (0.66, 0.22), (0.62, 0.12), (0.36, 0.03));
+        using var head = Blob(f, (0.0, 0.08), (0.02, 0.4), (0.2, 0.54), (0.38, 0.44), (0.62, 0.24), (0.58, 0.15), (0.32, 0.05));
         Coat(k, head, face);
-        using var ear = Oval(f, 0.18, 0.56, 0.055, 0.05);
-        Coat(k, ear, face.Lighter(-0.06), 0.6);
-        Nose(k, f, 0.65, 0.18, 0.035, ink);
-        Eye(k, f, 0.36, 0.34, 0.045, ink);
-        Blush(k, f, 0.44, 0.24, 0.04);
-        foreach (var fu in new[] { 0.12, 0.36 })
-        {
-            using var foot = Oval(f, fu, 0.025, 0.05, 0.03);
-            Coat(k, foot, face.Lighter(-0.1), 0.5);
-        }
+        using var ear = Oval(f, 0.14, 0.52, 0.05, 0.045);
+        Coat(k, ear, face.Lighter(-0.08), 0.5);
+        Nose(k, f, 0.61, 0.2, 0.035, ink);
+        Eye(k, f, 0.3, 0.35, 0.045, ink);
+        Blush(k, f, 0.38, 0.25, 0.04);
     }
 
     /// <summary>An otter sitting up on a wet rock in the water, a shell held to its chest.</summary>
@@ -664,10 +656,18 @@ internal static partial class PropPainter
         using var rippleP = Paint.Stroke(Paint.Sk(ScenePalette.Cream, 0.32), Math.Max(0.7f, k.S * 0.012f));
         var ring = new SKRect(f.U(-0.82), f.V(0.04), f.U(0.82), f.V(-0.06));
         k.C.DrawArc(ring, 180, 180, false, rippleP);
-        using (var spray = Paint.Fill(Paint.Sk(ScenePalette.Cream, 0.85)))
+        // A fountain spout: arcs of spray curving out from the blowhole, droplets at the tips.
+        using (var jet = Paint.Stroke(Paint.Sk(ScenePalette.Cream, 0.7), f.L(0.028)))
+        using (var drop = Paint.Fill(Paint.Sk(ScenePalette.Cream, 0.85)))
         {
-            foreach (var (su, sv, sr) in new[] { (0.2, 0.62, 0.045), (0.32, 0.7, 0.05), (0.44, 0.6, 0.045), (0.26, 0.5, 0.035), (0.38, 0.5, 0.035), (0.32, 0.42, 0.03) })
-                k.C.DrawCircle(f.U(su), f.V(sv), f.L(sr), spray);
+            foreach (var side in new[] { -1.0, 0.0, 1.0 })
+            {
+                using var arc = new SKPath();
+                arc.MoveTo(f.P(0.3, 0.34));
+                arc.QuadTo(f.P(0.3 + side * 0.04, 0.66), f.P(0.3 + side * 0.16, 0.58 - Math.Abs(side) * 0.06));
+                k.C.DrawPath(arc, jet);
+                k.C.DrawCircle(f.U(0.3 + side * 0.17), f.V(0.54 - Math.Abs(side) * 0.08), f.L(0.03), drop);
+            }
         }
         using var tail = Blob(f, (-0.5, 0.0), (-0.58, 0.16), (-0.82, 0.4), (-0.7, 0.44), (-0.58, 0.32), (-0.46, 0.44), (-0.34, 0.4), (-0.44, 0.14), (-0.4, 0.0));
         Coat(k, tail, skin);
@@ -675,14 +675,6 @@ internal static partial class PropPainter
         Coat(k, back, skin);
         using var chin = Oval(f, 0.4, 0.02, 0.26, 0.08);
         Mark(k, back, chin, belly, 0.85);
-        // Water laps over the lower body.
-        using (var lap = new SKPaint
-               {
-                   IsAntialias = true,
-                   Shader = SKShader.CreateLinearGradient(f.P(0, 0.06), f.P(0, -0.04),
-                       [Paint.Sk(k.Colors.WaterTop, 0), Paint.Sk(k.Colors.WaterTop, 0.85)], SKShaderTileMode.Clamp),
-               })
-            k.C.DrawRect(f.U(-0.9), f.V(0.06), f.L(1.8), f.L(0.12), lap);
         k.C.DrawArc(ring, 0, 180, false, rippleP);
         Eye(k, f, 0.42, 0.18, 0.045, ink);
         using var smile = Paint.Stroke(Paint.Sk(ink, 0.7), Math.Max(0.7f, k.S * 0.01f));
@@ -745,7 +737,7 @@ internal static partial class PropPainter
             using var stripe = Oval(f, cu + sz * 0.05, cv, sz * 0.07, sz * 0.34);
             Mark(k, fb, stripe, ScenePalette.Cream, 0.55, 0.01);
             if (!face) { using var dot = Paint.Fill(Paint.Sk(ink)); k.C.DrawCircle(f.U(cu + sz * 0.38), f.V(cv + sz * 0.06), Math.Max(0.5f, f.L(sz * 0.06)), dot); return; }
-            OpenEye(k, f, cu + sz * 0.34, cv + sz * 0.07, sz * 0.09, ink);
+            Eye(k, f, cu + sz * 0.34, cv + sz * 0.07, sz * 0.12, ink);
             using var smile = Paint.Stroke(Paint.Sk(ink, 0.7), Math.Max(0.6f, k.S * 0.009f));
             k.C.DrawArc(new SKRect(f.U(cu + sz * 0.42), f.V(cv - sz * 0.02), f.U(cu + sz * 0.58), f.V(cv - sz * 0.14)), 20, 120, false, smile);
             Blush(k, f, cu + sz * 0.3, cv - sz * 0.1, sz * 0.06);
@@ -766,8 +758,12 @@ internal static partial class PropPainter
         var cream = Local(k, 0.86, 0.04, 80);
         var ink = Ink(coat);
         Contact(k, 0.55);
-        using var legs = Blob(f, (-0.4, 0.0), (0.3, 0.0), (0.34, 0.08), (-0.4, 0.1));
-        Coat(k, legs, coat.Lighter(-0.05), 0.7);
+        // Folded legs tucked under, knees showing.
+        foreach (var lu in new[] { -0.36, -0.18, 0.12, 0.28 })
+        {
+            using var knee = Oval(f, lu, 0.05, 0.09, 0.05);
+            Coat(k, knee, coat.Lighter(-0.05), 0.7);
+        }
         using var body = Blob(f, (-0.5, 0.06), (-0.52, 0.3), (-0.3, 0.6), (-0.08, 0.68), (0.12, 0.52), (0.3, 0.36), (0.32, 0.08));
         Coat(k, body, coat);
         using var blanket = Blob(f, (-0.26, 0.6), (-0.08, 0.66), (0.06, 0.56), (0.02, 0.42), (-0.26, 0.44));

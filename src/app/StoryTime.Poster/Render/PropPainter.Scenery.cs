@@ -44,7 +44,7 @@ internal static partial class PropPainter
             FrameKit.Reef => new Oklch(c.LandNear.L, 0.06, 170),
             _ => c.Foliage with { L = c.LandNear.L - 0.05 },
         };
-        leafBase = leafBase with { L = Math.Clamp(leafBase.L - 0.06, 0.11, 0.24), C = Math.Min(0.09, leafBase.C + 0.015) };
+        leafBase = leafBase with { L = Math.Clamp(leafBase.L - 0.05, 0.15, 0.25), C = Math.Min(0.09, leafBase.C + 0.015) };
         var rock = Oklab.Mix(c.LandNear.ToOklab(), new Oklch(0.32, 0.015, 60).ToOklab(), 0.5).ToOklch() with { L = Math.Max(0.16, c.LandNear.L - 0.02) };
 
         switch (kit)
@@ -98,10 +98,10 @@ internal static partial class PropPainter
             case FrameKit.Reef:
             {
                 Kelps(k, f, r, leafBase, 3);
-                var coral = k.Colors.Grade(new Oklch(0.66, 0.1, CoralHue(k.Plan)));
+                var coral = k.Colors.Grade(new Oklch(0.54, 0.09, CoralHue(k.Plan)));
                 using var clump = new SKPath();
                 for (var i = 0; i < 7; i++)
-                    clump.AddCircle(f.U(-0.4 + i * 0.16 + r.Jitter(0.03)), f.V(0.12 + r.Range(0, 0.18) * (1 - i / 8.0)), f.L(r.Range(0.1, 0.16)));
+                    clump.AddCircle(f.U(-0.4 + i * 0.16 + r.Jitter(0.03)), f.V(0.16 + r.Range(0, 0.22) * (1 - i / 8.0)), f.L(r.Range(0.13, 0.19)));
                 using var mc = clump.Simplify() ?? new SKPath(clump);
                 Coat(k, mc, coral, 0.8);
                 using var polyps = new SKPath();
@@ -116,6 +116,7 @@ internal static partial class PropPainter
         {
             foreach (var (u, w, h) in new[] { (-0.25, 0.6, 0.66), (0.32, 0.34, 0.32) })
             {
+                if (u > 0 && kit == FrameKit.Beach) continue;   // no pebble cut by the frame's foot
                 using var stone = Blob(f, (u - w, 0.0), (u - w * 0.9, h * 0.6), (u - w * 0.3, h), (u + w * 0.4, h * 0.9), (u + w, h * 0.3), (u + w * 0.9, 0.0));
                 Coat(k, stone, rock.Lighter(r.Jitter(0.02)), 0.7);
             }
@@ -391,7 +392,7 @@ internal static partial class PropPainter
     {
         var f = new Frame(k.X, k.Y, k.S);
         var body = new Oklch(0.78, 0.11, 55);
-        Paint.Glow(k.C, f.U(0), f.V(0.5), f.L(1.5), Paint.Sk(k.Colors.WindowGlow), 0.45);
+        Paint.Glow(k.C, f.U(0), f.V(0.5), f.L(2.0), Paint.Sk(k.Colors.WindowGlow), 0.55);
         using var foot = Blob(f, (-0.3, 0.0), (-0.22, 0.35), (0.22, 0.35), (0.3, 0.0));
         Coat(k, foot, k.Colors.Grade(new Oklch(0.6, 0.1, 30)), 0.6);
         for (var i = 0; i < 11; i++)

@@ -93,7 +93,7 @@ internal static partial class PropPainter
             using var pool = new SKPaint
             {
                 IsAntialias = true,
-                Color = SKColors.Black.WithAlpha(plan.Colors.Snowy || plan.Underwater ? (byte)64 : (byte)40),
+                Color = SKColors.Black.WithAlpha(plan.Colors.Snowy || plan.Underwater ? (byte)78 : (byte)52),
                 MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(1f, hh * 0.18f)),
             };
             canvas.DrawOval(x, y - hh * 0.45f, hw * 1.05f, hh * 0.58f, pool);
