@@ -33,6 +33,16 @@ public sealed class AppleStorytellerVoices : IStorytellerVoices, IDisposable
         get { lock (_gate) return _current; }
     }
 
+    /// <summary>Serena Premium is installed — or, QA only, the iOS simulator was launched with
+    /// <c>STORYTIME_QA_ANY_VOICE=1</c> (SIMCTL_CHILD_ prefix). The simulator has no Voices
+    /// download screen, so without this the storyteller step blocks every sim QA walk at
+    /// onboarding. Never honoured on a device.</summary>
+    public bool HasStorytellerVoice => Current is { } c && (c.MeetsRequirement || QaAnyVoice);
+
+    private static readonly bool QaAnyVoice =
+        ObjCRuntime.Runtime.Arch == ObjCRuntime.Arch.SIMULATOR
+        && Environment.GetEnvironmentVariable("STORYTIME_QA_ANY_VOICE") == "1";
+
     public event EventHandler? Changed;
 
     public void Refresh()

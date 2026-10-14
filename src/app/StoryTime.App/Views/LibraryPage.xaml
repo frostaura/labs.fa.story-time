@@ -11,7 +11,8 @@
     x:DataType="vm:LibraryViewModel"
     Shell.NavBarIsVisible="False">
 
-    <Grid>
+    <!-- SafeAreaEdges None: lets the MakingSheetHost overlay run edge to edge; content layouts inset themselves. -->
+    <Grid SafeAreaEdges="None">
     <Grid RowDefinitions="Auto,*,Auto" Padding="32,24,32,24">
         <!-- Back lives top-left of the header on EVERY screen that has one (the making
              mini-bar docks over the bottom edge, so back can never live down there).

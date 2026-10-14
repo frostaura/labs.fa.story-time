@@ -12,7 +12,9 @@
     x:DataType="vm:HomeViewModel"
     Shell.NavBarIsVisible="False">
 
-    <Grid>
+    <!-- SafeAreaEdges None: the overlay hosts below run edge to edge (backdrop over the
+         status bar, sheet to the bottom edge); the ScrollView keeps its own safe-area insets. -->
+    <Grid SafeAreaEdges="None">
     <ScrollView>
         <VerticalStackLayout Padding="32,20,32,28" Spacing="0">
 

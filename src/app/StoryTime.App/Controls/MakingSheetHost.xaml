@@ -9,12 +9,17 @@
     x:Name="SheetHost"
     x:DataType="vm:MakingSheetViewModel"
     InputTransparent="True"
-    CascadeInputTransparent="False">
+    CascadeInputTransparent="False"
+    SafeAreaEdges="None">
 
     <!-- Overlay host for the making sheet + mini-bar. Added as the TOP layer of every
          non-modal page's root Grid; binds to the singleton MakingSheetViewModel so
          expand/collapse survives navigation. The root grid is input-transparent — only
-         the visible children (scrim / sheet / mini-bar) catch touches. -->
+         the visible children (scrim / sheet / mini-bar) catch touches. SafeAreaEdges None:
+         MAUI 10 layouts obey the safe area by default, which left the status-bar strip
+         undimmed and the page showing under the sheet; the host (and its page's root Grid)
+         now run edge to edge, the sheet's content Grid still insets itself, and the mini-bar
+         pads above the home indicator in ApplySafeAreaPadding. -->
     <Grid.Resources>
         <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource Success}" />
         <toolkit:IsStringNotNullOrEmptyConverter x:Key="IsNotEmptyConverter" />

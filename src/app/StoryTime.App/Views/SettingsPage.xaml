@@ -11,14 +11,18 @@
     x:DataType="vm:SettingsViewModel"
     Shell.NavBarIsVisible="False">
 
-    <Grid>
+    <!-- SafeAreaEdges None: lets the MakingSheetHost overlay run edge to edge; content layouts inset themselves. -->
+    <Grid SafeAreaEdges="None">
         <!-- Locked veil (biometric gate every entry) -->
         <VerticalStackLayout Padding="32" Spacing="14" VerticalOptions="Center"
                              IsVisible="{Binding IsUnlocked, Converter={StaticResource InvertedBoolConverter}}">
             <Label Style="{StaticResource DisplaySmall}" HorizontalTextAlignment="Center" Text="A grown-up moment." />
             <Label Style="{StaticResource Body}" HorizontalTextAlignment="Center"
                    Text="Asked every time — little fingers can't wander in." />
+            <!-- IsVisible too: a stopped MAUI ActivityIndicator on iOS still draws a frozen spinner
+                 beside the failure line. -->
             <ActivityIndicator IsRunning="{Binding GateFailed, Converter={StaticResource InvertedBoolConverter}}"
+                               IsVisible="{Binding GateFailed, Converter={StaticResource InvertedBoolConverter}}"
                                HorizontalOptions="Center" Margin="0,10,0,0" />
             <!-- Gentle failure line — the gate never crashes, it just stays shut. -->
             <Label Style="{StaticResource Caption}" HorizontalTextAlignment="Center"

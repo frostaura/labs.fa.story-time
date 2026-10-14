@@ -73,6 +73,10 @@ public sealed class BottomShelfHost : Grid
     {
         InputTransparent = true;             // the host grid never blocks the page…
         CascadeInputTransparent = false;     // …only its visible children catch touches.
+        // Edge to edge: the backdrop must dim the status-bar strip and the sheet must reach the
+        // bottom edge. MAUI 10 layouts obey the safe area by default (Container), which left an
+        // undimmed band above the backdrop; the sheet pads above the home indicator itself.
+        SafeAreaEdges = SafeAreaEdges.None;
 
         // Not a BoxView: the app's implicit BoxView style is the 1dp hairline divider
         // (HeightRequest=1), which would collapse the backdrop to an untappable line.
@@ -113,6 +117,7 @@ public sealed class BottomShelfHost : Grid
         {
             RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto) },
             Padding = new Thickness(32, 10, 32, 24),
+            SafeAreaEdges = SafeAreaEdges.None,   // ApplySafeAreaPadding adds the bottom inset
         };
         _sheetGrid.Add(grabZone, 0, 0);
 
