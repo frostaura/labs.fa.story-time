@@ -3,16 +3,6 @@ bin/
 obj/
 *.user
 
-# native build intermediates (outputs are fetched/built by scripts, not committed)
-native/
-!scripts/
-
-# models are NEVER in-repo (they live in ~/StoryTimeModels)
-*.gguf
-*.onnx
-voices.bin
-espeak-ng-data/
-
 # audio/poster artifacts from local runs
 *.wav
 *.m4a
