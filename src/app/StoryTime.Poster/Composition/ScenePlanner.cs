@@ -208,7 +208,7 @@ public static class ScenePlanner
             while (x < x1)
             {
                 var blocked = keepOut?.Any(k => x > k.A && x < k.B) ?? false;
-                if (!blocked && ground.Y(x) < 1.0 && !(spacing < 0.04 && r.Chance(0.12)))
+                if (!blocked && ground.Y(x) < 1.0 && !(spacing < 0.04 && r.Chance(0.2)))
                     Place(prop, depth, x, ground.Y(x) + sink, r.Range(sizeMin, sizeMax), $"{label}-{i}", variant: variant, tone: tone);
                 x += spacing * r.Range(0.6, 1.4);
                 i++;
@@ -388,21 +388,22 @@ public static class ScenePlanner
             Band(1, Hills(_horizon, 0.02, 4, "cove-isle", 2, Window(0.5 + _side * r.Range(0.12, 0.25), 0.06), _horizon + 0.004),
                 0.0, TerrainStyle.Earth, fog: 0.2, rim: false);
             _water = new WaterPlan(1, _horizon, Glade: true);
-            var isleSide = -_side;
+            var isleSide = _side;   // the island shares the subject's third; the moon gets open sky
             var isle = Band(2, Hills(_horizon + 0.09, 0.07, 2.0, "cove-island", 3, SideEnvelope(isleSide, 0.32, 0.18), 1.25),
                 0.66, TerrainStyle.Earth);
             var palms = 2 + r.Int(2);
             for (var i = 0; i < palms; i++)
             {
-                var px = 0.5 + isleSide * (0.30 + i * 0.05 + r.Jitter(0.015));
+                var px = 0.5 + isleSide * (0.33 + i * 0.05 + r.Jitter(0.015));
+                if (isle.Profile.Y(px) > _horizon + 0.07) continue;   // palms only on the island itself
                 Place(Prop.Palm, 2, px, isle.Profile.Y(px) - 0.004, r.Range(0.2, 0.27), $"cove-palm-{i}", flip: isleSide > 0 == (i % 2 == 0));
             }
             var beach = Band(3, Hills(0.98, 0.06, 1.3, "cove-beach", 2), 1.0, TerrainStyle.Sand);
             Grass(3, beach.Profile, 0.5, "cove-grass");
-            if (r.Chance(0.6))
+            if (r.Chance(0.35))
             {
-                var px0 = 0.5 + _side * 0.46;
-                Place(Prop.Palm, 3, px0, beach.Profile.Y(px0) + 0.03, r.Range(0.6, 0.68), "cove-frame-palm", flip: _side > 0);
+                var px0 = 0.5 - _side * 0.46;
+                Place(Prop.Palm, 3, px0, beach.Profile.Y(px0) + 0.03, r.Range(0.48, 0.55), "cove-frame-palm", flip: _side > 0);
             }
         }
 
@@ -529,7 +530,7 @@ public static class ScenePlanner
                         if (_spec.Scene == PosterScene.IslandCove)
                         {
                             var isle = _bands.Last(b => b.Depth == 2).Profile;
-                            var lx = 0.5 - _side * 0.34;
+                            var lx = GroundedX(isle, 0.5 + _side * 0.3);
                             Place(Prop.Lighthouse, 2, lx, isle.Y(lx) + 0.006, r.Range(0.2, 0.24), "lighthouse", flip: false, feature: f, lit: true);
                         }
                         break; // MoonlitSea placed it on its cliff already
@@ -1052,7 +1053,7 @@ public static class ScenePlanner
             var r = R("ambient");
             // Twinkle: 10–20% of the brighter stars, slow (2–6 s), opacity-only (WCAG 2.3.3
             // treats opacity change as non-motion).
-            bool InCloud(double x, double y) => _clouds.Any(c => Math.Abs(x - c.X) < c.Width * 0.6 && y > c.Y - c.Height * 1.6 && y < c.Y + c.Height * 0.3);
+            bool InCloud(double x, double y) => _clouds.Any(c => Math.Abs(x - c.X) < c.Width * 0.75 && y > c.Y - c.Height * 2.0 && y < c.Y + c.Height * 0.5);
             foreach (var s in _stars.Where(s => s.Alpha > 0.55 && !TitleSafe.Contains(s.X, s.Y) && !InCloud(s.X, s.Y)).Take(18))
             {
                 if (!r.Chance(0.6)) continue;

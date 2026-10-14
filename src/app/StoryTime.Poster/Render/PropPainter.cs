@@ -788,7 +788,7 @@ internal static class PropPainter
             snow.LineTo(x, wallTop - roofH + s * 0.04f);
             snow.LineTo(left - over * 0.6f, wallTop + s * 0.035f);
             snow.Close();
-            k.Flat(snow, k.Colors.Snow, 0.95);
+            k.Flat(snow, k.Colors.Snow.Lighter(0.14), 0.95);
         }
 
         // Door + windows: warm when lit; at most two lit panes.

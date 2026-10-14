@@ -78,7 +78,7 @@ public sealed class ScenePalette
                 zL = 0.235; mL = 0.31; hL = 0.45; glowStrength = 0.35; stars = 0.55; glowHue = 40; moonGlow = 0.65; rimStrength = 0.38;
                 break;
             case PosterTimeOfDay.Starlit:
-                zL = 0.165; mL = 0.215; hL = 0.315; glowStrength = 0.10; stars = 1.0; glowHue = skyHue; moonGlow = 0.55; rimStrength = 0.28;
+                zL = 0.165; mL = 0.215; hL = 0.315; glowStrength = 0.10; stars = 0.78; glowHue = skyHue; moonGlow = 0.55; rimStrength = 0.28;
                 break;
             default: // Moonlit
                 zL = 0.205; mL = 0.27; hL = 0.39; glowStrength = 0.15; stars = 0.5; glowHue = skyHue; moonGlow = 1.0; rimStrength = 0.55;

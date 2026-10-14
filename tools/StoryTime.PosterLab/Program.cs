@@ -3,7 +3,7 @@ using StoryTime.Contracts;
 using StoryTime.Poster;
 using StoryTime.Poster.Spec;
 
-var outDir = args.Length > 0 && args[0] is not ("focus" or "layers") ? args[0] : "/private/tmp/storytime-posters";
+var outDir = args.Length > 0 && args[0] is not ("focus" or "layers" or "one") ? args[0] : "/private/tmp/storytime-posters";
 Directory.CreateDirectory(outDir);
 
 if (args.Length > 0 && args[0] == "layers")
@@ -18,6 +18,30 @@ if (args.Length > 0 && args[0] == "layers")
         Console.WriteLine($"layer {l.Depth} bounds={l.Bounds} img={l.Image.Width}x{l.Image.Height}");
         File.WriteAllBytes(Path.Combine("/private/tmp/storytime-posters", $"dbg-layer{l.Depth}.png"), PosterEngine.EncodePng(l.Image));
     }
+    return;
+}
+
+if (args.Length > 0 && args[0] == "one")
+{
+    // `one <index>`: the contact-sheet spec #index at 700 px, for close inspection.
+    var idx = int.Parse(args[1]);
+    var scenesAll = Enum.GetValues<PosterScene>();
+    var scene1 = scenesAll[idx % scenesAll.Length];
+    var rng1 = new StoryTime.Poster.Core.Rng(1000 + idx);
+    var compatible1 = Enum.GetValues<PosterFeature>().Where(f => PosterSpecRules.IsCompatible(scene1, f)).ToList();
+    rng1.Shuffle(compatible1);
+    var spec1 = PosterSpecRules.Normalize(new PosterSpec
+    {
+        Scene = scene1,
+        TimeOfDay = Enum.GetValues<PosterTimeOfDay>()[(idx / scenesAll.Length + idx) % 4],
+        Mood = Enum.GetValues<PosterMood>()[rng1.Int(6)],
+        Palette = rng1.Chance(0.6) ? PosterSpecRules.DefaultPalette(scene1) : (PosterPalette)rng1.Int(12),
+        Features = compatible1.Take(1 + rng1.Int(3)).ToList(),
+        Seed = 7919 * (idx + 1),
+    });
+    using var big1 = PosterEngine.RenderFlattened(spec1, 700, 700);
+    File.WriteAllBytes(Path.Combine(outDir, $"one-{idx}.png"), PosterEngine.EncodePng(big1, fast: false));
+    Console.WriteLine($"{spec1.Scene} {spec1.TimeOfDay} [{string.Join(",", spec1.Features)}]");
     return;
 }
 

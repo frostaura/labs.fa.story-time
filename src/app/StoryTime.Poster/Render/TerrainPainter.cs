@@ -77,7 +77,7 @@ internal static class TerrainPainter
             // A soft moonlit lip, not a drawn outline: wider and blurred, lower alpha.
             var rimW = Math.Max(1.5f, vp.Unit * (band.Style == TerrainStyle.Cloud ? 0.009f : 0.006f));
             var near = band.Tone;
-            var alpha = c.RimStrength * (band.Style == TerrainStyle.Cloud ? 0.6 : 0.2 + 0.2 * near);
+            var alpha = c.RimStrength * (band.Style == TerrainStyle.Cloud ? 0.6 : 0.12 + 0.12 * near);
             using var shifted = new SKPath(path);
             shifted.Offset(0, rimW);
             canvas.Save();
@@ -88,7 +88,7 @@ internal static class TerrainPainter
                 IsAntialias = true,
                 MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, rimW * 0.45f),
                 Shader = SKShader.CreateLinearGradient(new SKPoint(vp.X(lx - 0.6), 0), new SKPoint(vp.X(lx + 0.6), 0),
-                    [Paint.Sk(c.Rim, alpha * 0.35), Paint.Sk(c.Rim, alpha), Paint.Sk(c.Rim, alpha * 0.35)], SKShaderTileMode.Clamp),
+                    [Paint.Sk(c.Rim, alpha * 0.1), Paint.Sk(c.Rim, alpha), Paint.Sk(c.Rim, alpha * 0.1)], SKShaderTileMode.Clamp),
             };
             canvas.DrawRect(0, 0, vp.Width, vp.Height, rim);
             canvas.Restore();
@@ -262,6 +262,15 @@ internal static class TerrainPainter
                 using var rp = Paint.Fill(Paint.Sk(col, 0.62));
                 canvas.DrawPath(path, rp);
             }
+            // Fade the whole reflection out with depth below the waterline, so it reads as a
+            // mirror dissolving into the water — never as pale hills standing in the lake.
+            using (var fade = new SKPaint
+                   {
+                       BlendMode = SKBlendMode.DstIn,
+                       Shader = SKShader.CreateLinearGradient(new SKPoint(0, line), new SKPoint(0, line + (bottom - line) * 0.55f),
+                           [SKColors.Black, SKColors.Black.WithAlpha(90), SKColors.Black.WithAlpha(0)], [0f, 0.4f, 1f], SKShaderTileMode.Clamp),
+                   })
+                canvas.DrawRect(-2, line, vp.Width + 4, bottom - line, fade);
             // Ripples: thin horizontal gaps, denser and longer toward the viewer.
             var rr = new Rng((ulong)(uint)plan.Spec.Seed ^ 0x52495050UL);
             using var gap = new SKPaint { BlendMode = SKBlendMode.DstOut, IsAntialias = true, Color = SKColors.Black.WithAlpha(150) };

@@ -469,3 +469,38 @@ MEDIUM fixes:
 - lighter, always-lit castles in the clouds;
 - hand-cut edge wobble on silhouettes;
 - a fixed paper tooth.
+
+### Round 5 (final allowed round)
+
+The reviewers still reported MEDIUM-or-worse defects. **The stop condition (two
+consecutive quiet rounds) was not met within the five-round cap.**
+
+Fixed after round 5:
+- **Lake reflections read as pale "ghost hills".** They now fade out with depth below the
+  waterline (DstIn gradient) instead of ending in a hard mirrored edge.
+- **IslandCove crowding.** The island and its palms moved to the subject's third, leaving
+  the moon open sky. Palms grow only on the island itself. The framing palm is smaller,
+  rarer and on the far side.
+- **Band-top lips read as seams.** They are now directional: strongest toward the moon,
+  near zero away from it.
+- **The frame paper tooth mottled the sky.** It is finer and half the strength.
+- Starlit star budget reduced by 22%.
+- Twinkles keep a wider berth from clouds.
+- Brighter snow caps on roofs.
+- More gaps in far tree lines.
+
+Defects still open, on reviewer consensus:
+- **Creature drawing quality.** The rabbit's ears, the grazing fawn pose and the land turtle
+  are still weak in places. Hand-authored paths are the ceiling of this approach; the next
+  step is a dedicated creature pass with an illustrator's reference sheet.
+- **Within-scene layout sameness.** Each scene has one archetype, with mirroring, jitter
+  and optional framers. Reviewers want 2–3 archetypes per scene.
+- **Reef assets** (coral variety, kelp ribbons) and **jungle foliage** still read the
+  most procedural.
+- **Palette spread.** Many palettes land in navy or violet; reviewers ask for warmer-dusk
+  and green-slate families, and for an even distribution of palettes across consecutive
+  posters.
+- **Small features.** Birds and the train can be too small to read at card size; a
+  post-render visibility check per listed feature is proposed.
+- **Vertical tilt.** Reviewers want ≤ ⅓ of horizontal; the engine uses ½, respecting the
+  founder's pinned-channel evidence. This needs a founder call on a device.

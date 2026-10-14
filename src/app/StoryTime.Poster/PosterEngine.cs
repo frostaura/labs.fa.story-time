@@ -233,12 +233,12 @@ public static class PosterEngine
     private static void PaperTooth(SKCanvas c, int w, int h)
     {
         // A faint, warm, low-frequency mottle over the whole frame (~2%): the "paper".
-        using var noise = SKShader.CreatePerlinNoiseFractalNoise(0.012f, 0.012f, 3, 7);
+        using var noise = SKShader.CreatePerlinNoiseFractalNoise(0.035f, 0.035f, 2, 7);
         using var p = new SKPaint
         {
             Shader = noise,
             BlendMode = SKBlendMode.Overlay,
-            Color = SKColors.Black.WithAlpha(14),
+            Color = SKColors.Black.WithAlpha(7),
         };
         c.DrawRect(0, 0, w, h, p);
     }
