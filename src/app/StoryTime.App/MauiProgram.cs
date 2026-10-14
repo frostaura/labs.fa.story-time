@@ -8,6 +8,8 @@ using StoryTime.App.Views;
 using StoryTime.Core;
 using StoryTime.Core.Abstractions;
 using StoryTime.Core.Engines;
+using StoryTime.Core.Engines.AppleFoundation;
+using StoryTime.Core.Services;
 
 namespace StoryTime.App;
 
@@ -105,14 +107,30 @@ public static class MauiProgram
 		return builder.Build();
 	}
 
-	/// <summary>Story-engine swap point. Today: the deterministic TemplateStoryEngine, so the
-	/// app runs end-to-end with no model and no network. The Apple-models lane replaces this
-	/// body with <c>AppleFoundationStoryEngine</c> (Foundation Models via the Swift shim,
-	/// iOS 26+), keeping TemplateStoryEngine as its fallback when the system model is
-	/// unavailable (Apple Intelligence off, device ineligible, model not yet downloaded).
-	/// Prompt text for it lives in Core/Engines/Prompts/StoryPrompts.cs.</summary>
-	static void RegisterStoryEngine(IServiceCollection services) =>
-		services.AddSingleton<IStoryEngine>(_ => new TemplateStoryEngine(() => Random.Shared.Next()));
+	/// <summary>Story-engine swap point: Apple's on-device Foundation Models through the
+	/// StoryTimeNative Swift shim (AppleFoundationStoryEngine), with the deterministic
+	/// TemplateStoryEngine as the fallback. A device that can never run the model
+	/// (deviceNotEligible) gets the template engine outright. Every other state registers the
+	/// Apple engine, because it re-checks availability per story and renders the whole story
+	/// from templates while the model is off, downloading or unsupported — so turning Apple
+	/// Intelligence on takes effect on the next story without a relaunch. The status service
+	/// gives the UI its plain-words guidance. Prompt text: Core/Engines/Prompts and
+	/// Core/Engines/AppleFoundation.</summary>
+	static void RegisterStoryEngine(IServiceCollection services)
+	{
+		var bridge = new Platforms.iOS.AppleFoundationModelsBridge();
+		services.AddSingleton<IFoundationModelsBridge>(bridge);
+		services.AddSingleton<IStoryEngineStatus>(_ => new StoryEngineStatus(bridge.GetAvailability));
+		services.AddSingleton<IStoryEngine>(sp =>
+		{
+			var availability = bridge.GetAvailability();
+			if (availability.Reason == FmUnavailableReason.DeviceNotEligible)
+				return new TemplateStoryEngine(() => Random.Shared.Next());
+			if (availability.IsAvailable) bridge.Prewarm("outline");
+			return new AppleFoundationStoryEngine(bridge, sp.GetRequiredService<StoryTime.Core.Pipeline.SafetyFilter>(),
+				logger: sp.GetService<ILogger<AppleFoundationStoryEngine>>());
+		});
+	}
 
 	/// <summary>Narration-engine swap point. Today: PlatformTtsEngine (MAUI TextToSpeech, live
 	/// playback, no rendered file). The narration lane replaces this body with
