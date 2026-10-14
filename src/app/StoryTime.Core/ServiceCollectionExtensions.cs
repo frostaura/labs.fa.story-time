@@ -47,6 +47,10 @@ public static class ServiceCollectionExtensions
         // Apple Foundation Models engine), so this only serves tests and headless hosts.
         // ITtsEngine has no Core default: speech is platform-only (MauiProgram.RegisterTtsEngine).
         services.TryAddSingleton<IStoryEngine>(_ => new TemplateStoryEngine(() => Random.Shared.Next()));
+        // Engine status for UI guidance. The App head registers one probing the native
+        // Foundation Models bridge; hosts without one report "no bridge" (no guidance).
+        services.TryAddSingleton<IStoryEngineStatus>(_ =>
+            new StoryEngineStatus(() => Engines.AppleFoundation.FoundationModelsAvailability.NoBridge));
 
         // Shared app state
         services.TryAddSingleton<OnboardingState>();
