@@ -22,7 +22,7 @@ a:hover{color:#F2C580;text-decoration:underline}
 
   <!-- Journey rail -->
   <div style="width:270px;flex-shrink:0;display:flex;flex-direction:column;gap:6px">
-    <div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#8A7460;margin-bottom:10px">TaleWeaver · Hearth · interactive storyboard</div>
+    <div style="font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#8A7460;margin-bottom:10px">StoryTime · Hearth · interactive storyboard</div>
     <div style="font:300 34px 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:6px">Tap through<br>the evening</div>
     <div style="font:400 13px/1.7 'Quicksand',sans-serif;color:#A08C78;margin-bottom:22px">Every glowing element in the phone is tappable. Or jump straight to a moment:</div>
     <sc-for list="{{ steps }}" as="step" hint-placeholder-count="8">
@@ -43,7 +43,7 @@ a:hover{color:#F2C580;text-decoration:underline}
     <!-- 01 Profile -->
     <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
       <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
-        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:28px">TaleWeaver <span style="color:#E8A857">· 1 of 3</span></div>
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:28px">StoryTime <span style="color:#E8A857">· 1 of 3</span></div>
         <h1 style="font:300 36px/1.2 'Outfit',sans-serif;margin:0 0 10px;color:#F3E9DC">Who's listening tonight?</h1>
         <p style="font:400 14px/1.7 'Quicksand',sans-serif;color:#A08C78;margin:0 0 26px">It all stays on this phone. Never on our servers.</p>
         <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin-bottom:6px">Nickname</div>
@@ -68,7 +68,7 @@ a:hover{color:#F2C580;text-decoration:underline}
     <!-- 02 Voice & length -->
     <sc-if value="{{ isVoice }}" hint-placeholder-val="{{ false }}">
       <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
-        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:26px">TaleWeaver <span style="color:#E8A857">· 2 of 3</span></div>
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:26px">StoryTime <span style="color:#E8A857">· 2 of 3</span></div>
         <h1 style="font:300 36px/1.2 'Outfit',sans-serif;margin:0 0 26px;color:#F3E9DC">A voice, and a length</h1>
         <div style="font:500 11px 'Outfit',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08C78;margin-bottom:4px">Narrator — tap to choose</div>
         <div style="display:flex;flex-direction:column;font:400 17px 'Outfit',sans-serif">
@@ -102,7 +102,7 @@ a:hover{color:#F2C580;text-decoration:underline}
     <!-- 03 Rules -->
     <sc-if value="{{ isRules }}" hint-placeholder-val="{{ false }}">
       <div style="padding:26px 32px 0;display:flex;flex-direction:column;flex:1">
-        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:26px">TaleWeaver <span style="color:#E8A857">· 3 of 3</span></div>
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:26px">StoryTime <span style="color:#E8A857">· 3 of 3</span></div>
         <h1 style="font:300 36px/1.2 'Outfit',sans-serif;margin:0 0 26px;color:#F3E9DC">Three things, then bed</h1>
         <div style="display:flex;gap:18px;padding:0 0 20px;border-bottom:1px solid #32271D;margin-bottom:20px">
           <span style="font:300 28px 'Outfit',sans-serif;color:#E8A857">1</span>
@@ -127,7 +127,7 @@ a:hover{color:#F2C580;text-decoration:underline}
     <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
       <div style="padding:24px 32px 0;display:flex;flex-direction:column;flex:1">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:34px">
-          <span style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase">TaleWeaver</span>
+          <span style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase">StoryTime</span>
           <span style="display:flex;gap:16px;align-items:center;font:400 13px 'Outfit',sans-serif">
             <span onClick="{{ goShelf }}" style="color:#A08C78;cursor:pointer" style-hover="color:#E8A857">☾ Kid Shelf</span>
             <span onClick="{{ goSettings }}" style="width:32px;height:32px;border-radius:50%;border:1px solid #E8A857;display:flex;align-items:center;justify-content:center;color:#E8A857;font-size:13px;cursor:pointer" style-hover="background:#E8A857;color:#201813">M</span>
@@ -136,7 +136,7 @@ a:hover{color:#F2C580;text-decoration:underline}
         <div style="font:400 14px 'Quicksand',sans-serif;color:#A08C78;margin-bottom:8px">Good evening.</div>
         <h1 style="font:300 38px/1.18 'Outfit',sans-serif;margin:0 0 8px;color:#F3E9DC">Tonight's story<br>for Mila</h1>
         <div style="font:400 13px 'Quicksand',sans-serif;color:#8A7460;margin-bottom:22px">{{ homeSummary }}</div>
-        <div onClick="{{ startWeave }}" style="background:#E8A857;border-radius:14px;height:62px;display:flex;align-items:center;justify-content:center;font:500 17px 'Outfit',sans-serif;color:#201813;margin-bottom:20px;cursor:pointer" style-hover="box-shadow:0 0 28px 0 rgba(232,168,87,.4)">Weave tonight's story</div>
+        <div onClick="{{ startMaking }}" style="background:#E8A857;border-radius:14px;height:62px;display:flex;align-items:center;justify-content:center;font:500 17px 'Outfit',sans-serif;color:#201813;margin-bottom:20px;cursor:pointer" style-hover="box-shadow:0 0 28px 0 rgba(232,168,87,.4)">Make tonight's story</div>
         <div style="display:flex;justify-content:space-between;font:500 11px 'Outfit',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#A08C78;margin-bottom:14px"><span>Length — tap track</span><span style="color:#E8A857">{{ lengthLabel }}</span></div>
         <div onClick="{{ cycleLength }}" style="height:14px;display:flex;align-items:center;cursor:pointer;margin:0 2px 6px">
           <div style="height:2px;background:#32271D;position:relative;flex:1">
@@ -163,20 +163,20 @@ a:hover{color:#F2C580;text-decoration:underline}
     </sc-if>
 
     <!-- 05 Generating -->
-    <sc-if value="{{ isWeaving }}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{ isMaking }}" hint-placeholder-val="{{ false }}">
       <div style="padding:28px 32px 0;display:flex;flex-direction:column;flex:1">
-        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:52px">TaleWeaver <span style="color:#E8A857">· weaving</span></div>
+        <div style="font:400 13px 'Outfit',sans-serif;color:#A08C78;letter-spacing:.18em;text-transform:uppercase;margin-bottom:52px">StoryTime <span style="color:#E8A857">· making</span></div>
         <div style="font:300 88px/1 'Outfit',sans-serif;color:#F3E9DC;margin-bottom:8px">{{ progress }}<span style="font-size:42px;color:#E8A857">%</span></div>
-        <h1 style="font:300 25px/1.3 'Outfit',sans-serif;margin:0 0 10px;color:#F3E9DC">{{ weaveTitle }}</h1>
+        <h1 style="font:300 25px/1.3 'Outfit',sans-serif;margin:0 0 10px;color:#F3E9DC">{{ makingTitle }}</h1>
         <p style="font:400 14px/1.7 'Quicksand',sans-serif;color:#A08C78;margin:0 0 30px">Close the app if you like — we'll send a gentle ping when it's ready.</p>
         <div style="display:flex;flex-direction:column;font:400 15px 'Outfit',sans-serif">
           <sc-for list="{{ stages }}" as="st" hint-placeholder-count="4">
             <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #32271D;color:{{ st.color }}"><span>{{ st.name }}</span><span style="color:{{ st.stateColor }}">{{ st.state }}</span></div>
           </sc-for>
         </div>
-        <div style="font:400 13px/2 'Quicksand',sans-serif;color:#A08C78;margin-top:20px">After this story the loom rests 30 minutes — next weave at 8:12 pm.</div>
+        <div style="font:400 13px/2 'Quicksand',sans-serif;color:#A08C78;margin-top:20px">30 minutes between stories — next story at 8:12 pm.</div>
         <div style="flex:1"></div>
-        <sc-if value="{{ weaveDone }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ makingDone }}" hint-placeholder-val="{{ false }}">
           <div onClick="{{ openPlayer }}" style="background:#E8A857;border-radius:14px;height:56px;display:flex;align-items:center;justify-content:center;font:500 16px 'Outfit',sans-serif;color:#201813;margin-bottom:12px;cursor:pointer" style-hover="box-shadow:0 0 24px 0 rgba(232,168,87,.35)">Story ready — play the teaser ▶</div>
         </sc-if>
         <div onClick="{{ goHome }}" style="text-align:center;font:400 13px 'Outfit',sans-serif;color:#8A7460;margin-bottom:24px;cursor:pointer" style-hover="color:#E8A857">↓ back to home</div>
@@ -279,7 +279,7 @@ a:hover{color:#F2C580;text-decoration:underline}
             <span onClick="{{ toggleApproval }}" style="width:44px;height:26px;border-radius:13px;background:{{ approvalBg }};position:relative;flex-shrink:0;cursor:pointer"><span style="position:absolute;top:3px;{{ approvalKnob }};width:20px;height:20px;border-radius:50%;background:{{ approvalKnobColor }}"></span></span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #32271D">
-            <span><span style="display:block;font:400 16px 'Outfit',sans-serif;color:#F3E9DC">Story-ready notifications</span><span style="display:block;font:400 12px 'Quicksand',sans-serif;color:#8A7460">Ping when a weave finishes</span></span>
+            <span><span style="display:block;font:400 16px 'Outfit',sans-serif;color:#F3E9DC">Story-ready notifications</span><span style="display:block;font:400 12px 'Quicksand',sans-serif;color:#8A7460">Ping when a story is ready</span></span>
             <span onClick="{{ toggleNotify }}" style="width:44px;height:26px;border-radius:13px;background:{{ notifyBg }};position:relative;flex-shrink:0;cursor:pointer"><span style="position:absolute;top:3px;{{ notifyKnob }};width:20px;height:20px;border-radius:50%;background:{{ notifyKnobColor }}"></span></span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #32271D">
@@ -310,14 +310,14 @@ class Component extends DCLogic {
     this._t = setInterval(() => {
       this.setState(s => {
         const n = { ...s };
-        if (s.screen === 'weaving' && s.progress < 100) n.progress = Math.min(100, s.progress + 2);
+        if (s.screen === 'making' && s.progress < 100) n.progress = Math.min(100, s.progress + 2);
         if (s.screen === 'player' && s.playing && s.playSec < 588) n.playSec = s.playSec + 1;
         return n;
       });
     }, 120);
   }
   componentWillUnmount() { clearInterval(this._t); }
-  go(screen) { this.setState(s => ({ screen, progress: screen === 'weaving' ? 0 : s.progress })); }
+  go(screen) { this.setState(s => ({ screen, progress: screen === 'making' ? 0 : s.progress })); }
   renderVals() {
     const s = this.state;
     const go = (name) => () => this.go(name);
@@ -326,7 +326,7 @@ class Component extends DCLogic {
       ['voice', '02', 'Voice & length', 'onboarding — narrator + duration'],
       ['rules', '03', 'How it works', 'onboarding — trial, approval, cooldown'],
       ['home', '04', 'Home', 'quick generate, two taps max'],
-      ['weaving', '05', 'Generating', 'pipeline runs in background'],
+      ['making', '05', 'Generating', 'pipeline runs in background'],
       ['player', '06', 'Story player', 'parallax poster + narration'],
       ['shelf', '07', 'Kid Shelf', 'browse-only, locked'],
       ['settings', '08', 'Parent settings', 'biometric gate'],
@@ -341,8 +341,8 @@ class Component extends DCLogic {
       profile: 'Tap an age, toggle interests, then Continue.',
       voice: 'Pick a narrator, tap the track to change length.',
       rules: 'The three house rules a parent must know.',
-      home: 'Tap "Weave" to generate, a story to play, ☾ for Kid Shelf, M for settings.',
-      weaving: 'Watch the pipeline finish, then play the teaser.',
+      home: 'Tap "Make" to generate, a story to play, ☾ for Kid Shelf, M for settings.',
+      making: 'Watch the pipeline finish, then play the teaser.',
       player: 'Play/pause, stop, continue the series. Drag-handle closes.',
       shelf: 'Everything else is locked — tap the lock to exit.',
       settings: 'Toggles are live — try the approval step.',
@@ -369,10 +369,10 @@ class Component extends DCLogic {
     const stageDefs = [['Outline', 15], ['Scenes · stitch · polish', 55], ['Poster — 4 layers', 85], ['Narration — teaser first', 100]];
     const stages = stageDefs.map(([name, at], i) => {
       const prev = i === 0 ? 0 : stageDefs[i - 1][1];
-      const state = s.progress >= at ? 'done' : s.progress >= prev ? 'weaving…' : 'waiting';
+      const state = s.progress >= at ? 'done' : s.progress >= prev ? 'making…' : 'waiting';
       return { name, state,
         color: state === 'waiting' ? '#6E5844' : '#F3E9DC',
-        stateColor: state === 'weaving…' ? '#E8A857' : state === 'done' ? '#9CB08A' : '#6E5844' };
+        stateColor: state === 'making…' ? '#E8A857' : state === 'done' ? '#9CB08A' : '#6E5844' };
     });
     const mm = String(Math.floor(s.playSec / 60)).padStart(2, '0');
     const ss = String(s.playSec % 60).padStart(2, '0');
@@ -386,11 +386,11 @@ class Component extends DCLogic {
     return {
       steps, currentLabel: cur[1] + ' · ' + cur[2], currentHint: hints[s.screen],
       isProfile: s.screen === 'profile', isVoice: s.screen === 'voice', isRules: s.screen === 'rules',
-      isHome: s.screen === 'home', isWeaving: s.screen === 'weaving', isPlayer: s.screen === 'player',
+      isHome: s.screen === 'home', isMaking: s.screen === 'making', isPlayer: s.screen === 'player',
       isShelf: s.screen === 'shelf', isSettings: s.screen === 'settings',
       goProfile: go('profile'), goVoice: go('voice'), goRules: go('rules'), goHome: go('home'),
       goShelf: go('shelf'), goSettings: go('settings'),
-      startWeave: () => this.setState({ screen: 'weaving', progress: 0 }),
+      startMaking: () => this.setState({ screen: 'making', progress: 0 }),
       openPlayer: () => this.setState({ screen: 'player', playing: true }),
       ages, topics, voices,
       lengthLabel: s.length + ' min', lengthPct,
@@ -403,14 +403,14 @@ class Component extends DCLogic {
       oneShotUnderline: s.mode === 'oneshot' ? '2px solid #E8A857' : '2px solid transparent',
       modeHint: s.mode === 'series' ? 'One gentle world, two minutes at a time. A Story Bible remembers every name.' : 'A brand-new standalone tale every night.',
       homeSummary: Object.keys(s.topics).filter(k => s.topics[k]).join(' · ') + ' · ' + s.voice + "'s voice · " + s.length + ' min',
-      progress: s.progress, weaveDone: s.progress >= 100,
-      weaveTitle: s.progress >= 100 ? "Mila's story is ready." : "Weaving Mila's story…",
+      progress: s.progress, makingDone: s.progress >= 100,
+      makingTitle: s.progress >= 100 ? "Mila's story is ready." : "Making Mila's story…",
       playPct: Math.min(100, (s.playSec / 588) * 100).toFixed(1) + '%',
       playTime: mm + ':' + ss, playIcon: s.playing ? '❚❚' : '▶',
       togglePlay: toggle('playing'),
       stopPlay: () => this.setState({ playing: false, playSec: 0 }),
       restartPlay: () => this.setState({ playing: true, playSec: 0 }),
-      continueLabel: s.continued ? 'Weaving 2 more minutes… ✓' : 'Continue the series · +2 min',
+      continueLabel: s.continued ? 'Making 2 more minutes… ✓' : 'Continue the series · +2 min',
       continueSeries: () => this.setState({ continued: true }),
       toggleApproval: toggle('approval'), approvalBg: a.bg, approvalKnob: a.knob, approvalKnobColor: a.knobColor,
       toggleNotify: toggle('notify'), notifyBg: n.bg, notifyKnob: n.knob, notifyKnobColor: n.knobColor,

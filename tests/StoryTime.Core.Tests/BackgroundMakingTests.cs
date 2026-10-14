@@ -7,8 +7,8 @@ using Xunit;
 namespace StoryTime.Core.Tests;
 
 /// <summary>Core-side pins for the background-making pass (2026-07-31): the soft hum's
-/// volume/palette/caching rules. The platform pieces (iOS grace window) are device-verified
-/// in <c>docs/design/qa-report.md</c> — these tests hold the parts Core actually owns.</summary>
+/// volume/palette/caching rules. The platform pieces (the iOS grace window) are device-level
+/// and tracked in <c>docs/known-gaps.md</c> — these tests hold the parts Core actually owns.</summary>
 public class SoftHumTests
 {
     private static ChildProfile Profile(params string[] interests) =>

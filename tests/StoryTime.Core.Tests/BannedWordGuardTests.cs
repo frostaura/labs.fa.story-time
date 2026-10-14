@@ -4,9 +4,10 @@ using Xunit;
 namespace StoryTime.Core.Tests;
 
 /// <summary>Founder rule (2026-10-14, docs/design/copy-glossary.md): the old textile-metaphor
-/// words never appear anywhere in the product source — not in copy, identifiers, file names,
+/// words never appear anywhere in the repository — not in copy, identifiers, file names,
 /// routes, environment variables, BGTask ids, logs, comments, prompts, story templates, tests,
-/// scripts or the design docs. This scans the repository so they can never creep back.
+/// scripts, docs, history notes or the design mockups. This walks every text file from the
+/// repository root (only build output and scratch are skipped) so they can never creep back.
 /// The pattern is assembled from pieces, so this file passes its own scan.</summary>
 public sealed class BannedWordGuardTests
 {
@@ -16,12 +17,9 @@ public sealed class BannedWordGuardTests
         string.Join('|', "we" + "av", "wo" + "ven", "lo" + "om"),
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".cs", ".xaml", ".swift", ".h", ".m", ".csproj", ".props", ".targets", ".slnx", ".plist",
-        ".entitlements", ".storekit", ".json", ".md", ".txt", ".sh", ".yml", ".yaml", ".xml",
-        ".html", ".css", ".js", ".resx", ".strings", ".editorconfig", ".gitignore",
-    };
+    /// <summary>Bytes sniffed to tell text from binary: a NUL in the first 8 KB means binary
+    /// (images, fonts, archives). Everything else — any extension, or none — is scanned.</summary>
+    private const int SniffBytes = 8192;
 
     /// <summary>Build output and scratch; never source.</summary>
     private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
@@ -38,7 +36,7 @@ public sealed class BannedWordGuardTests
         {
             var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
             if (Pattern.IsMatch(relative)) hits.Add($"{relative} (path)");
-            if (!TextExtensions.Contains(Path.GetExtension(file))) continue;
+            if (!IsText(file)) continue;
 
             var lineNumber = 0;
             foreach (var line in File.ReadLines(file))
@@ -63,26 +61,27 @@ public sealed class BannedWordGuardTests
         Assert.Contains("src/app/StoryTime.Core/Pipeline/StoryPipeline.cs", files);
         Assert.Contains("src/app/StoryTime.App/Platforms/iOS/Info.plist", files);
         Assert.Contains("tests/StoryTime.Core.Tests/BannedWordGuardTests.cs", files);
-        Assert.DoesNotContain("docs/design/qa-report.md", files);
+        Assert.Contains("docs/prd.md", files);
+        Assert.Contains("docs/design/Interactive.dc.html", files);
+        Assert.Contains(".gitignore", files);
+        Assert.True(IsText(Path.Combine(root, "docs", "design", "Storyboard.dc.html")));
+        Assert.DoesNotContain(files, f => f.StartsWith(".git/", StringComparison.Ordinal));
+        Assert.DoesNotContain(files, f => f.Contains("/bin/", StringComparison.Ordinal) || f.Contains("/obj/", StringComparison.Ordinal));
         Assert.Matches(Pattern, "Story" + "We" + "aver");
         Assert.Matches(Pattern, "wo" + "ven");
         Assert.Matches(Pattern, "LO" + "OM");
         Assert.DoesNotMatch(Pattern, "Making tonight's story, with a soft hum");
     }
 
-    /// <summary>src/, tests/, README.md and docs/design/*.md except the historical qa-report.md
-    /// (and the qa-shots/ folder, which is not a *.md file in docs/design).</summary>
-    private static IEnumerable<string> SourceFiles(string root)
+    /// <summary>Every file under the repository root, minus build output and scratch.</summary>
+    private static IEnumerable<string> SourceFiles(string root) => Walk(root);
+
+    private static bool IsText(string file)
     {
-        foreach (var dir in new[] { "src", "tests" })
-        foreach (var file in Walk(Path.Combine(root, dir)))
-            yield return file;
-
-        yield return Path.Combine(root, "README.md");
-
-        foreach (var file in Directory.EnumerateFiles(Path.Combine(root, "docs", "design"), "*.md"))
-            if (!string.Equals(Path.GetFileName(file), "qa-report.md", StringComparison.OrdinalIgnoreCase))
-                yield return file;
+        var buffer = new byte[SniffBytes];
+        using var stream = File.OpenRead(file);
+        var read = stream.Read(buffer, 0, buffer.Length);
+        return Array.IndexOf(buffer, (byte)0, 0, read) < 0;
     }
 
     private static IEnumerable<string> Walk(string dir)
