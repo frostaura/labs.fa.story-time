@@ -460,6 +460,24 @@ public class AppleFoundationStoryEngineTests
     }
 
     [Fact]
+    public void Run_on_sentences_are_split_at_clause_joints_without_losing_words()
+    {
+        var runOn = "Mila walks barefoot along the soft sand where each grain tickles her toes like a secret whispered by the wind, " +
+                    "and the ocean hums a quiet song as gentle waves curl around her ankles and leave tiny foam kisses behind, " +
+                    "while a little ripple dances beneath the surface and sends small rings of wonder through the calm water, " +
+                    "and Finn the fox peeks out from behind a mossy stone with his soft ears twitching at every footstep.";
+        var split = ProseGuards.SplitRunOns(runOn);
+        var sentences = StoryPipeline.SplitSentences(split);
+
+        Assert.True(sentences.Count >= 3);
+        Assert.All(sentences, s => Assert.True(s.Split(' ').Length <= 45));
+        Assert.StartsWith("The ocean hums", sentences[1]);
+        static string Words(string t) => string.Join(' ', t.Replace(",", "").Replace(".", "").Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w is not ("and" or "while" or "And" or "While")).Select(w => w.ToLowerInvariant()));
+        Assert.Equal(Words(runOn), Words(split));
+    }
+
+    [Fact]
     public async Task Outline_beats_are_reframed_positively_before_scene_prompts()
     {
         var (engine, bridge, _) = Create();
@@ -585,6 +603,14 @@ public class AppleFoundationStoryEngineTests
         Assert.Equal(refusal, AppleFoundationStoryEngine.LooksLikeRefusal(text));
 
     [Fact]
+    public void House_vocabulary_replaces_banned_words_in_model_output()
+    {
+        var cleaned = AppleFoundationStoryEngine.CleanProse("Their voices were weaving a song. Weave it again, and the loom hums while the hill loomed.");
+        Assert.Equal("Their voices were spinning a song. Spin it again, and the spinning wheel hums while the hill rose.", cleaned);
+        Assert.DoesNotMatch(@"(?i)weav|wove|loom", cleaned);
+    }
+
+    [Fact]
     public void Clean_prose_strips_headings_markdown_and_a_truncated_tail()
     {
         var cleaned = AppleFoundationStoryEngine.CleanProse("# Scene 1\n**Pip** walked home. The moon was round and bright tonight. The stars were wat");
@@ -594,7 +620,7 @@ public class AppleFoundationStoryEngineTests
     // ---------------- through the real pipeline ----------------
 
     [Fact]
-    public async Task Full_pipeline_weaves_a_ready_story_on_the_apple_engine()
+    public async Task Full_pipeline_makes_a_ready_story_on_the_apple_engine()
     {
         await using var env = await TestEnv.CreateAsync();
         var bridge = new FakeBridge();

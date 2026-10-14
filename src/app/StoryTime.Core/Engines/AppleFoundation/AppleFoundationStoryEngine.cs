@@ -185,8 +185,8 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
 
         var outline = new StoryOutline
         {
-            Title = ProseGuards.Reframe(CleanTitle(fm.Title)),
-            Moral = ProseGuards.Reframe(fm.Theme.Trim().TrimEnd('.')),
+            Title = ProseGuards.HouseVocabulary(ProseGuards.Reframe(CleanTitle(fm.Title))),
+            Moral = ProseGuards.HouseVocabulary(ProseGuards.Reframe(fm.Theme.Trim().TrimEnd('.'))),
             Seed = seed,
             Settings = fm.Settings.Select(s => s.Trim()).Where(s => s.Length > 0).Take(3).ToList(),
             Characters = characters,
@@ -195,8 +195,8 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
             Scenes = fm.Scenes.Select((s, i) => new SceneOutline
             {
                 Id = i,
-                Summary = ProseGuards.Reframe(s.Summary.Trim()),
-                Beats = s.Beats.Select(b => ProseGuards.Reframe(b.Trim())).Where(b => b.Length > 0).ToList(),
+                Summary = ProseGuards.HouseVocabulary(ProseGuards.Reframe(s.Summary.Trim())),
+                Beats = s.Beats.Select(b => ProseGuards.HouseVocabulary(ProseGuards.Reframe(b.Trim()))).Where(b => b.Length > 0).ToList(),
             }).ToList(),
         };
         if (outline.Settings.Count == 0) outline.Settings.Add("a quiet meadow");
@@ -413,7 +413,7 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
         var run = LatestRun();
         if (run is null)
         {
-            // No live run (a resumed weave reached polish with no scenes from this process):
+            // No live run (a resumed story reached polish with no scenes from this process):
             // normalize only; never a whole-story model call.
             var normalized = NormalizeParagraphs(windowText);
             return isFinalWindow ? EnsureGentleClose(normalized, profile) : normalized;
@@ -824,7 +824,7 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
         lock (_gate) return _runs.Count == 0 ? null : _runs[^1];
     }
 
-    /// <summary>The run for this outline; a resumed weave (app restarted mid-story) gets a
+    /// <summary>The run for this outline; a resumed story (app restarted mid-story) gets a
     /// fresh run whose "story so far" is rebuilt from the outline's scene summaries.</summary>
     private StoryRun RunFor(StoryOutline outline)
     {
@@ -891,7 +891,7 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
     {
         HashSet<string> stock;
         lock (run) stock = [.. run.StockLines];
-        var (stripped, removed) = ProseGuards.StripRepeats(CleanProse(raw), context.LastSentences, stock);
+        var (stripped, removed) = ProseGuards.StripRepeats(ProseGuards.SplitRunOns(CleanProse(raw)), context.LastSentences, stock);
         if (removed > 0.4) return null;
         return AcceptProse(stripped, context.TargetWords);
     }
@@ -904,11 +904,11 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
         return text;
     }
 
-    /// <summary>Strips headings and markdown, normalizes spacing, and drops a trailing
+    /// <summary>Applies the house vocabulary, strips headings and markdown, normalizes spacing, and drops a trailing
     /// half-sentence left by the response-token cap.</summary>
     internal static string CleanProse(string raw)
     {
-        var text = HeadingLine().Replace(raw.Replace("\r\n", "\n"), string.Empty);
+        var text = HeadingLine().Replace(ProseGuards.HouseVocabulary(raw).Replace("\r\n", "\n"), string.Empty);
         text = text.Replace("**", string.Empty).Replace("__", string.Empty);
         text = Spaces().Replace(text, " ");
         text = NormalizeParagraphs(text);
