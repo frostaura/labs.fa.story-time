@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Parent guidance shown on Home only when Apple Intelligence is off or still getting ready
+     (IStoryEngineStatus.ShowGuidance). Read-only; hidden in every other state. -->
+<ContentView
+    x:Class="StoryTime.App.Controls.AppleIntelligenceNotice"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:services="clr-namespace:StoryTime.Core.Services;assembly=StoryTime.Core"
+    x:DataType="services:StoryEngineStatus"
+    IsVisible="False">
+    <Border BackgroundColor="{StaticResource SurfaceRaised}" Stroke="{StaticResource Hairline}"
+            StrokeThickness="1" Padding="16,14">
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="16" />
+        </Border.StrokeShape>
+        <VerticalStackLayout Spacing="6">
+            <Label Style="{StaticResource EyebrowAccent}" Text="APPLE INTELLIGENCE" />
+            <Label Style="{StaticResource Body}" Text="{Binding GuidanceText}" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

@@ -63,6 +63,8 @@
                 </Grid.Behaviors>
             </Grid>
 
+            <controls:AppleIntelligenceNotice Margin="0,0,0,22" />
+
             <!-- Hero CTA (breathing halo idle animation in code-behind). Medium at
                  press-down — the biggest action in the app answers instantly; the VM's
                  weave-start Medium coalesces away. -->

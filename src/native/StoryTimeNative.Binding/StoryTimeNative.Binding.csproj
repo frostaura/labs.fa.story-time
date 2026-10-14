@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- .NET for iOS binding of the StoryTimeNative Swift framework (src/native/StoryTimeNative).
+       ApiDefinition.cs binds the @objc SEFMEngine surface; the xcframework is built from source
+       by src/native/build.sh (automatically, when missing) and is not committed. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-ios</TargetFramework>
+    <IsBindingProject>true</IsBindingProject>
+    <RootNamespace>StoryTimeNative</RootNamespace>
+    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
+    <NoBindingEmbedding>true</NoBindingEmbedding>
+    <ValidateXcodeVersion Condition="'$(ValidateXcodeVersion)' == ''">false</ValidateXcodeVersion>
+    <StoryTimeNativeXcframework>$(MSBuildThisFileDirectory)../build/StoryTimeNative.xcframework</StoryTimeNativeXcframework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ObjcBindingApiDefinition Include="ApiDefinition.cs" />
+    <NativeReference Include="$(StoryTimeNativeXcframework)">
+      <Kind>Framework</Kind>
+      <SmartLink>false</SmartLink>
+      <Frameworks>Foundation FoundationModels</Frameworks>
+    </NativeReference>
+  </ItemGroup>
+
+  <!-- A clean clone builds with plain `dotnet build`: produce the xcframework first if absent. -->
+  <Target Name="BuildStoryTimeNativeXcframework" BeforeTargets="BeforeBuild;ResolveNativeReferences"
+          Condition="!Exists('$(StoryTimeNativeXcframework)/Info.plist')">
+    <Exec Command="bash &quot;$(MSBuildThisFileDirectory)../build.sh&quot;" />
+  </Target>
+
+</Project>
