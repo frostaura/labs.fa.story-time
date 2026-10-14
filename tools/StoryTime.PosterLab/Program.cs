@@ -106,7 +106,7 @@ foreach (var chunk in specs.Chunk(24))
 }
 
 // ---- Parallax previews: 3 frames (tilt left / centre / right) for 6 posters ----
-var previewIdx = new[] { 0, 7, 14, 21, 32, 45 };
+var previewIdx = new[] { 0, 13, 26, 40, 44, 58 }; // sea, forest, lake, snow village, reef, town
 foreach (var idx in previewIdx)
 {
     var spec = specs[idx % specs.Count];

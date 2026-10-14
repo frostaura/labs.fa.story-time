@@ -173,6 +173,19 @@ public static class ScenePlanner
             return p;
         }
 
+        /// <summary>The x nearest to <paramref name="x"/> where the profile has real ground
+        /// (partial bands — a headland, an island shore — sink below the frame elsewhere).</summary>
+        private static double GroundedX(TerrainProfile ground, double x)
+        {
+            if (ground.Y(x) < 0.97) return x;
+            for (var d = 0.02; d < 0.9; d += 0.02)
+            {
+                if (x + d <= 0.92 && ground.Y(x + d) < 0.93) return x + d + 0.04;
+                if (x - d >= 0.08 && ground.Y(x - d) < 0.93) return x - d - 0.04;
+            }
+            return x;
+        }
+
         private TerrainProfile Ground(int depth) =>
             _bands.LastOrDefault(b => b.Depth == depth)?.Profile
             ?? _bands.LastOrDefault(b => b.Depth < depth)?.Profile
@@ -189,7 +202,7 @@ public static class ScenePlanner
             while (x < x1)
             {
                 var blocked = keepOut?.Any(k => x > k.A && x < k.B) ?? false;
-                if (!blocked)
+                if (!blocked && ground.Y(x) < 1.0)
                     Place(prop, depth, x, ground.Y(x) + sink, r.Range(sizeMin, sizeMax), $"{label}-{i}", variant: variant, tone: tone);
                 x += spacing * r.Range(0.6, 1.4);
                 i++;
@@ -233,6 +246,13 @@ public static class ScenePlanner
                 var lx = 0.5 + headSide * r.Range(0.30, 0.36);
                 Place(Prop.Lighthouse, 2, lx, cliff.Profile.Y(lx) + 0.006, r.Range(0.24, 0.28), "lighthouse",
                     flip: false, feature: PosterFeature.Lighthouse, lit: true);
+            }
+
+            else
+            {
+                // A low rocky point on the far side: the mid plane is never empty.
+                Band(2, Mountains(_horizon + 0.12, r.Range(0.04, 0.06), 3.2, "sea-rocks",
+                    SideEnvelope(-headSide, 0.22, 0.06), 1.25), 0.5, TerrainStyle.Earth);
             }
 
             // Near: a dune shore along the bottom, grass at the edges.
@@ -437,7 +457,7 @@ public static class ScenePlanner
                 if (kind == RoofKind.Dome) { towerUsed = true; top -= 0.035; roof = w * 0.45; }
                 list.Add(new Building(x, x + w, top, roof, kind, r.Chance(0.5), r.Range(0.2, 0.8), 1 + r.Int(3),
                     (uint)(r.NextULong() & 0xFFFFFFFF)));
-                x += w + r.Range(-0.004, 0.012);
+                x += w - r.Range(0.002, 0.012); // overlapping walls: never a sliver of sky between houses
                 i++;
             }
             return new TerrainProfile { Kind = TerrainKind.Rooftops, Base = wallTop + 0.05, Buildings = list };
@@ -477,7 +497,7 @@ public static class ScenePlanner
             {
                 if (PosterSpecRules.IsCreature(f)) continue;
                 var asFocal = _focal is null && !structureUsedFocal && (PosterSpecRules.IsStructure(f) || PosterSpecRules.IsVehicle(f));
-                var x = asFocal ? _focalX : otherX;
+                var x = GroundedX(mid, asFocal ? _focalX : otherX);
                 switch (f)
                 {
                     case PosterFeature.Lighthouse:
@@ -609,6 +629,7 @@ public static class ScenePlanner
                     return Place(Prop.Owl, 3, ox, _horizon - 0.02 + r.Jitter(0.03), r.Range(0.15, 0.18), "owl", flip: _side < 0, feature: creature);
                 }
                 case PosterFeature.Dinosaur:
+                    x = GroundedX(mid, x);
                     return Place(Prop.Dinosaur, 2, x, mid.Y(x) + 0.01, r.Range(0.3, 0.36), "dinosaur", flip: faceIn, feature: creature);
                 case PosterFeature.Cat:
                     return Place(Prop.Cat, 3, x, near.Y(x) + 0.004, r.Range(0.19, 0.23), "cat", flip: faceIn, feature: creature);
@@ -695,7 +716,7 @@ public static class ScenePlanner
                 do
                 {
                     cx = cr.Range(0.1, 0.9);
-                    cy = cr.Range(TitleSafe.Bottom + h + 0.01, _horizon - 0.08);
+                    cy = cr.Range(TitleSafe.Bottom + h * 1.45 + 0.01, Math.Max(TitleSafe.Bottom + h * 1.45 + 0.02, _horizon - 0.08));
                     tries++;
                 } while (tries < 12 && (_moon is not null && Math.Abs(cx - _moon.X) < w * 0.55 + _moon.R && Math.Abs(cy - _moon.Y) < h + _moon.R * 1.5
                                        || _clouds.Any(c => Math.Abs(c.X - cx) < (c.Width + w) * 0.45 && Math.Abs(c.Y - cy) < 0.08)));

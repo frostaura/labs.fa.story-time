@@ -144,6 +144,13 @@ internal static class TerrainPainter
         var bottom = vp.Height + 4f;
         var windowColor = c.Window;
         var unlit = color.Lighter(0.05);
+        // One continuous body under every roofline: no seam can open between buildings.
+        if (band.Profile.Buildings.Count > 0)
+        {
+            var baseTop = vp.Y(band.Profile.Buildings.Max(b => b.WallTop) + 0.02);
+            using var body = Paint.Fill(Paint.Sk(color.Lighter(-0.01)));
+            canvas.DrawRect(-2, baseTop, vp.Width + 4, bottom - baseTop, body);
+        }
         foreach (var b in band.Profile.Buildings)
         {
             var x0 = vp.X(b.X0);

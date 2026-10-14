@@ -14,9 +14,9 @@ namespace StoryTime.Poster.Composition;
 /// lanterns the app's amber (#E8A857). Those two never change with the palette.</summary>
 public sealed class ScenePalette
 {
-    public static readonly Oklch Cream = new(0.938, 0.022, 75);     // #F3E9DC
-    public static readonly Oklch Amber = new(0.775, 0.118, 72);     // #E8A857
-    public static readonly Oklch AmberSoft = new(0.85, 0.085, 78);  // #F2C580
+    public static readonly Oklch Cream = Oklab.FromHex("#F3E9DC").ToOklch();
+    public static readonly Oklch Amber = Oklab.FromHex("#E8A857").ToOklch();
+    public static readonly Oklch AmberSoft = Oklab.FromHex("#F2C580").ToOklch();
 
     public required Oklch SkyZenith { get; init; }
     public required Oklch SkyMid { get; init; }
@@ -57,7 +57,7 @@ public sealed class ScenePalette
         var baseColor = Snowy
             ? Snow with { L = Snow.L - 0.06 * t }
             : near with { L = near.L + (1 - t) * 0.05 };
-        var mixed = Oklab.Mix(baseColor.ToOklab(), haze, Math.Clamp((1 - t) * (0.62 + HazeAmount * 0.3), 0, 0.92));
+        var mixed = Oklab.Mix(baseColor.ToOklab(), haze, Math.Clamp((1 - t) * (0.72 + HazeAmount * 0.25), 0, 0.92));
         return mixed.ToOklch();
     }
 

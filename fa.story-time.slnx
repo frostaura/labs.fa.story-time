@@ -12,5 +12,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/StoryTime.Core.Tests/StoryTime.Core.Tests.csproj" />
+    <Project Path="tests/StoryTime.Poster.Tests/StoryTime.Poster.Tests.csproj" />
   </Folder>
 </Solution>
