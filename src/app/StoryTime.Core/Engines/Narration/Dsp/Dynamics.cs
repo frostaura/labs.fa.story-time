@@ -16,6 +16,8 @@ public sealed class Compressor
     public const double DefaultKneeDb = 6.0;
     public const double DefaultMakeupDb = 2.0;
     private const int ControlInterval = 8;
+    /// <summary>−60 dBFS, squared: below this the input is silence and the detector holds.</summary>
+    private const double SilenceGate = 1e-6;
 
     private readonly double _threshold, _ratio, _knee, _makeup, _attack, _release;
     private double _env;
@@ -55,6 +57,14 @@ public sealed class Compressor
         {
             double x = samples[i];
             var x2 = x * x;
+            // Hold the detector (and so the gain) through spliced silence: otherwise it
+            // releases fully in every pause and each line's first syllable punches through
+            // at full make-up gain (review round 1: +3 to +8 dB onset overshoot).
+            if (x2 < SilenceGate)
+            {
+                samples[i] = (float)(x * _gain);
+                continue;
+            }
             var coef = x2 > _env ? _attack : _release;
             _env = coef * _env + (1 - coef) * x2;
 

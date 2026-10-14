@@ -90,8 +90,15 @@ public class TextNormalizerTests
     public void ForSpeech(string input, string expected) => Assert.Equal(expected, TextNormalizer.ForSpeech(input));
 
     [Fact]
-    public void DialogueBeforeTag_CommaBecomesFullStop()
-        => Assert.Equal("Sleep well, little owl.", TextNormalizer.ForSpeech("\"Sleep well, little owl,\"", closesBeforeTag: true));
+    public void DialogueBeforeTag_KeepsItsContinuingComma()
+        => Assert.Equal("Sleep well, little owl,", TextNormalizer.ForSpeech("\"Sleep well, little owl,\"", continues: true));
+
+    [Fact]
+    public void Ellipsis_ContinuesWithAComma_OrEndsWithAFullStop()
+    {
+        Assert.Equal("She waited,", TextNormalizer.ForSpeech("She waited…", continues: true));
+        Assert.Equal("She waited.", TextNormalizer.ForSpeech("She waited…"));
+    }
 
     [Fact]
     public void TagBeforeDialogue_KeepsItsComma()
@@ -125,7 +132,7 @@ public class SoothingPlannerTests
         "And so the forest slept. Goodnight, little fox. Goodnight.";
 
     private static NarrationPlan PlanStory(SoothingOptions? o = null) =>
-        SoothingPlanner.Plan(SentenceSplitter.SplitScript(Story), o ?? new SoothingOptions { RateVariation = 0 });
+        SoothingPlanner.Plan(SentenceSplitter.SplitScript(Story), o ?? new SoothingOptions { RateVariation = 0, PitchVariation = 0 });
 
     private static PlannedSegment Find(NarrationPlan plan, string startsWith) =>
         plan.Segments.First(s => s.Source.TrimStart('"').StartsWith(startsWith, StringComparison.Ordinal));
@@ -143,6 +150,7 @@ public class SoothingPlannerTests
         Assert.Equal(0.750, Find(plan, "and smiled").PauseBeforeSeconds, 6);               // ellipsis
         Assert.Equal(2.200, Find(plan, "Morning").PauseBeforeSeconds, 6);                  // scene (blank-line run)
         Assert.Equal(1.800, Find(plan, "And so").PauseBeforeSeconds, 6);                   // before the ending
+        Assert.Equal(1.100, Find(plan, "Goodnight, little").PauseBeforeSeconds, 6);         // beat before the goodnights
         var pair = plan.Segments.Last();
         Assert.Equal("Goodnight.", pair.Spoken);
         Assert.Equal(1.100, pair.PauseBeforeSeconds, 6);                                   // goodnight pair
@@ -179,27 +187,29 @@ public class SoothingPlannerTests
         Assert.Equal(1.08f, d.Pitch, 4);
         Assert.Equal(-2.0, d.GainDb, 6);
         var tag = Find(PlanStory(), "asked Owl");
+        Assert.Equal(SegmentKind.Tag, tag.Kind);
         Assert.Equal(0.44f, tag.Rate, 4);
-        Assert.Equal(0.0, tag.GainDb, 6);
+        Assert.Equal(0.95f, tag.Pitch, 4);       // tags read a touch lower and softer
+        Assert.Equal(-1.0, tag.GainDb, 6);
     }
 
     [Fact]
-    public void Ending_RampsRateAndGainLinearly_AndGoodnightPitch()
+    public void Ending_RampsRateAndGainLinearly_OverAtLeastFiveUtterances_AndGoodnightPitch()
     {
         var plan = PlanStory();
         var ending = plan.Segments.Where(s => s.InEnding).ToList();
-        Assert.Equal(3, ending.Count);
-        Assert.Equal(0.44f, ending[0].Rate, 4);
-        Assert.Equal(0.38f, ending[1].Rate, 4);
-        Assert.Equal(0.32f, ending[2].Rate, 4);
-        Assert.Equal(0.0, ending[0].GainDb, 6);
-        Assert.Equal(-3.0, ending[1].GainDb, 6);
-        Assert.Equal(-6.0, ending[2].GainDb, 6);
-        Assert.Equal(-6.0, ending[2].EndingGainDb, 6);
-        Assert.Equal(0.97f, ending[1].Pitch, 4);
-        Assert.Equal(0.97f, ending[2].Pitch, 4);
+        // The final paragraph has three lines, so the glide reaches back two more.
+        Assert.Equal(5, ending.Count);
+        Assert.StartsWith("Morning", ending[0].Spoken);
+        Assert.Equal([0.44f, 0.41f, 0.38f, 0.35f, 0.32f], ending.Select(e => (float)Math.Round(e.Rate, 3)));
+        Assert.Equal([0.0, -1.5, -3.0, -4.5, -6.0], ending.Select(e => e.EndingGainDb));
+        Assert.Equal(ending.Select(e => e.EndingGainDb), ending.Select(e => e.GainDb));   // all narration here
         Assert.Equal(1.0f, ending[0].Pitch, 4);
+        Assert.Equal(0.97f, ending[3].Pitch, 4);
+        Assert.Equal(0.97f, ending[4].Pitch, 4);
         Assert.All(plan.Segments.Where(s => !s.InEnding), s => Assert.Equal(0.0, s.EndingGainDb));
+        // The before-ending pause still sits at the final paragraph.
+        Assert.Equal(PauseKind.BeforeEnding, Find(plan, "And so").PauseBefore);
     }
 
     [Fact]
@@ -252,8 +262,8 @@ public class SoothingPlannerTests
     public void SpokenText_IsNormalised_AndQuotesStripped()
     {
         var plan = PlanStory();
-        Assert.Equal("A little.", Find(plan, "A little").Spoken);
-        Assert.Equal("She yawned.", Find(plan, "She yawned").Spoken);
+        Assert.Equal("A little,", Find(plan, "A little").Spoken);   // leads into its tag
+        Assert.Equal("She yawned,", Find(plan, "She yawned").Spoken);   // continues after the ellipsis
         Assert.DoesNotContain(plan.Segments, s => s.Spoken.Contains('"'));
     }
 
@@ -278,9 +288,9 @@ public class SoothingPlannerTests
     [Fact]
     public void SingleSentenceStory_EndsOnTheRampMidpoint()
     {
-        var plan = SoothingPlanner.Plan(SentenceSplitter.SplitScript("The fox slept."), new SoothingOptions { RateVariation = 0 });
+        var plan = SoothingPlanner.Plan(SentenceSplitter.SplitScript("The fox slept."), new SoothingOptions { RateVariation = 0, PitchVariation = 0 });
         Assert.True(plan.Segments[0].InEnding);
-        Assert.Equal(0.38f, plan.Segments[0].Rate, 4);
+        Assert.Equal(0.38f, plan.Segments[0].Rate, 4);    // a lone line sits at the ramp midpoint
         Assert.Equal(-3.0, plan.Segments[0].GainDb, 6);
     }
 }

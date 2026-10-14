@@ -163,7 +163,8 @@ public class MasteringStageTests
         Assert.InRange(Probe(180), 1.8, 2.8);           // warmth (+2.5 bell riding the HP skirt)
         Assert.InRange(Probe(1000), -0.6, 0.6);         // neutral mid
         Assert.InRange(Probe(3200), -2.6, -1.4);        // presence dip (+ the 7 kHz shelf's skirt)
-        Assert.InRange(Probe(10000), -6, -3.5);         // shelf + low-pass
+        Assert.InRange(Probe(8000), -8, -5);            // shelf + notch skirt + low-pass
+        Assert.InRange(Probe(9700), -12, -8.5);           // shelf + compact-voice fizz notch
         Assert.True(Probe(16000) < -9, "air and hiss rolled off");
     }
 
@@ -208,7 +209,7 @@ public class MasteringStageTests
         Biquad.BandPass(Rate, 6500, 1.0).Process(bandBefore);
         Biquad.BandPass(Rate, 6500, 1.0).Process(bandAfter);
         var reduction = 20 * Math.Log10(Signals.Rms(bandAfter.AsSpan(Rate / 4)) / Signals.Rms(bandBefore.AsSpan(Rate / 4)));
-        Assert.InRange(reduction, -8.5, -2.0);
+        Assert.InRange(reduction, -4.5, -0.8);       // gentle: true sibilant peaks only, ≤ 4 dB
         Assert.True(d.MaxReductionSeenDb <= new DeEsserSettings().MaxReductionDb + 1e-9);
     }
 

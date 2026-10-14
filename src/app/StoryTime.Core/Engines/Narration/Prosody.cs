@@ -64,6 +64,16 @@ public sealed record SoothingOptions
     /// <summary>Gain at the last sentence of the ending (linear ramp from 0 dB).</summary>
     public double EndingGainDb { get; init; } = -6.0;
     public float GoodnightPitch { get; init; } = 0.97f;
+    /// <summary>Dialogue tags ("…," whispered Pip) read a little lower and softer, as a
+    /// storyteller does (review round 1: tags sat above the narration median).</summary>
+    public float TagPitch { get; init; } = 0.95f;
+    public double TagGainDb { get; init; } = -1.0;
+    /// <summary>Deterministic per-sentence pitch variation (± this fraction, 5 steps) on
+    /// narration and tags, so the contour does not settle into one register.</summary>
+    public float PitchVariation { get; init; } = 0.03f;
+    /// <summary>The slow-down and fade spread over at least this many utterances (extending
+    /// back before the final paragraph when it is short), so the ending glides, not steps.</summary>
+    public int EndingMinSegments { get; init; } = 5;
     /// <summary>Deterministic per-sentence rate variation: ± this much in steps of half of
     /// it, seeded by the sentence, so neighbouring sentences never share one metronomic tempo
     /// (founder feedback 2026-10-14: "monotone, as if the reader is bored"). Never applied
@@ -157,9 +167,11 @@ public static class SoothingPlanner
         var storyEnds = script.AppendFinalTail && !script.IsExcerpt;
         var (endingStart, endingAtParagraph) = storyEnds ? FindEnding(script, o) : (int.MaxValue, false);
 
-        // Ending pieces, for the linear ramps.
-        var endingPieces = pieces.Where(p => p.SentenceIndex >= endingStart).ToList();
-        var endingCount = endingPieces.Count;
+        // Ending pieces, for the linear ramps: the final paragraph, extended back to at least
+        // EndingMinSegments utterances so a short ending still glides rather than steps.
+        var firstEnding = pieces.FindIndex(p => p.SentenceIndex >= endingStart);
+        if (firstEnding >= 0) firstEnding = Math.Max(0, Math.Min(firstEnding, pieces.Count - o.EndingMinSegments));
+        var endingCount = firstEnding < 0 ? 0 : pieces.Count - firstEnding;
 
         var segments = new List<PlannedSegment>(pieces.Count);
         var dialogueSentences = pieces.Where(p => p.Kind == SegmentKind.Dialogue).Select(p => p.SentenceIndex).ToHashSet();
@@ -168,24 +180,40 @@ public static class SoothingPlanner
             var piece = pieces[k];
             var (pause, kind) = k == 0 ? (0.0, PauseKind.Head) : PauseBetween(pieces[k - 1], piece, script, endingStart, endingAtParagraph, dialogueSentences);
 
-            var inEnding = piece.SentenceIndex >= endingStart;
-            var rampT = 0.0;
+            var inEnding = firstEnding >= 0 && k >= firstEnding;
+            var rampT = !inEnding ? 0.0 : endingCount <= 1 ? 0.5 : (k - firstEnding) / (double)(endingCount - 1);
+            var sentence = script.SentenceList[piece.SentenceIndex];
+
+            float rate;
+            var pitch = 1.0f;
+            var gainDb = 0.0;
+            switch (piece.Kind)
+            {
+                case SegmentKind.Dialogue:
+                    // Dialogue speaks at a fixed, slightly quicker rate (0.48), never jittered.
+                    rate = o.BaseRate + o.DialogueRateDelta;
+                    pitch *= o.DialoguePitch;
+                    gainDb += o.DialogueGainDb;
+                    break;
+                case SegmentKind.Tag:
+                    rate = o.BaseRate + Variation(sentence, piece.SentenceIndex, o.RateVariation);
+                    pitch *= o.TagPitch * (1 + Variation(sentence, piece.SentenceIndex + 7919, o.PitchVariation));
+                    gainDb += o.TagGainDb;
+                    break;
+                default:
+                    rate = o.BaseRate + Variation(sentence, piece.SentenceIndex, o.RateVariation);
+                    pitch *= 1 + Variation(sentence, piece.SentenceIndex + 7919, o.PitchVariation);
+                    break;
+            }
+            var endingDb = 0.0;
             if (inEnding)
             {
-                var pos = endingPieces.IndexOf(piece);
-                rampT = endingCount <= 1 ? 0.5 : pos / (double)(endingCount - 1);
-            }
-
-            var rate = inEnding
-                ? (float)(o.BaseRate - o.EndingRateDrop * rampT)
-                : o.BaseRate + Variation(script.SentenceList[piece.SentenceIndex], piece.SentenceIndex, o.RateVariation);
-            var pitch = 1.0f;
-            var gainDb = inEnding ? o.EndingGainDb * rampT : 0.0;
-            if (piece.Kind == SegmentKind.Dialogue)
-            {
-                rate += o.DialogueRateDelta;
-                pitch *= o.DialoguePitch;
-                gainDb += o.DialogueGainDb;
+                // The ending replaces the jitter with a steady glide down from base.
+                var glide = (float)(o.EndingRateDrop * rampT);
+                rate = (piece.Kind == SegmentKind.Dialogue ? o.BaseRate + o.DialogueRateDelta : o.BaseRate) - glide;
+                if (piece.Kind != SegmentKind.Dialogue) pitch = piece.Kind == SegmentKind.Tag ? o.TagPitch : 1.0f;
+                endingDb = o.EndingGainDb * rampT;
+                gainDb += endingDb;
             }
             if (NarrationSegmenter.IsGoodnightLine(piece.Raw)) pitch *= o.GoodnightPitch;
             rate = Math.Clamp(rate, 0.0f, 1.0f);
@@ -197,13 +225,13 @@ public static class SoothingPlanner
                 SentenceIndex = piece.SentenceIndex,
                 Kind = piece.Kind,
                 Source = piece.Raw,
-                Spoken = TextNormalizer.ForSpeech(piece.Raw, piece.ClosesBeforeTag),
+                Spoken = TextNormalizer.ForSpeech(piece.Raw, continues: !piece.IsLastInSentence),
                 PauseBeforeSeconds = pause,
                 PauseBefore = kind,
                 Rate = (float)Math.Round(rate, 4),
                 Pitch = (float)Math.Round(pitch, 4),
-                GainDb = Math.Round(gainDb, 3),
-                EndingGainDb = Math.Round(inEnding ? o.EndingGainDb * rampT : 0.0, 3),
+                GainDb = Clean(gainDb),
+                EndingGainDb = Clean(endingDb),
                 InEnding = inEnding,
             });
         }
@@ -233,7 +261,7 @@ public static class SoothingPlanner
     }
 
     /// <summary>Pause before <paramref name="s"/> given the piece before it. Precedence:
-    /// scene &gt; ending &gt; paragraph &gt; goodnight pair &gt; ellipsis &gt; after-tag &gt;
+    /// scene &gt; ending &gt; paragraph &gt; goodnight beat &gt; ellipsis &gt; after-tag &gt;
     /// before-dialogue &gt; sentence. Inside one sentence: ellipsis, else dialogue↔tag.</summary>
     private static (double Seconds, PauseKind Kind) PauseBetween(NarrationPiece p, NarrationPiece s, NarrationScript script,
         int endingStart, bool endingAtParagraph, HashSet<int> dialogueSentences)
@@ -245,13 +273,22 @@ public static class SoothingPlanner
         if (script.SceneStartSet.Contains(i)) return (PauseMap.SceneSeconds, PauseKind.Scene);
         if (i == endingStart && endingAtParagraph) return (PauseMap.BeforeEndingSeconds, PauseKind.BeforeEnding);
         if (script.ParagraphStartSet.Contains(i)) return (PauseMap.ParagraphSeconds, PauseKind.Paragraph);
-        if (NarrationSegmenter.IsGoodnightLine(script.SentenceList[p.SentenceIndex])
-            && NarrationSegmenter.IsGoodnightLine(script.SentenceList[i]))
+        // Goodnight lines get their own held beat: between the pair, and before the first
+        // one at the very end of the story (review round 1: a plain 650 ms ran straight in).
+        if (NarrationSegmenter.IsGoodnightLine(script.SentenceList[i])
+            && (NarrationSegmenter.IsGoodnightLine(script.SentenceList[p.SentenceIndex]) || i >= endingStart))
             return (PauseMap.GoodnightPairSeconds, PauseKind.GoodnightPair);
         if (p.EndsWithEllipsis) return (PauseMap.EllipsisSeconds, PauseKind.Ellipsis);
         if (p.Kind == SegmentKind.Tag && dialogueSentences.Contains(p.SentenceIndex)) return (PauseMap.AfterTagSeconds, PauseKind.AfterTag);
         if (s.Kind == SegmentKind.Dialogue) return (PauseMap.BeforeDialogueSeconds, PauseKind.BeforeDialogue);
         return (PauseMap.SentenceSeconds, PauseKind.Sentence);
+    }
+
+    /// <summary>Rounded to 3 decimals, with negative zero normalised away.</summary>
+    private static double Clean(double db)
+    {
+        var r = Math.Round(db, 3);
+        return r == 0 ? 0 : r;
     }
 
     /// <summary>First sentence of the ending and whether it opens a paragraph.</summary>

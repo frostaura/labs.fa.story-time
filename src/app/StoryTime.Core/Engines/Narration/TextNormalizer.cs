@@ -12,10 +12,13 @@ namespace StoryTime.Core.Engines.Narration;
 /// <item>the few abbreviations bedtime prose uses become words (Mr., Mrs., Dr., St.);</item>
 /// <item>em/en dashes and semicolons become commas (a breath, not a hard stop);</item>
 /// <item>quote marks are dropped (the segmenter already knows what is dialogue);</item>
-/// <item>a trailing "…" becomes "." — the pause after it is spliced silence, and the dots
-/// make some voices sing the last word;</item>
-/// <item>a trailing comma on a quote whose tag was split off becomes ".".</item>
+/// <item>a trailing "…" becomes "," when the sentence continues in the next utterance
+/// (continuing intonation) and "." when it ends one — the pause itself is spliced silence,
+/// and the dots make some voices sing the last word.</item>
 /// </list>
+/// A dialogue fragment keeps its trailing comma ("Look," | whispered Pip): the comma's
+/// continuing contour is what makes it sound like speech that leads into its tag (review
+/// round 1 measured the "." version as flat and final).
 /// '!' and '?' are KEPT everywhere: neural voices carry their contour, and founder feedback
 /// (2026-10-14) was that flattened narration sounds bored. Deterministic and culture-invariant.
 /// </summary>
@@ -23,10 +26,9 @@ public static partial class TextNormalizer
 {
     /// <summary>Normalise one segment for speech.</summary>
     /// <param name="text">Raw segment text.</param>
-    /// <param name="closesBeforeTag">True when a dialogue tag follows in the same sentence
-    /// ("Sleep well," | whispered Mum.): the quote's trailing comma becomes a full stop so
-    /// the voice lands the line instead of hanging on it.</param>
-    public static string ForSpeech(string text, bool closesBeforeTag = false)
+    /// <param name="continues">True when the sentence continues in the next utterance (a
+    /// mid-sentence "…" split, or dialogue followed by its tag).</param>
+    public static string ForSpeech(string text, bool continues = false)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
         var s = text.Replace("...", "…").Replace(". . .", "…");
@@ -45,14 +47,13 @@ public static partial class TextNormalizer
         s = RepeatedCommas().Replace(s, ",");
         s = s.TrimStart(',', ' ');
 
-        // Ellipsis → spoken full stop; a mid-text ellipsis (only when the segmenter could not
-        // split there) → comma.
-        if (s.EndsWith('…')) s = s.TrimEnd('…', ' ') + ".";
+        // Ellipsis → comma when the sentence continues, full stop when it ends; a mid-text
+        // ellipsis (only when the segmenter could not split there) → comma.
+        if (s.EndsWith('…')) s = s.TrimEnd('…', ' ') + (continues ? "," : ".");
         s = s.Replace("…", ",");
         s = RepeatedCommas().Replace(s, ",");
 
         if (s.Length == 0) return s;
-        if (closesBeforeTag && s.EndsWith(',')) s = s[..^1] + ".";
         // ".," / ",." collisions from the substitutions above.
         s = s.Replace(",.", ".").Replace(".,", ".");
         return s.Trim();

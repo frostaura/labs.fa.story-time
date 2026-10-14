@@ -20,8 +20,16 @@ public sealed class NarrationPad
     public const double CrossfadeSeconds = 4.0;
     public const double CycleSeconds = ChordSeconds * 4;
     public const double LowPassHz = 900.0;
-    public const double DetuneCents = 5.0;
-    public const double Brightness = 0.35;
+    /// <summary>Detune between a tone's two oscillators. Small, and the second oscillator is
+    /// half the level of the first, so the pair shimmers instead of throbbing (review round 1:
+    /// two equal oscillators 5 cents apart cancelled every 1–2 s, a 5–8 dB throb).</summary>
+    public const double DetuneCents = 3.0;
+    public const double DetuneLevel = 0.5;
+    /// <summary>Upper harmonics in the wavetable, so the bed survives phone speakers that
+    /// roll off below ~300 Hz (still under the 900 Hz low-pass).</summary>
+    public const double Brightness = 0.6;
+    /// <summary>At the end of a story the progression resolves home to Fmaj7 over this long.</summary>
+    public const double ResolveSeconds = 3.0;
     /// <summary>The pad's level relative to the voice (integrated, LU).</summary>
     public const double BelowVoiceLu = 28.0;
     private const double WarmUpSeconds = 0.25;
@@ -44,14 +52,18 @@ public sealed class NarrationPad
     private readonly double[][] _freqs;     // per chord, per oscillator (tone × 2), Hz
     private readonly double[][] _phase;     // per chord, per oscillator, cycles in [0,1)
     private readonly double[][] _step;      // per chord, per oscillator, cycles per sample
+    private readonly double? _resolveAt;    // absolute seconds; from here the bed settles on Fmaj7
     private readonly double[] _weight = new double[4];
     private readonly double[] _weightStep = new double[4];
     private long _frame;                    // absolute frame index of the next output sample
     private const int ControlInterval = 64; // chord weights move over seconds: block-rate is exact enough
 
-    public NarrationPad(int sampleRate, double startSeconds)
+    /// <param name="resolveAtSeconds">Absolute story time from which the progression resolves
+    /// to the home chord (the story's last word); null for a window that does not end the story.</param>
+    public NarrationPad(int sampleRate, double startSeconds, double? resolveAtSeconds = null)
     {
         _sampleRate = sampleRate;
+        _resolveAt = resolveAtSeconds;
         _lp1 = Biquad.LowPass(sampleRate, LowPassHz, 0.5412);   // 4th-order Butterworth pair
         _lp2 = Biquad.LowPass(sampleRate, LowPassHz, 1.3066);
         var detune = Math.Pow(2.0, DetuneCents / 2 / 1200.0);
@@ -97,6 +109,16 @@ public sealed class NarrationPad
         return Math.Cos((d - (ChordSeconds - half)) / CrossfadeSeconds * Math.PI / 2);
     }
 
+    /// <summary>Chord weight including the end-of-story resolution to Fmaj7 (equal power).</summary>
+    private double Weight(int k, double t)
+    {
+        var w = ChordWeight(k, t);
+        if (_resolveAt is not { } at || t <= at) return w;
+        var x = Math.Min(1.0, (t - at) / ResolveSeconds);
+        var r = 0.5 - 0.5 * Math.Cos(Math.PI * x);
+        return Math.Sqrt((1 - r) * w * w + (k == 0 ? r : 0));
+    }
+
     /// <summary>Render the next block of unit-level pad (calibrate with <see cref="GainFor"/>).</summary>
     public void Render(Span<float> dest)
     {
@@ -113,8 +135,8 @@ public sealed class NarrationPad
                 var t1 = (f + blockLeft) / (double)_sampleRate;
                 for (var k = 0; k < Chords.Length; k++)
                 {
-                    _weight[k] = ChordWeight(k, t0);
-                    _weightStep[k] = (ChordWeight(k, t1) - _weight[k]) / blockLeft;
+                    _weight[k] = Weight(k, t0);
+                    _weightStep[k] = (Weight(k, t1) - _weight[k]) / blockLeft;
                 }
             }
             double sum = 0;
@@ -135,7 +157,8 @@ public sealed class NarrationPad
                     var idx = phases[o] * size;
                     var i0 = (int)idx;
                     var frac = idx - i0;
-                    chord += Table[i0] + (Table[(i0 + 1) & (size - 1)] - Table[i0]) * frac;
+                    var v = Table[i0] + (Table[(i0 + 1) & (size - 1)] - Table[i0]) * frac;
+                    chord += (o & 1) == 0 ? v : v * DetuneLevel;
                     var p = phases[o] + steps[o];
                     phases[o] = p >= 1 ? p - 1 : p;
                 }

@@ -29,7 +29,11 @@ public sealed record VoiceChoice
 }
 
 /// <summary>Where one planned segment landed in the output.</summary>
-public sealed record SegmentPlacement(int Index, int SentenceIndex, long StartFrame, long EndFrame, double PlannedPauseSeconds, PauseKind Pause);
+/// <summary>Where one planned segment landed in the output. <see cref="SoftHeadFrames"/> is its
+/// perceptually silent onset, already counted toward the planned pause before it;
+/// <see cref="SoftTailFrames"/> its soft decay (reported, not compensated).</summary>
+public sealed record SegmentPlacement(int Index, int SentenceIndex, long StartFrame, long EndFrame, double PlannedPauseSeconds,
+    PauseKind Pause, long SoftHeadFrames = 0, long SoftTailFrames = 0);
 
 /// <summary>Everything a render produced, with its measurements.</summary>
 public sealed record NarrationRenderResult
@@ -127,18 +131,29 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                 }
             }
             files ??= [];
+            MatchLevels(files);
 
             Mark("synthesis");
 
             // ---- 2. layout ----
             var placements = new List<SegmentPlacement>(files.Count);
-            long cursor = Frames(plan.HeadSeconds);
+            // The silence a listener hears ends at the first AUDIBLE sound of the next line, so
+            // each spliced pause gives back that line's soft onset (the kept 30 ms plus any
+            // breathy lead-in ≥30 dB down; never below half the plan). The previous line's soft
+            // decay is not given back: the room tail rings through it, and the lab measured the
+            // perceived pause running ~45 ms short when both edges were subtracted.
+            long cursor = Math.Max(0, Frames(plan.HeadSeconds) - (files.Count > 0 ? files[0].SoftHead : 0));
             for (var k = 0; k < files.Count; k++)
             {
-                if (k > 0) cursor += Frames(plan.Segments[k].PauseBeforeSeconds);
+                if (k > 0)
+                {
+                    var planned = Frames(plan.Segments[k].PauseBeforeSeconds);
+                    cursor += Math.Max(planned / 2, planned - files[k].SoftHead);
+                }
                 placements.Add(new SegmentPlacement(k, plan.Segments[k].SentenceIndex, cursor, cursor + files[k].Frames,
                     k == 0 ? plan.HeadSeconds : plan.Segments[k].PauseBeforeSeconds,
-                    k == 0 ? plan.HeadKind : plan.Segments[k].PauseBefore));
+                    k == 0 ? plan.HeadKind : plan.Segments[k].PauseBefore,
+                    files[k].SoftHead, files[k].SoftTail));
                 cursor += files[k].Frames;
             }
             var total = cursor + Frames(plan.TailSeconds);
@@ -194,7 +209,11 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             // The limiter delays its output; reading the timeline that far ahead keeps the
             // voice exactly on the planned frames (the head is always silence).
             var lead = limiter?.LatencySamples ?? 0;
-            var pad = plan.Pad ? new NarrationPad(SampleRate, plan.TimelineOffsetSeconds) : null;
+            // A story-ending render resolves the pad home to Fmaj7 from the last word on.
+            double? resolveAt = plan.PadFadeOutSeconds > 0 && placements.Count > 0
+                ? plan.TimelineOffsetSeconds + placements[^1].EndFrame / (double)SampleRate
+                : null;
+            var pad = plan.Pad ? new NarrationPad(SampleRate, plan.TimelineOffsetSeconds, resolveAt) : null;
             var outMeter = new LoudnessMeter(SampleRate);
             var outTp = MeasureOutputTruePeak ? new TruePeakMeter() : null;
             var fadeIn = Frames(plan.PadFadeInSeconds);
@@ -276,7 +295,24 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
         return 0.4 + words / wordsPerSecond;
     }
 
-    private sealed record SegmentFile(string Path, long Frames);
+    /// <summary>A rendered utterance on disk, with its trim gain (per-utterance level match).</summary>
+    private sealed record SegmentFile(string Path, long Frames, double LevelDb, int SoftHead, int SoftTail)
+    {
+        public double Gain { get; set; } = 1.0;
+    }
+
+    /// <summary>Utterances whose active level strays from the story median are nudged back,
+    /// at most this far (review round 1: short lines like "Hello, travellers." landed 2 dB low).</summary>
+    public const double LevelMatchMaxDb = 2.0;
+
+    private static void MatchLevels(List<SegmentFile> files)
+    {
+        if (files.Count < 3) return;
+        var sorted = files.Select(f => f.LevelDb).Order().ToList();
+        var median = sorted[sorted.Count / 2];
+        foreach (var f in files)
+            f.Gain = AudioShaper.DbToGain(Math.Clamp(median - f.LevelDb, -LevelMatchMaxDb, LevelMatchMaxDb));
+    }
 
     private async Task<List<SegmentFile>> RenderSegmentsAsync(NarrationPlan plan, string voiceId, string workDir,
         IProgress<double>? progress, CancellationToken ct)
@@ -323,7 +359,8 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             var path = System.IO.Path.Combine(workDir, $"seg-{k:D4}.f32");
             await using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
                 fs.Write(MemoryMarshal.AsBytes(resampled.AsSpan()));
-            files.Add(new SegmentFile(path, resampled.Length));
+            var (softHead, softTail) = AudioShaper.SoftEdges(resampled, SampleRate);
+            files.Add(new SegmentFile(path, resampled.Length, AudioShaper.ActiveLevelDbfs(resampled, SampleRate), softHead, softTail));
             progress?.Report(0.8 * (k + 1) / plan.Segments.Count);
         }
         return files;
@@ -396,18 +433,26 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                 fs.Seek((from - p.StartFrame) * sizeof(float), SeekOrigin.Begin);
                 var dest = block.Slice((int)(from - start), (int)(to - from));
                 fs.ReadExactly(MemoryMarshal.AsBytes(dest));
+                var g = (float)files[k].Gain;
+                if (g != 1f)
+                    for (var i = 0; i < dest.Length; i++) dest[i] *= g;
             }
         }
     }
 
     /// <summary>Per-segment performance gain over the timeline. Each segment's gain holds
     /// from the midpoint of the pause before it to the midpoint of the pause after it;
-    /// changes cross-fade (raised cosine, ≤ 30 ms) inside the silence, never under a word.</summary>
+    /// changes cross-fade (raised cosine, ≤ 30 ms) inside the silence, never under a word.
+    /// The bedtime ending is different: its fade is one CONTINUOUS ramp in time, from the
+    /// first ending utterance's start (0 dB) to the last one's end (the plan's final ending
+    /// gain), so it glides instead of stepping (review round 1).</summary>
     private sealed class GainEnvelope
     {
         private readonly long[] _boundary;   // boundary[k] = start of segment k's region
-        private readonly double[] _gain;     // linear gain per region
+        private readonly double[] _gain;     // linear gain per region (ending ramp excluded)
         private readonly long[] _half;       // half-width of the transition at boundary k
+        private readonly long _rampStart, _rampEnd;
+        private readonly double _rampDb;
 
         public GainEnvelope(NarrationPlan plan, List<SegmentPlacement> placements, bool includeEnding)
         {
@@ -418,13 +463,19 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             for (var k = 0; k < n; k++)
             {
                 var seg = plan.Segments[k];
-                var db = includeEnding ? seg.GainDb : seg.GainDb - seg.EndingGainDb;
-                _gain[k] = AudioShaper.DbToGain(db);
+                _gain[k] = AudioShaper.DbToGain(seg.GainDb - seg.EndingGainDb);
                 if (k == 0) continue;
                 var gapStart = placements[k - 1].EndFrame;
                 var gapEnd = placements[k].StartFrame;
                 _boundary[k] = (gapStart + gapEnd) / 2;
                 _half[k] = Math.Min((long)(0.015 * SampleRate), Math.Max(1, (gapEnd - gapStart) / 4));
+            }
+            var ending = Enumerable.Range(0, n).Where(k => plan.Segments[k].InEnding).ToList();
+            if (includeEnding && ending.Count > 0)
+            {
+                _rampStart = placements[ending[0]].StartFrame;
+                _rampEnd = Math.Max(_rampStart + 1, placements[ending[^1]].EndFrame);
+                _rampDb = plan.Segments[ending[^1]].EndingGainDb;
             }
         }
 
@@ -444,6 +495,11 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                     g = _gain[k] * (1 - w) + _gain[k + 1] * w;
                 }
                 else g = _gain[k];
+                if (_rampDb != 0 && f > _rampStart)
+                {
+                    var t = Math.Min(1.0, (f - _rampStart) / (double)(_rampEnd - _rampStart));
+                    g *= AudioShaper.DbToGain(_rampDb * t);
+                }
                 if (g != 1.0) block[i] = (float)(block[i] * g);
             }
         }
