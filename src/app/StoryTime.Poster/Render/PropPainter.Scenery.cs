@@ -65,19 +65,40 @@ internal static partial class PropPainter
             }
             case FrameKit.Roof:
             {
-                // A window box on the near ledge: planter, trailing leaves and a few flowers.
-                using var box = new SKPath();
-                box.AddRoundRect(new SKRect(f.U(-0.6), f.V(0.3), f.U(0.62), f.V(0.0)), f.L(0.03), f.L(0.03));
-                var wood = k.Colors.Grade(new Oklch(0.5, 0.07, 45));
-                Coat(k, box, wood with { L = Math.Min(wood.L, 0.42) }, 0.8, 0.6);
-                Foliage(k, f, r, leafBase, -0.55, 0.55, 0.28, 0.62, 9);
-                Flowerheads(k, f, r, 5, -0.4, 0.5, 0.45, 0.7);
+                // The corner of a near roof: a tiled slope rising from the edge with rows of
+                // scalloped tiles, a ridge cap and a lit dormer with a window box.
+                var tile = k.Colors.Grade(new Oklch(0.46, 0.09, 30));
+                using var slope = Blob(f, (-0.9, -0.05), (-0.8, 0.62), (-0.55, 0.66), (0.7, 0.18), (0.72, -0.05));
+                Coat(k, slope, tile with { L = Math.Min(tile.L, 0.38) }, 0.7, 0.6);
+                using var rows = new SKPath();
+                for (var row = 0; row < 5; row++)
+                for (var i = 0; i < 9; i++)
+                {
+                    var u = -0.85 + i * 0.18 + (row % 2) * 0.09;
+                    var v = 0.08 + row * 0.11 - (u + 0.85) * 0.25;
+                    rows.AddArc(new SKRect(f.U(u - 0.09), f.V(v + 0.06), f.U(u + 0.09), f.V(v - 0.06)), 0, 180);
+                }
+                using (var tp = Paint.Stroke(Paint.Sk(tile.Lighter(-0.1), 0.7), Math.Max(0.6f, f.L(0.012))))
+                {
+                    k.C.Save();
+                    k.C.ClipPath(slope, SKClipOperation.Intersect, true);
+                    k.C.DrawPath(rows, tp);
+                    k.C.Restore();
+                }
+                using var ridge = Blob(f, (-0.82, 0.6), (-0.55, 0.67), (0.72, 0.19), (0.7, 0.13), (-0.55, 0.6));
+                Coat(k, ridge, tile.Lighter(0.06), 0.5, 0.4);
+                using var dormer = new SKPath();
+                dormer.AddRect(new SKRect(f.U(-0.3), f.V(0.42), f.U(-0.06), f.V(0.2)));
+                dormer.MoveTo(f.P(-0.34, 0.42)); dormer.LineTo(f.P(-0.18, 0.54)); dormer.LineTo(f.P(-0.02, 0.42)); dormer.Close();
+                Coat(k, dormer, k.Colors.Grade(new Oklch(0.7, 0.05, 70)), 0.6, 0.5);
+                Window(k, f.U(-0.25), f.V(0.38), f.L(0.14), f.L(0.14), true);
+                Flowerheads(k, f, r, 3, -0.3, -0.06, 0.2, 0.24);
                 return;
             }
             case FrameKit.Reef:
             {
                 Kelps(k, f, r, leafBase, 3);
-                var coral = k.Colors.Grade(new Oklch(0.66, 0.1, 28));
+                var coral = k.Colors.Grade(new Oklch(0.66, 0.1, CoralHue(k.Plan)));
                 using var clump = new SKPath();
                 for (var i = 0; i < 7; i++)
                     clump.AddCircle(f.U(-0.4 + i * 0.16 + r.Jitter(0.03)), f.V(0.12 + r.Range(0, 0.18) * (1 - i / 8.0)), f.L(r.Range(0.1, 0.16)));
@@ -231,8 +252,9 @@ internal static partial class PropPainter
         }
     }
 
-    private static void Toadstools(K k, Frame f, Rng r)
+    private static void Toadstools(K k, Frame f0, Rng r)
     {
+        var f = f0 with { Y = f0.Y - f0.S * 0.06f };   // seated on the mound, not cut by the frame's foot
         var cap = k.Colors.Grade(new Oklch(0.6, 0.13, 30));
         var stemCol = k.Colors.Grade(new Oklch(0.86, 0.03, 80));
         foreach (var (u, sz) in new[] { (0.42, 0.22), (0.58, 0.15) })
@@ -317,32 +339,51 @@ internal static partial class PropPainter
 
     // ------------------------------------------------------------------ warm lights
 
+    /// <summary>A campfire: a ring of stones, crossed logs, and flame tongues — red-orange
+    /// outside, gold within, a cream heart — with a few rising sparks.</summary>
     private static void Campfire(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var log = k.Colors.Grade(new Oklch(0.38, 0.05, 45));
-        var stone = Oklab.Mix(k.Colors.LandNear.ToOklab(), new Oklch(0.45, 0.01, 60).ToOklab(), 0.5).ToOklch();
-        Paint.Glow(k.C, f.U(0), f.V(0.3), f.L(1.6), Paint.Sk(k.Colors.WindowGlow), 0.42);
-        for (var i = 0; i < 7; i++)
+        var r = k.R;
+        var log = k.Colors.Grade(new Oklch(0.4, 0.06, 45));
+        var stone = Oklab.Mix(k.Colors.LandNear.ToOklab(), new Oklch(0.5, 0.01, 60).ToOklab(), 0.55).ToOklch();
+        Paint.Glow(k.C, f.U(0), f.V(0.3), f.L(1.7), Paint.Sk(k.Colors.WindowGlow), 0.4);
+        for (var i = 0; i < 4; i++)
         {
-            var u = -0.5 + i / 6.0;
-            using var s = Oval(f, u, 0.03 + Math.Sin(i * 0.9) * 0.01, 0.09, 0.06);
-            Coat(k, s, stone.Lighter(i % 2 * 0.03), 0.6);
+            using var st = Oval(f, -0.42 + i * 0.28, 0.08, 0.1, 0.065);
+            Coat(k, st, stone.Lighter(-0.04), 0.6, 0.6);
         }
-        using var logs = new SKPath();
-        logs.AddPath(Oval(f, -0.1, 0.1, 0.36, 0.06, 18));
-        logs.AddPath(Oval(f, 0.1, 0.1, 0.36, 0.06, -18));
-        Coat(k, logs, log, 0.7);
-        // Flames: three nested soft teardrops, amber to cream.
-        foreach (var (w, h, col, a) in new[] { (0.3, 0.85, k.Colors.Window, 0.95), (0.2, 0.62, ScenePalette.AmberSoft, 0.95), (0.1, 0.38, ScenePalette.Cream, 0.95) })
+        using var logA = Blob(f, (-0.46, 0.02), (-0.42, 0.1), (0.36, 0.26), (0.42, 0.18));
+        using var logB = Blob(f, (0.46, 0.02), (0.42, 0.1), (-0.36, 0.26), (-0.42, 0.18));
+        Coat(k, logA, log, 0.8, 0.6);
+        Coat(k, logB, log.Lighter(0.03), 0.8, 0.6);
+        using var ends = Paint.Fill(Paint.Sk(k.Colors.Grade(new Oklch(0.7, 0.08, 70))));
+        k.C.DrawCircle(f.U(0.42), f.V(0.22), f.L(0.035), ends);
+        k.C.DrawCircle(f.U(-0.42), f.V(0.22), f.L(0.035), ends);
+        var tongues = new (double U, double H, double W, Oklch Col)[]
         {
-            using var flame = Blob(f, (-w, 0.16), (-w * 0.7, h * 0.45), (0.02, h), (w * 0.75, h * 0.42), (w, 0.16), (0, 0.1));
-            using var p = Paint.Fill(Paint.Sk(col, a));
+            (-0.14, 0.62, 0.15, new Oklch(0.66, 0.16, 38)),
+            (0.14, 0.7, 0.15, new Oklch(0.66, 0.16, 38)),
+            (0.0, 0.95, 0.2, new Oklch(0.7, 0.16, 48)),
+            (-0.06, 0.7, 0.13, new Oklch(0.82, 0.14, 75)),
+            (0.07, 0.6, 0.11, new Oklch(0.82, 0.14, 75)),
+            (0.0, 0.42, 0.08, new Oklch(0.95, 0.06, 90)),
+        };
+        foreach (var (u, h, w, col) in tongues)
+        {
+            var lean = r.Jitter(0.05);
+            using var flame = Blob(f, (u - w, 0.18), (u - w * 0.8, 0.18 + h * 0.35), (u - w * 0.2 + lean, 0.18 + h * 0.75), (u + lean * 2, 0.18 + h),
+                (u + w * 0.3 + lean, 0.18 + h * 0.6), (u + w * 0.85, 0.18 + h * 0.3), (u + w, 0.18));
+            using var p = Paint.Fill(Paint.Sk(col, 0.97));
             k.C.DrawPath(flame, p);
         }
-        using var sparks = Paint.Fill(Paint.Sk(ScenePalette.AmberSoft, 0.8));
-        var r = k.R;
-        for (var i = 0; i < 4; i++) k.C.DrawCircle(f.U(r.Jitter(0.3)), f.V(r.Range(0.95, 1.3)), Math.Max(0.6f, f.L(0.02)), sparks);
+        for (var i = 0; i < 3; i++)
+        {
+            using var st = Oval(f, -0.3 + i * 0.3, 0.03, 0.11, 0.07);
+            Coat(k, st, stone, 0.6, 0.6);
+        }
+        using var sparks = Paint.Fill(Paint.Sk(ScenePalette.AmberSoft, 0.85));
+        for (var i = 0; i < 4; i++) k.C.DrawCircle(f.U(r.Jitter(0.3)), f.V(r.Range(1.2, 1.6)), Math.Max(0.6f, f.L(0.022)), sparks);
     }
 
     /// <summary>A glowing sea anemone: the reef's warm lamp.</summary>

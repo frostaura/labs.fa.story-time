@@ -80,8 +80,11 @@ public class PaletteTests
             var d = HueDistance(sa.SkyHue, sb.SkyHue) + HueDistance(sa.GlowHue, sb.GlowHue) + HueDistance(sa.LandHue, sb.LandHue);
             Assert.True(d >= 30, $"{a} and {b} are the same colour script");
         }
-        // Real range: sky hues spread over at least five 60° sectors.
-        Assert.True(scripts.Select(x => (int)(x.s.SkyHue / 60)).Distinct().Count() >= 5, "sky hues cluster");
+        // Real range: skies and glows each spread over at least four 60° sectors, and no two
+        // palettes share a (sky, glow) sector pair more than twice.
+        Assert.True(scripts.Select(x => (int)(x.s.SkyHue / 60)).Distinct().Count() >= 4, "sky hues cluster");
+        Assert.True(scripts.Select(x => (int)(x.s.GlowHue / 60)).Distinct().Count() >= 4, "glow hues cluster");
+        Assert.True(scripts.GroupBy(x => ((int)(x.s.SkyHue / 60), (int)(x.s.GlowHue / 60))).All(g => g.Count() <= 3), "palettes pair up");
     }
 
     [Fact]

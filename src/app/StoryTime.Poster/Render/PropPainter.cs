@@ -31,6 +31,9 @@ internal static partial class PropPainter
         }
     }
 
+    /// <summary>Each reef has its own coral: rose, peach, lilac or coral-orange by seed.</summary>
+    public static double CoralHue(PosterPlan plan) => new[] { 18.0, 345, 45, 305, 30 }[(int)((uint)plan.Spec.Seed % 5)];
+
     public static double DefaultTone(int depth) => depth switch { 1 => 0.32, 2 => 0.64, _ => 1.0 };
 
     public static void Paint_(SKCanvas canvas, PosterPlan plan, Placement p, PosterViewport vp)
@@ -48,7 +51,7 @@ internal static partial class PropPainter
             ink = ink with
             {
                 // Dusty rose corals and sea-green kelp, both quiet: no candy magenta on teal.
-                H = p.Prop == Prop.Kelp ? 165 : 18,
+                H = p.Prop == Prop.Kelp ? 165 : CoralHue(plan),
                 C = Math.Min(0.045, ink.C + 0.01),
                 L = ink.L + (p.Prop == Prop.Kelp ? -0.01 : 0.03),
             };
@@ -80,6 +83,21 @@ internal static partial class PropPainter
             WarmAmt = warmAmt,
         };
 
+        // The hero is lifted off its ground: a soft dark pool behind it, so a cream rabbit
+        // on snow or a green turtle in teal water still separates at card size.
+        if (isCreature && plan.Focal is { } focal && (ReferenceEquals(focal, p) || focal == p))
+        {
+            var hf = HeightFactor(p.Prop, p.Variant);
+            var hw = s * (float)(p.Prop is Prop.Whale or Prop.Dinosaur or Prop.FishSchool ? 0.9 : p.Prop is Prop.Turtle or Prop.FoxCurled or Prop.Camel or Prop.Hedgehog ? 0.7 : 0.5);
+            var hh = s * (float)hf;
+            using var pool = new SKPaint
+            {
+                IsAntialias = true,
+                Color = SKColors.Black.WithAlpha(plan.Colors.Snowy || plan.Underwater ? (byte)64 : (byte)40),
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(1f, hh * 0.18f)),
+            };
+            canvas.DrawOval(x, y - hh * 0.45f, hw * 1.05f, hh * 0.58f, pool);
+        }
         canvas.Save();
         if (p.Flip) canvas.Scale(-1, 1, x, y);
         switch (p.Prop)
@@ -1035,7 +1053,7 @@ internal static partial class PropPainter
             body.LineTo(x + s * 0.36f, y - s * 0.72f);
             body.Close();
             using var handle = new SKPath();
-            handle.AddArc(new SKRect(x - s * 0.2f, y - s * 1.2f, x + s * 0.2f, y - s * 0.82f), 180, 180);
+            handle.AddArc(new SKRect(x - s * 0.2f, y - s * 1.16f, x + s * 0.2f, y - s * 0.78f), 180, 180);
             using var handleStroke = Paint.Stroke(SKColors.White, Math.Max(0.7f, s * 0.05f));
             AddStroke(body, handle, handleStroke);
             k.Sil(body, 0.02, 0);
@@ -1163,9 +1181,22 @@ internal static partial class PropPainter
             k.C.DrawRoundRect(lx - s * 0.04f, ly - s * 0.055f, s * 0.08f, s * 0.11f, s * 0.02f, s * 0.02f, lp);
             using var cap = Paint.Fill(Paint.Sk(wood.Lighter(-0.1)));
             k.C.DrawRect(lx - s * 0.045f, ly - s * 0.075f, s * 0.09f, s * 0.025f, cap);
-            using var refl = Paint.Fill(Paint.Sk(k.Colors.Window, 0.45));
-            for (var i = 0; i < 4; i++)
-                k.C.DrawRoundRect(lx - s * (0.04f + i * 0.015f), y + s * (0.08f + i * 0.07f), s * (0.08f + i * 0.03f), Math.Max(0.7f, s * 0.014f), 1, 1, refl);
+            // The lantern's reflection: one soft gold streak that wavers and fades with depth.
+            using (var streak = new SKPaint
+                   {
+                       IsAntialias = true,
+                       MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(0.6f, s * 0.018f)),
+                       Shader = SKShader.CreateLinearGradient(new SKPoint(0, y + s * 0.05f), new SKPoint(0, y + s * 0.42f),
+                           [Paint.Sk(k.Colors.Window, 0.5), Paint.Sk(k.Colors.Window, 0)], SKShaderTileMode.Clamp),
+                   })
+            {
+                using var path = new SKPath();
+                path.MoveTo(lx - s * 0.03f, y + s * 0.05f);
+                path.CubicTo(lx + s * 0.03f, y + s * 0.15f, lx - s * 0.05f, y + s * 0.28f, lx + s * 0.01f, y + s * 0.42f);
+                path.CubicTo(lx + s * 0.05f, y + s * 0.28f, lx + s * 0.06f, y + s * 0.15f, lx + s * 0.04f, y + s * 0.05f);
+                path.Close();
+                k.C.DrawPath(path, streak);
+            }
         }
     }
 

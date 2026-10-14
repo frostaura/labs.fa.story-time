@@ -115,6 +115,7 @@ public static class ScenePlanner
             PlaceFeatures();
             PlaceDefaultHero();
             PlaceFraming();
+            ClearHeroZone();
             EnsureWarmLight();
             SeparateSubjects();
             KeepHeroBelowTitle();
@@ -137,7 +138,9 @@ public static class ScenePlanner
             ShootingStar = _shooting,
             Bands = _bands,
             Water = _water,
-            Placements = _props.OrderBy(p => p.Depth).ThenBy(p => p.Y).ToList(),
+            // Within a layer: framing clusters first (lights, heroes and flowers stand in front of
+            // them), then by base line.
+            Placements = _props.OrderBy(p => p.Depth).ThenBy(p => p.Prop == Prop.FrameCluster ? 0 : 1).ThenBy(p => p.Y).ToList(),
             Ambient = _ambient,
             Lights = _props.Where(p => p.Lit && p.Prop is not Prop.Train).Select(LightFor).ToList(),
             Focal = _focal,
@@ -403,7 +406,7 @@ public static class ScenePlanner
             Band(1, Dunes(_horizon, r.Range(0.06, 0.09), 1.4, "desert-far"), 0.05, TerrainStyle.Sand, fog: 0.3);
             Band(1, Dunes(_horizon + 0.06, 0.06, 1.9, "desert-far2"), 0.32, TerrainStyle.Sand, fog: 0.25);
             var mid = Band(2, Dunes(_horizon + 0.16, 0.05, 1.3, "desert-mid"), 0.6, TerrainStyle.Sand);
-            var ox = 0.5 - _side * (_layout == PosterLayout.Center ? r.Range(0.27, 0.32) : r.Range(0.12, 0.2));
+            var ox = 0.5 - _side * (_layout == PosterLayout.Center ? r.Range(0.33, 0.37) : r.Range(0.12, 0.2));
             Place(Prop.Pool, 2, ox, mid.Profile.Y(ox) + 0.025, r.Range(0.2, 0.25), "oasis-pool", flip: false);
             // Palms root together on the far bank and fan apart at the crowns.
             var palms = 1 + r.Int(3);
@@ -554,6 +557,10 @@ public static class ScenePlanner
 
             var creature = _spec.Features.FirstOrDefault(PosterSpecRules.IsCreature, (PosterFeature)(-1));
             if (Enum.IsDefined(creature)) _focal = PlaceCreature(creature, near, mid, r);
+            // Children choose a book by its character: when the story lists no creature, a
+            // scene-native companion becomes the hero. It is scenery, not a feature — the spec
+            // stays exactly what was asked, and the story's own props still appear beside it.
+            else if (Companion() is { } companion) _focal = PlaceCreature(companion, near, mid, R("companion"), asFeature: false);
 
             foreach (var f in _spec.Features)
             {
@@ -578,8 +585,8 @@ public static class ScenePlanner
                         if (_spec.Scene is PosterScene.SnowyVillage or PosterScene.TownRooftops) break; // the scene IS a village
                         for (var i = 0; i < 4; i++)
                         {
-                            var hx = otherX + (i - 1.5) * 0.045;
-                            Place(Prop.House, 1, hx, far.Y(hx) + 0.006, r.Range(0.045, 0.06), $"far-house-{i}", variant: r.Int(3),
+                            var hx = otherX + (i - 1.5) * 0.055;
+                            Place(Prop.House, 1, hx, far.Y(hx) + 0.006, r.Range(0.06, 0.075), $"far-house-{i}", variant: r.Int(3),
                                 lit: r.Chance(0.6), feature: f, tone: 0.3);
                         }
                         break;
@@ -604,7 +611,7 @@ public static class ScenePlanner
                         // small camp lantern set on the ground beside the hero.
                         var street = _spec.Scene is PosterScene.SnowyVillage or PosterScene.TownRooftops;
                         var lx = _focal is not null ? _focal.X - _side * 0.17 : x;
-                        Place(Prop.Lantern, 3, lx, near.Y(lx) + 0.012, street ? 0.22 : 0.085, "lantern", feature: f, lit: true,
+                        Place(Prop.Lantern, 3, lx, near.Y(lx) + 0.012, street ? 0.22 : 0.11, "lantern", feature: f, lit: true,
                             variant: street ? 1 : 0);
                         break;
                     }
@@ -693,7 +700,13 @@ public static class ScenePlanner
         /// quiet one (scenery props, not features — the spec stays exactly what was asked).</summary>
         private void PlaceDefaultHero()
         {
-            if (_focal is not null) return;
+            // With a companion as the hero, the scene's home prop (boat, cabin, tent, castle…)
+            // still appears — smaller, on the other third — unless the story brought its own.
+            var companionHero = _focal is { Feature: null };
+            if (_focal is not null && !companionHero) return;
+            if (companionHero && _spec.Features.Any(f => f != PosterFeature.Lantern && (PosterSpecRules.IsStructure(f) || PosterSpecRules.IsVehicle(f))))
+                return;
+            if (companionHero) { PlaceHomeProp(secondary: true); return; }
             // A featured landmark (castle, lighthouse, village, train) already is the subject.
             if (_props.FirstOrDefault(p => p.Feature is PosterFeature.Castle or PosterFeature.Lighthouse
                     or PosterFeature.Windmill) is { } landmark)
@@ -701,44 +714,52 @@ public static class ScenePlanner
                 _focal = landmark;
                 return;
             }
+            PlaceHomeProp(secondary: false);
+        }
+
+        private void PlaceHomeProp(bool secondary)
+        {
             var r = R("hero");
             var mid = Ground(2);
             var near = Ground(3);
-            var x = _focalX;
+            var x = secondary ? 0.5 - _side * r.Range(0.2, 0.26) : _focalX;
+            if (secondary && _layout == PosterLayout.Center) x = 0.5 - _side * r.Range(0.28, 0.32);
+            var k = secondary ? 0.62 : 1.0;
+            Placement Hero(Placement p) { if (!secondary) _focal = p; return p; }
             switch (_spec.Scene)
             {
                 case PosterScene.MoonlitSea or PosterScene.IslandCove or PosterScene.MountainLake when _water is not null:
-                    _focal = Place(Prop.Boat, 2, x, _water.Line + r.Range(0.11, 0.15), HeroHeight(r) / 0.9, "hero-boat", lit: true);
+                    Hero(Place(Prop.Boat, 2, x, _water.Line + r.Range(0.11, 0.15) * (secondary ? 0.7 : 1), k * HeroHeight(r) / 0.9, "hero-boat", lit: true));
                     break;
                 case PosterScene.ForestClearing or PosterScene.StarryHills or PosterScene.FireflyMeadow or PosterScene.DesertOasis:
                 {
                     x = GroundedX(mid, x);
                     var tent = _spec.Scene is PosterScene.StarryHills or PosterScene.DesertOasis;
                     _props.RemoveAll(p => p.Feature is null && p.Depth == 2 && p.Prop is Prop.RoundTree or Prop.Pine && Math.Abs(p.X - x) < 0.2);
-                    _focal = Place(tent ? Prop.Tent : Prop.Cabin, 2, x, mid.Y(x) + 0.01, HeroHeight(r) / (tent ? 0.8 : 0.88), "hero-home", lit: true);
+                    Hero(Place(tent ? Prop.Tent : Prop.Cabin, 2, x, mid.Y(x) + 0.01, k * HeroHeight(r) / (tent ? 0.8 : 0.88), "hero-home", lit: true));
                     break;
                 }
                 case PosterScene.SnowyVillage:
-                    _focal = Place(Prop.Snowman, 3, x, near.Y(x) + 0.01, HeroHeight(r), "hero-snowman", flip: _focalX > 0.5);
+                    Hero(Place(Prop.Snowman, secondary ? 2 : 3, x, (secondary ? mid : near).Y(x) + 0.01, k * HeroHeight(r), "hero-snowman", flip: x > 0.5));
                     break;
                 case PosterScene.TownRooftops:
-                    _focal = Place(Prop.House, 2, x, Math.Min(0.86, _horizon + 0.25), HeroHeight(r) / 0.9, "hero-house", variant: 1, lit: true);
+                    Hero(Place(Prop.House, 2, x, Math.Min(0.86, _horizon + 0.25), k * HeroHeight(r) / 0.9, "hero-house", variant: 1, lit: true));
                     break;
                 case PosterScene.ReefAtDusk:
                 {
-                    var hsz = HeroHeight(r) / 0.8;
-                    _focal = Place(Prop.FishSchool, 3, x, 0.5 + hsz * 0.45, hsz, "hero-fish", flip: _side < 0);
+                    var hsz = k * HeroHeight(r) / 0.8;
+                    Hero(Place(Prop.FishSchool, 3, x, (secondary ? 0.42 : 0.5) + hsz * 0.45, hsz, "hero-fish", flip: _side < 0));
                     break;
                 }
                 case PosterScene.CloudKingdom:
-                    _focal = Place(Prop.Castle, 1, x, Ground(1).Y(x) + 0.03, HeroHeight(r) / 1.05, "hero-castle", lit: true, tone: 0.45);
+                    Hero(Place(Prop.Castle, 1, x, Ground(1).Y(x) + 0.03, k * HeroHeight(r) / 1.05, "hero-castle", lit: true, tone: 0.45));
                     break;
                 case PosterScene.JungleCanopy:
                 {
                     // A ring of giant glowing mushrooms: the tallest is the subject.
-                    Place(Prop.Mushroom, 3, x - 0.08, near.Y(x - 0.08) + 0.012, r.Range(0.1, 0.13), "hero-glow-0", lit: true);
-                    Place(Prop.Mushroom, 3, x + 0.09, near.Y(x + 0.09) + 0.012, r.Range(0.13, 0.16), "hero-glow-1", lit: true);
-                    _focal = Place(Prop.Mushroom, 3, x, near.Y(x) + 0.014, HeroHeight(r), "hero-glow-2", lit: true);
+                    Place(Prop.Mushroom, 3, x - 0.08 * k, near.Y(x - 0.08) + 0.012, k * r.Range(0.1, 0.13), "hero-glow-0", lit: true);
+                    Place(Prop.Mushroom, 3, x + 0.09 * k, near.Y(x + 0.09) + 0.012, k * r.Range(0.13, 0.16), "hero-glow-1", lit: !secondary);
+                    Hero(Place(Prop.Mushroom, 3, x, near.Y(x) + 0.014, k * HeroHeight(r), "hero-glow-2", lit: true));
                     break;
                 }
             }
@@ -751,7 +772,7 @@ public static class ScenePlanner
         {
             static (double L, double R, double T, double B) Box(Placement p) => p.Prop switch
             {
-                Prop.FishSchool => (p.X - p.Size * 0.85, p.X + p.Size * 0.85, p.Y - p.Size * 0.3, p.Y + p.Size * 0.3),
+                Prop.FishSchool => (p.X - p.Size * 0.85, p.X + p.Size * 0.85, p.Y - p.Size * 0.85, p.Y),
                 Prop.Turtle when p.Variant == 0 => (p.X - p.Size * 0.5, p.X + p.Size * 0.62, p.Y - p.Size * 0.3, p.Y + p.Size * 0.45),
                 Prop.Balloon => (p.X - p.Size * 0.5, p.X + p.Size * 0.5, p.Y - p.Size * 0.6, p.Y + p.Size * 0.7),
                 Prop.Pool => (p.X - p.Size * 0.55, p.X + p.Size * 0.55, p.Y - p.Size * 0.12, p.Y + p.Size * 0.12),
@@ -766,6 +787,8 @@ public static class ScenePlanner
                 var a = subjects[i];
                 var b = subjects[j];
                 if (Math.Abs(a.Depth - b.Depth) > 1) continue;
+                // The oasis pool lies back on the mid ground: a hero in front may overlap it.
+                if ((a.Prop == Prop.Pool || b.Prop == Prop.Pool) && a.Depth != b.Depth) continue;
                 var pad = 0.02 + Math.Abs(PosterEngineTravel(a.Depth) - PosterEngineTravel(b.Depth));
                 var ba = Box(a);
                 var bb = Box(b);
@@ -803,6 +826,54 @@ public static class ScenePlanner
                 if (idx >= 0) _props[idx] = moved;
                 subjects[subjects.IndexOf(mover)] = moved;
                 if (ReferenceEquals(mover, _focal)) _focal = moved;
+            }
+        }
+
+        /// <summary>Half-width of what a prop draws, as a fraction of its size.</summary>
+        private static double HalfWidth(Placement p) => p.Prop switch
+        {
+            Prop.Whale => 0.85, Prop.Dinosaur => 0.8, Prop.FoxCurled => 0.65, Prop.Hedgehog => 0.6, Prop.Camel => 0.6,
+            Prop.Turtle => 0.6, Prop.FishSchool => 0.85, Prop.Fox => 0.5, Prop.Owl => 0.35, Prop.Deer => 0.45,
+            Prop.Train => 6.0, Prop.Cabin or Prop.House => 0.6, Prop.Tent => 0.66, Prop.Castle => 0.5, Prop.Boat => 0.56,
+            _ => 0.45,
+        };
+
+        /// <summary>The hero gets room to breathe: a landmark or tree behind it that would sit
+        /// against its head steps to the hero's far side, re-seated on its own ground.</summary>
+        private void ClearHeroZone()
+        {
+            if (_focal is not { } hero) return;
+            var hw = hero.Size * HalfWidth(hero) + 0.04;
+            var top = hero.Y - hero.Size * (Render.PropPainter.IsCreatureProp(hero.Prop) ? Render.PropPainter.HeightFactor(hero.Prop, hero.Variant) : 1.0) - 0.03;
+            for (var i = 0; i < _props.Count; i++)
+            {
+                var p = _props[i];
+                if (ReferenceEquals(p, hero) || p.Depth > hero.Depth) continue;
+                if (p.Prop is not (Prop.Castle or Prop.House or Prop.Windmill or Prop.Tent or Prop.Cabin or Prop.Palm or Prop.Lighthouse
+                        or Prop.Telescope or Prop.RoundTree or Prop.Balloon or Prop.Boat or Prop.Sailboat)) continue;
+                var pw = p.Size * HalfWidth(p);
+                var pTop = p.Y - p.Size * (p.Prop == Prop.Balloon ? 0.6 : 1.0);
+                var pBottom = p.Prop == Prop.Balloon ? p.Y + p.Size * 0.7 : p.Y;
+                var overlapX = Math.Min(p.X + pw, hero.X + hw) - Math.Max(p.X - pw, hero.X - hw);
+                if (overlapX <= 0 || pBottom < top || pTop > hero.Y) continue;
+                var dir = p.X >= hero.X ? 1 : -1;
+                var nx = hero.X + dir * (hw + pw + 0.02);
+                if (nx is < 0.08 or > 0.92) { dir = -dir; nx = hero.X + dir * (hw + pw + 0.02); }
+                if (nx is < 0.06 or > 0.94)
+                {
+                    // Unlit scenery may simply step out; a lit home is the poster's light and stays.
+                    if (p.Feature is null && !p.Lit) { _props.RemoveAt(i--); continue; }
+                    nx = Math.Clamp(nx, 0.08, 0.92);
+                }
+                var ny = p.Y;
+                if (p.Prop is not (Prop.Balloon or Prop.Boat or Prop.Sailboat))
+                {
+                    var ground = Ground(p.Depth);
+                    var lift = p.Y - ground.Y(p.X);
+                    nx = GroundedX(ground, nx);
+                    ny = ground.Y(nx) + lift;
+                }
+                _props[i] = p with { X = nx, Y = ny };
             }
         }
 
@@ -878,6 +949,10 @@ public static class ScenePlanner
             // boat's masthead light are too small to be the poster's focal glow.
             if (hero is not null && hero.Lit && hero.Prop is Prop.Cabin or Prop.Tent or Prop.Mushroom) return;
             if (hero is null && _props.Any(p => p.Lit && p.Depth >= 2)) return;
+            // One dominant warm light: a lit lantern, cabin or tent the story already placed
+            // near the hero is the light; a second equal one would split the focus.
+            if (hero is not null && _props.Any(p => p.Lit && p.Depth >= 2 && p.Prop is Prop.Lantern or Prop.Cabin or Prop.Tent or Prop.Campfire
+                    && Math.Abs(p.X - hero.X) < 0.3 && p.X is > 0.15 and < 0.85)) return;
             var r = R("warm-light");
             var dir = _layout == PosterLayout.Center ? _side : (_focalX > 0.5 ? -1 : 1);
             var hx = hero?.X ?? _focalX;
@@ -889,13 +964,27 @@ public static class ScenePlanner
                 Place(Prop.Anemone, 3, x, floor.Y(x) + 0.01, r.Range(0.1, 0.13), "warm-anemone", lit: true);
                 return;
             }
-            var onMid = hero is { Depth: 2 } && hero.Prop is not (Prop.Whale or Prop.Otter or Prop.Boat or Prop.Sailboat or Prop.Balloon);
+            var onMid = hero is { Depth: 2 } && hero.Prop is not (Prop.Whale or Prop.Otter or Prop.Boat or Prop.Sailboat or Prop.Balloon)
+                        && _spec.Scene != PosterScene.TownRooftops
+                        || _spec.Scene == PosterScene.CloudKingdom;
             var ground = Ground(onMid ? 2 : 3);
+            // Only on solid ground well above the frame's foot (never on the water).
+            var limit = onMid ? _horizon + 0.2 : 0.95;
+            if (ground.Y(x) > limit)
+            {
+                var best = x;
+                for (var d = 0.02; d < 0.6; d += 0.02)
+                {
+                    if (x + d < 0.9 && ground.Y(x + d) <= limit) { best = x + d; break; }
+                    if (x - d > 0.1 && ground.Y(x - d) <= limit) { best = x - d; break; }
+                }
+                x = best;
+            }
             var wild = _spec.Scene is PosterScene.ForestClearing or PosterScene.StarryHills or PosterScene.FireflyMeadow
                 or PosterScene.DesertOasis or PosterScene.MountainLake or PosterScene.IslandCove or PosterScene.JungleCanopy;
             var depth = onMid ? 2 : 3;
             if (wild && _spec.Scene != PosterScene.JungleCanopy && !(_spec.Scene == PosterScene.MountainLake && !onMid && r.Chance(0.5)))
-                Place(Prop.Campfire, depth, x, ground.Y(x) + 0.008, onMid ? 0.12 : 0.15, "warm-fire", lit: true);
+                Place(Prop.Campfire, depth, x, ground.Y(x) + 0.008, onMid ? 0.15 : 0.17, "warm-fire", lit: true);
             else
                 Place(Prop.Lantern, depth, x, ground.Y(x) + 0.012, onMid ? 0.085 : 0.11, "warm-lantern", lit: true, variant: 0);
         }
@@ -917,27 +1006,50 @@ public static class ScenePlanner
             return new LightPlan(p.X, cy, radius, strength, p.Depth, kind, p.Feature, ReferenceEquals(p, _focal) || p == _focal);
         }
 
-        private Placement PlaceCreature(PosterFeature creature, TerrainProfile near, TerrainProfile mid, Rng r)
+        /// <summary>The scene's companion creature, picked evenly by seed so the roster rotates.</summary>
+        private PosterFeature? Companion()
         {
+            PosterFeature[] options = _spec.Scene switch
+            {
+                PosterScene.MoonlitSea => [PosterFeature.Otter, PosterFeature.Fox, PosterFeature.Whale],
+                PosterScene.ForestClearing => [PosterFeature.Fox, PosterFeature.Rabbit, PosterFeature.Hedgehog, PosterFeature.Bear, PosterFeature.Deer, PosterFeature.Owl],
+                PosterScene.MountainLake => [PosterFeature.Deer, PosterFeature.Bear, PosterFeature.Fox, PosterFeature.Otter],
+                PosterScene.FireflyMeadow => [PosterFeature.Rabbit, PosterFeature.Hedgehog, PosterFeature.Deer, PosterFeature.Fox],
+                PosterScene.SnowyVillage => [PosterFeature.Fox, PosterFeature.Rabbit, PosterFeature.Cat, PosterFeature.Owl],
+                PosterScene.DesertOasis => [PosterFeature.Camel, PosterFeature.Fox],
+                PosterScene.IslandCove => [PosterFeature.Turtle, PosterFeature.Otter],
+                PosterScene.StarryHills => [PosterFeature.Fox, PosterFeature.Rabbit, PosterFeature.Bear],
+                PosterScene.ReefAtDusk => [PosterFeature.Turtle, PosterFeature.Whale],
+                PosterScene.CloudKingdom => [PosterFeature.Cat, PosterFeature.Rabbit],
+                PosterScene.TownRooftops => [PosterFeature.Cat],
+                PosterScene.JungleCanopy => [PosterFeature.Dinosaur, PosterFeature.Owl],
+                _ => [],
+            };
+            return options.Length == 0 ? null : options[R("companion-pick").Int(options.Length)];
+        }
+
+        private Placement PlaceCreature(PosterFeature creature, TerrainProfile near, TerrainProfile mid, Rng r, bool asFeature = true)
+        {
+            PosterFeature? tag = asFeature ? creature : null;
             var x = _focalX;
             var faceIn = _focalX > 0.5; // face toward the centre / the moon
             var waterY = (_water?.Line ?? _horizon);
             Placement OnNear(Prop prop, int variant, string label)
             {
                 var size = HeroSize(prop, variant, r);
-                return Place(prop, 3, x, near.Y(x) + 0.008, size, label, flip: faceIn, variant: variant, feature: creature);
+                return Place(prop, 3, x, near.Y(x) + 0.008, size, label, flip: faceIn, variant: variant, feature: tag);
             }
             switch (creature)
             {
                 case PosterFeature.Whale:
                     if (_underwater)
-                        return Place(Prop.Whale, 2, 0.5 - _side * 0.08, r.Range(0.62, 0.66), Math.Min(0.44, HeroSize(Prop.Whale, 1, r)), "whale", flip: !faceIn, variant: 1, feature: creature);
-                    return Place(Prop.Whale, 2, x, waterY + r.Range(0.12, 0.16), HeroSize(Prop.Whale, 0, r), "whale", flip: faceIn, feature: creature);
+                        return Place(Prop.Whale, 2, 0.5 - _side * 0.08, r.Range(0.62, 0.66), Math.Min(0.44, HeroSize(Prop.Whale, 1, r)), "whale", flip: !faceIn, variant: 1, feature: tag);
+                    return Place(Prop.Whale, 2, x, waterY + r.Range(0.12, 0.16), HeroSize(Prop.Whale, 0, r), "whale", flip: faceIn, feature: tag);
                 case PosterFeature.Otter:
-                    return Place(Prop.Otter, 2, x, waterY + r.Range(0.13, 0.17), HeroSize(Prop.Otter, 0, r), "otter", flip: faceIn, feature: creature);
+                    return Place(Prop.Otter, 2, x, waterY + r.Range(0.13, 0.17), HeroSize(Prop.Otter, 0, r), "otter", flip: faceIn, feature: tag);
                 case PosterFeature.Turtle:
                     if (_underwater)
-                        return Place(Prop.Turtle, 2, x, r.Range(0.6, 0.66), HeroSize(Prop.Turtle, 0, r), "turtle", flip: faceIn, feature: creature);
+                        return Place(Prop.Turtle, 2, x, r.Range(0.6, 0.66), HeroSize(Prop.Turtle, 0, r), "turtle", flip: faceIn, feature: tag);
                     return OnNear(Prop.Turtle, 1, "turtle");
                 case PosterFeature.Owl:
                 {
@@ -945,7 +1057,7 @@ public static class ScenePlanner
                     var ox = _layout == PosterLayout.Center ? _focalX : 0.5 + _side * 0.25;
                     var size = HeroSize(Prop.Owl, 0, r);
                     Place(Prop.Trunk, 3, 0.5 + _side * 0.5, 1.0, Math.Min(0.6, size * 1.6), "owl-tree", flip: _side < 0);
-                    return Place(Prop.Owl, 3, ox, Math.Min(0.82, near.Y(ox) - 0.1), size, "owl", flip: _side < 0, feature: creature);
+                    return Place(Prop.Owl, 3, ox, Math.Min(0.82, near.Y(ox) - 0.1), size, "owl", flip: _side < 0, feature: tag);
                 }
                 case PosterFeature.Dinosaur:
                     return OnNear(Prop.Dinosaur, 0, "dinosaur");
@@ -990,7 +1102,7 @@ public static class ScenePlanner
                 };
                 if (showMoon)
                 {
-                    var radius = time == PosterTimeOfDay.Moonlit ? r.Range(0.042, 0.052) : r.Range(0.034, 0.044);
+                    var radius = time == PosterTimeOfDay.Moonlit ? r.Range(0.032, 0.04) : r.Range(0.03, 0.038);
                     // Full or crescent only: a gibbous "bite" reads as an eclipse or a cookie.
                     var phase = time == PosterTimeOfDay.Moonlit ? 0 : r.Range(0.64, 0.76);
                     var mx = 0.5 - _side * r.Range(0.18, 0.32);
@@ -1054,7 +1166,10 @@ public static class ScenePlanner
             if (Has(PosterFeature.ShootingStar))
             {
                 var sx = 0.5 + _side * r.Range(0.06, 0.18);
-                var sy = r.Range(TitleSafe.Bottom + 0.04, TitleSafe.Bottom + 0.1);
+                var sy = r.Range(TitleSafe.Bottom + 0.06, TitleSafe.Bottom + 0.12);
+                // A shooting star and a flock never share the same patch of sky.
+                if (_props.FirstOrDefault(p => p.Prop == Prop.Birds) is { } flock && Math.Abs(flock.Y - sy) < 0.1)
+                    sx = 0.5 + _side * r.Range(0.12, 0.28);
                 // Keep the whole streak clear of every cloud (it is drawn behind them anyway).
                 for (var tries = 0; tries < 8 && _clouds.Any(c => Math.Abs(c.X - sx) < c.Width * 0.7 + 0.12 && Math.Abs(c.Y - sy) < c.Height * 2 + 0.05); tries++)
                     sx = 0.5 + _side * r.Range(0.0, 0.3);

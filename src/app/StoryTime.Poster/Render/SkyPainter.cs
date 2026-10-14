@@ -395,7 +395,7 @@ internal static class SkyPainter
             var by = vp.Y(au.Base + 0.025 * Math.Sin(nx * 5.5 + au.Seed % 7) + 0.02 * Noise.Fbm1(nx * 2, au.Seed + 9, 2));
             var height = vp.S(au.Height * (0.55 + 0.45 * n));
             p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, by), new SKPoint(0, by - height),
-                [Paint.Sk(green, 0.5 * intensity), Paint.Sk(green, 0.25 * intensity), Paint.Sk(violet, 0.08 * intensity), Paint.Sk(violet, 0)],
+                [Paint.Sk(green, 0.6 * intensity), Paint.Sk(green, 0.3 * intensity), Paint.Sk(violet, 0.08 * intensity), Paint.Sk(violet, 0)],
                 [0f, 0.25f, 0.7f, 1f], SKShaderTileMode.Clamp);
             canvas.DrawRect(px, by - height, step + 0.6f, height + vp.S(0.006), p);
             p.Shader?.Dispose();

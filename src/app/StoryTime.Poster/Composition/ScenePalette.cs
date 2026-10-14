@@ -89,6 +89,10 @@ public sealed class ScenePalette
     public static ScenePalette Build(PosterSpec spec)
     {
         var f = Family(spec.Palette);
+        // Two posters in the same palette are cousins, not twins: the seed nudges the sky
+        // and glow hues within the family.
+        var jr = new Core.Rng(spec.Seed ^ 0x5CA1E);
+        f = f with { SkyHue = f.SkyHue + jr.Range(-9, 9), GlowHue = f.GlowHue + jr.Range(-18, 18) };
         var skyHue = f.SkyHue;
         var scene = spec.Scene;
         var mood = spec.Mood;
@@ -107,7 +111,7 @@ public sealed class ScenePalette
                 zL = 0.21; mL = 0.285; hL = 0.47; glowStrength = 0.14; stars = 0.78; glowMix = 0.22; moonGlow = 0.55; rimStrength = 0.34; local = 0.7;
                 break;
             default: // Moonlit
-                zL = 0.25; mL = 0.34; hL = 0.56; glowStrength = 0.22; stars = 0.5; glowMix = 0.35; moonGlow = 1.0; rimStrength = 0.55; local = 0.76;
+                zL = 0.25; mL = 0.34; hL = 0.56; glowStrength = 0.22; stars = 0.5; glowMix = 0.35; moonGlow = 0.75; rimStrength = 0.55; local = 0.76;
                 break;
         }
 
@@ -157,15 +161,17 @@ public sealed class ScenePalette
         var foliage = new Oklch(landL + 0.02, Math.Min(0.1, f.LandC * chroma * 1.25 + 0.01), HueLerp(landHue, 145, 0.35));
 
         var snowy = scene == PosterScene.SnowyVillage;
-        var snow = new Oklch((spec.TimeOfDay == PosterTimeOfDay.Dusk ? 0.6 : spec.TimeOfDay == PosterTimeOfDay.Twilight ? 0.6 : 0.54) + lift,
+        var snow = new Oklch((spec.TimeOfDay == PosterTimeOfDay.Dusk ? 0.6 : spec.TimeOfDay == PosterTimeOfDay.Twilight ? 0.52 : 0.5) + lift,
             0.035, HueLerp(skyHue, 265, 0.5));
 
         var waterTop = horizon with { L = hL * 0.86 + lift, C = horizon.C * 0.85 };
         var waterDeep = zenith with { L = zL * 0.8 + lift, C = zenith.C * 0.95 };
 
         // A hair dimmer than the cream title, so the moon never out-shouts it.
-        var moon = Cream with { L = 0.885 };
-        var moonGlowColor = Oklab.Mix(Cream.ToOklab(), horizon.ToOklab(), 0.35).ToOklch();
+        // A warm ivory, dimmer than the cream title and the lantern core: the moon sets the
+        // night but never outranks the hero's warm light.
+        var moon = new Oklch(0.84, 0.035, 85);
+        var moonGlowColor = Oklab.Mix(Cream.ToOklab(), horizon.ToOklab(), 0.45).ToOklch();
         var rim = spec.TimeOfDay == PosterTimeOfDay.Dusk
             ? new Oklch(0.8, 0.09, HueLerp(glowHue, 60, 0.5))
             : Oklab.Mix(Cream.ToOklab(), mid.ToOklab(), 0.35).ToOklch();
@@ -228,14 +234,14 @@ public sealed class ScenePalette
         PosterPalette.MoonMeadow => new Script(236, 20, 140, 0.060, 0.060, 0.09),      // lilac to rose, moss
         PosterPalette.OceanDeep => new Script(214, 186, 204, 0.072, 0.050, 0.07),      // deep teal
         PosterPalette.PlumDusk => new Script(338, 48, 328, 0.075, 0.050, 0.11),        // rose-plum, peach
-        PosterPalette.PineForest => new Script(198, 82, 152, 0.060, 0.062, 0.10),      // teal over pines, gold
-        PosterPalette.CloudDrift => new Script(228, 8, 330, 0.055, 0.04, 0.1),         // powder blue, pink, rose clouds
+        PosterPalette.PineForest => new Script(214, 78, 150, 0.064, 0.062, 0.10),      // teal-blue over pines, gold
+        PosterPalette.CloudDrift => new Script(228, 352, 330, 0.055, 0.04, 0.1),         // powder blue, pink, rose clouds
         PosterPalette.StarfieldViolet => new Script(288, 330, 286, 0.080, 0.050, 0.09),// violet, orchid
         PosterPalette.LanternGlow => new Script(42, 72, 38, 0.060, 0.050, 0.12),       // amber dusk
         PosterPalette.TidePool => new Script(196, 32, 176, 0.068, 0.050, 0.10),        // teal, coral
-        PosterPalette.SnowHush => new Script(222, 14, 236, 0.055, 0.030, 0.08),        // rose-blue snow
-        PosterPalette.EmberSky => new Script(16, 64, 22, 0.075, 0.055, 0.13),          // sunset gold
-        PosterPalette.MistValley => new Script(168, 92, 150, 0.045, 0.050, 0.08),      // sage mist
+        PosterPalette.SnowHush => new Script(222, 334, 236, 0.055, 0.030, 0.08),        // rose-blue snow
+        PosterPalette.EmberSky => new Script(14, 62, 28, 0.055, 0.05, 0.11),          // sunset gold
+        PosterPalette.MistValley => new Script(188, 102, 162, 0.05, 0.052, 0.09),      // misty teal, pale gold, sage land
         _ => new Script(232, 52, 222, 0.070, 0.045, 0.10),
     };
 

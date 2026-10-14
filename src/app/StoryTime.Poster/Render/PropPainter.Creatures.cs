@@ -31,7 +31,7 @@ internal static partial class PropPainter
         Prop.Whale => variant == 1 ? 0.54 : 0.86,
         Prop.Turtle => variant == 1 ? 0.66 : 0.7,
         Prop.FishSchool => 0.9,
-        Prop.Hedgehog => 0.82,
+        Prop.Hedgehog => 0.7,
         Prop.Camel => 0.96,
         _ => 1.0,
     };
@@ -554,13 +554,13 @@ internal static partial class PropPainter
         Contact(k, 0.5);
         // Spines: a scalloped dome of soft rounded points.
         using var dome = new SKPath();
-        dome.AddPath(Blob(f, (-0.56, 0.04), (-0.6, 0.3), (-0.4, 0.66), (-0.05, 0.8), (0.24, 0.64), (0.3, 0.3), (0.2, 0.04)));
+        using (var core = Blob(f, (-0.5, 0.04), (-0.52, 0.28), (-0.36, 0.56), (-0.06, 0.66), (0.2, 0.54), (0.26, 0.26), (0.18, 0.04))) dome.AddPath(core);
         for (var i = 0; i < 13; i++)
         {
             var a = Math.PI * (0.98 - i * 0.85 / 12);
-            var cu = -0.15 + Math.Cos(a) * 0.46;
-            var cv = 0.18 + Math.Sin(a) * 0.62;
-            using var spike = Blob(f, (cu - 0.06, cv - 0.02), (cu + Math.Cos(a) * 0.13, cv + Math.Sin(a) * 0.13), (cu + 0.06, cv + 0.02));
+            var cu = -0.14 + Math.Cos(a) * 0.38;
+            var cv = 0.16 + Math.Sin(a) * 0.5;
+            using var spike = Blob(f, (cu - 0.055, cv - 0.02), (cu + Math.Cos(a) * 0.09, cv + Math.Sin(a) * 0.09), (cu + 0.055, cv + 0.02));
             dome.AddPath(spike);
         }
         using var spines = dome.Simplify() ?? new SKPath(dome);
@@ -573,13 +573,13 @@ internal static partial class PropPainter
             var v = r.Range(0.25, 0.65);
             k.C.DrawLine(f.U(u), f.V(v), f.U(u - 0.04), f.V(v + 0.05), tips);
         }
-        using var head = Blob(f, (0.08, 0.06), (0.06, 0.34), (0.2, 0.5), (0.4, 0.42), (0.6, 0.2), (0.58, 0.12), (0.36, 0.04));
+        using var head = Blob(f, (0.04, 0.06), (0.02, 0.4), (0.2, 0.58), (0.44, 0.48), (0.66, 0.22), (0.62, 0.12), (0.36, 0.03));
         Coat(k, head, face);
-        using var ear = Oval(f, 0.2, 0.5, 0.05, 0.045);
+        using var ear = Oval(f, 0.18, 0.56, 0.055, 0.05);
         Coat(k, ear, face.Lighter(-0.06), 0.6);
-        Nose(k, f, 0.6, 0.17, 0.035, ink);
-        Eye(k, f, 0.34, 0.3, 0.04, ink);
-        Blush(k, f, 0.4, 0.2, 0.035);
+        Nose(k, f, 0.65, 0.18, 0.035, ink);
+        Eye(k, f, 0.36, 0.34, 0.045, ink);
+        Blush(k, f, 0.44, 0.24, 0.04);
         foreach (var fu in new[] { 0.12, 0.36 })
         {
             using var foot = Oval(f, fu, 0.025, 0.05, 0.03);
@@ -659,42 +659,42 @@ internal static partial class PropPainter
             Blush(k, f, 0.6, 0.26, 0.04);
             return;
         }
-        // Surface: spray first (behind), then tail, then the back.
-        using (var spray = new SKPaint { IsAntialias = true, MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(0.5f, f.L(0.012))) })
+        // Surface: the far ripple, the spray fan, the tail, the back, then the near ripple
+        // over the waterline — so the whale sits IN the water, not in a dish.
+        using var rippleP = Paint.Stroke(Paint.Sk(ScenePalette.Cream, 0.32), Math.Max(0.7f, k.S * 0.012f));
+        var ring = new SKRect(f.U(-0.82), f.V(0.04), f.U(0.82), f.V(-0.06));
+        k.C.DrawArc(ring, 180, 180, false, rippleP);
+        using (var spray = Paint.Fill(Paint.Sk(ScenePalette.Cream, 0.85)))
         {
-            var r = new Rng(k.P.Seed ^ 0x5EEDu);
-            for (var i = 0; i < 16; i++)
-            {
-                var a = Math.PI * (0.25 + 0.5 * i / 15.0);
-                var reach = r.Range(0.18, 0.3);
-                var su = 0.3 + Math.Cos(a) * reach * 0.8;
-                var sv = 0.55 + Math.Sin(a) * reach;
-                spray.Color = Paint.Sk(ScenePalette.Cream, r.Range(0.55, 0.85));
-                k.C.DrawCircle(f.U(su), f.V(sv), f.L(r.Range(0.022, 0.04)), spray);
-            }
-            spray.Color = Paint.Sk(ScenePalette.Cream, 0.6);
-            using var stem = Paint.Stroke(Paint.Sk(ScenePalette.Cream, 0.6), f.L(0.03));
-            k.C.DrawLine(f.U(0.3), f.V(0.36), f.U(0.3), f.V(0.62), stem);
+            foreach (var (su, sv, sr) in new[] { (0.2, 0.62, 0.045), (0.32, 0.7, 0.05), (0.44, 0.6, 0.045), (0.26, 0.5, 0.035), (0.38, 0.5, 0.035), (0.32, 0.42, 0.03) })
+                k.C.DrawCircle(f.U(su), f.V(sv), f.L(sr), spray);
         }
-        using var tail = Blob(f, (-0.66, 0.0), (-0.72, 0.18), (-0.92, 0.4), (-0.8, 0.44), (-0.68, 0.32), (-0.56, 0.44), (-0.44, 0.4), (-0.56, 0.16), (-0.56, 0.0));
+        using var tail = Blob(f, (-0.5, 0.0), (-0.58, 0.16), (-0.82, 0.4), (-0.7, 0.44), (-0.58, 0.32), (-0.46, 0.44), (-0.34, 0.4), (-0.44, 0.14), (-0.4, 0.0));
         Coat(k, tail, skin);
-        using var back = Blob(f, (-0.44, -0.02), (-0.36, 0.14), (-0.1, 0.3), (0.2, 0.36), (0.5, 0.28), (0.66, 0.1), (0.68, -0.02));
+        using var back = Blob(f, (-0.46, -0.02), (-0.36, 0.14), (-0.1, 0.3), (0.2, 0.36), (0.5, 0.28), (0.66, 0.1), (0.68, -0.02));
         Coat(k, back, skin);
         using var chin = Oval(f, 0.4, 0.02, 0.26, 0.08);
         Mark(k, back, chin, belly, 0.85);
+        // Water laps over the lower body.
+        using (var lap = new SKPaint
+               {
+                   IsAntialias = true,
+                   Shader = SKShader.CreateLinearGradient(f.P(0, 0.06), f.P(0, -0.04),
+                       [Paint.Sk(k.Colors.WaterTop, 0), Paint.Sk(k.Colors.WaterTop, 0.85)], SKShaderTileMode.Clamp),
+               })
+            k.C.DrawRect(f.U(-0.9), f.V(0.06), f.L(1.8), f.L(0.12), lap);
+        k.C.DrawArc(ring, 0, 180, false, rippleP);
         Eye(k, f, 0.42, 0.18, 0.045, ink);
         using var smile = Paint.Stroke(Paint.Sk(ink, 0.7), Math.Max(0.7f, k.S * 0.01f));
         k.C.DrawArc(new SKRect(f.U(0.42), f.V(0.14), f.U(0.66), f.V(0.04)), 10, 110, false, smile);
         Blush(k, f, 0.52, 0.1, 0.04);
-        using var ripple = Paint.Stroke(Paint.Sk(ScenePalette.Cream, 0.32), Math.Max(0.7f, k.S * 0.012f));
-        k.C.DrawOval(f.U(0.0), f.V(-0.01), f.L(0.82), f.L(0.05), ripple);
     }
 
     /// <summary>Variant 0: a sea turtle gliding (underwater); variant 1: resting on the sand.</summary>
     private static void Turtle(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var shellCol = Local(k, 0.56, 0.1, 140);
+        var shellCol = Local(k, 0.6, 0.1, 112);
         var skinCol = Local(k, 0.72, 0.09, 122);
         var ink = Ink(shellCol);
         var swim = k.P.Variant == 0;
@@ -770,14 +770,14 @@ internal static partial class PropPainter
         Coat(k, legs, coat.Lighter(-0.05), 0.7);
         using var body = Blob(f, (-0.5, 0.06), (-0.52, 0.3), (-0.3, 0.6), (-0.08, 0.68), (0.12, 0.52), (0.3, 0.36), (0.32, 0.08));
         Coat(k, body, coat);
-        using var blanket = Blob(f, (-0.34, 0.6), (-0.1, 0.68), (0.1, 0.54), (0.06, 0.32), (-0.34, 0.34));
+        using var blanket = Blob(f, (-0.26, 0.6), (-0.08, 0.66), (0.06, 0.56), (0.02, 0.42), (-0.26, 0.44));
         Coat(k, blanket, k.Colors.Grade(k.Colors.Accent2), 0.7);
         using var stripes = new SKPath();
-        for (var i = 0; i < 3; i++) stripes.AddRect(new SKRect(f.U(-0.4), f.V(0.47 - i * 0.05), f.U(0.15), f.V(0.455 - i * 0.05)));
+        for (var i = 0; i < 2; i++) stripes.AddRect(new SKRect(f.U(-0.3), f.V(0.54 - i * 0.05), f.U(0.1), f.V(0.525 - i * 0.05)));
         Mark(k, blanket, stripes, cream, 0.7, 0.01);
         using var tassel = Paint.Fill(Paint.Sk(cream, 0.9));
-        for (var i = 0; i < 4; i++) k.C.DrawCircle(f.U(-0.3 + i * 0.11), f.V(0.33), Math.Max(0.6f, f.L(0.018)), tassel);
-        using var neck = Blob(f, (0.16, 0.32), (0.28, 0.44), (0.4, 0.72), (0.5, 0.78), (0.52, 0.66), (0.42, 0.42), (0.32, 0.22));
+        for (var i = 0; i < 3; i++) k.C.DrawCircle(f.U(-0.22 + i * 0.11), f.V(0.43), Math.Max(0.6f, f.L(0.018)), tassel);
+        using var neck = Blob(f, (0.12, 0.3), (0.22, 0.48), (0.36, 0.74), (0.5, 0.8), (0.56, 0.66), (0.46, 0.4), (0.34, 0.2));
         Coat(k, neck, coat);
         using var ear = Oval(f, 0.48, 0.92, 0.035, 0.05, 20);
         Coat(k, ear, coat, 0.6);
@@ -833,23 +833,18 @@ internal static partial class PropPainter
         var skyL = k.Colors.SkyMid.L;
         var col = skyL > 0.42 ? k.Colors.SkyZenith.Lighter(-0.14).ScaleC(0.6) : Oklab.Mix(ScenePalette.Cream.ToOklab(), k.Colors.SkyMid.ToOklab(), 0.25).ToOklch();
         var n = 3 + r.Int(2);
+        using var p = Paint.Stroke(Paint.Sk(col, 0.95), Math.Max(1f, k.S * 0.028f));
         for (var i = 0; i < n; i++)
         {
             var bx = k.X + (float)(i - n / 2.0) * k.S * 0.3f + (float)r.Jitter(0.05) * k.S;
             var by = k.Y + (float)Math.Sin(i * 1.3) * k.S * 0.12f + (float)r.Jitter(0.04) * k.S;
-            var w = k.S * (float)r.Range(0.2, 0.26);
-            var up = (float)r.Range(0.35, 0.75);
+            var w = k.S * (float)r.Range(0.11, 0.14);
+            var up = (float)r.Range(0.35, 0.6);
+            // A soft gull curve: two arched wings meeting at the body, nothing more.
             using var bird = new SKPath();
-            bird.AddOval(new SKRect(bx - w * 0.22f, by - w * 0.13f, bx + w * 0.22f, by + w * 0.13f));
-            bird.MoveTo(bx - w * 0.05f, by);
-            bird.QuadTo(bx - w * 0.3f, by - w * up, bx - w * 0.62f, by - w * up * 0.55f);
-            bird.QuadTo(bx - w * 0.3f, by - w * up * 0.35f, bx + w * 0.05f, by + w * 0.02f);
-            bird.Close();
-            bird.MoveTo(bx + w * 0.05f, by);
-            bird.QuadTo(bx + w * 0.3f, by - w * up, bx + w * 0.62f, by - w * up * 0.55f);
-            bird.QuadTo(bx + w * 0.3f, by - w * up * 0.35f, bx - w * 0.05f, by + w * 0.02f);
-            bird.Close();
-            using var p = Paint.Fill(Paint.Sk(col, 0.95));
+            bird.MoveTo(bx - w, by - w * up * 0.2f);
+            bird.QuadTo(bx - w * 0.5f, by - w * up, bx, by);
+            bird.QuadTo(bx + w * 0.5f, by - w * up, bx + w, by - w * up * 0.2f);
             k.C.DrawPath(bird, p);
         }
     }
