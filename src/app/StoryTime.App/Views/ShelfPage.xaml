@@ -66,8 +66,13 @@
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="16" />
                             </Border.StrokeShape>
-                            <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill"
-                                   IsVisible="{Binding HasThumbnail}" />
+                            <Grid>
+                                <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill"
+                                       IsVisible="{Binding HasThumbnail}" />
+                                <controls:ParallaxPosterView Poster="{Binding Poster}" CornerRadius="16"
+                                                             MotionScale="0.45" AnimateAmbient="False"
+                                                             InputTransparent="True" />
+                            </Grid>
                         </Border>
                         <Label Text="{Binding Title}" FontFamily="OutfitRegular" FontSize="15"
                                TextColor="{StaticResource Cream}" LineBreakMode="TailTruncation" />

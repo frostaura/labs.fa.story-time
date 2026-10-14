@@ -50,6 +50,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../StoryTime.Core/StoryTime.Core.csproj" />
+    <ProjectReference Include="../StoryTime.Poster/StoryTime.Poster.csproj" />
     <ProjectReference Include="../../shared/StoryTime.Contracts/StoryTime.Contracts.csproj" />
   </ItemGroup>
 
