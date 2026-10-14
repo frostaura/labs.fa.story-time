@@ -638,7 +638,8 @@ public static class ScenePlanner
                         break;
                     }
                     case PosterFeature.Birds:
-                        Place(Prop.Birds, 1, 0.5 + _side * r.Range(0.05, 0.15), r.Range(0.36, 0.42), r.Range(0.29, 0.33), "birds", feature: f, tone: 0.2);
+                        // A little flock crossing the open sky on the moon's side, clear of the hero.
+                        Place(Prop.Birds, 1, 0.5 - _side * r.Range(0.02, 0.1), r.Range(0.33, 0.37), r.Range(0.29, 0.33), "birds", feature: f, tone: 0.2);
                         break;
                     case PosterFeature.Flowers:
                         for (var i = 0; i < 9; i++)
@@ -930,7 +931,7 @@ public static class ScenePlanner
             {
                 case PosterFeature.Whale:
                     if (_underwater)
-                        return Place(Prop.Whale, 2, 0.5 - _side * 0.08, r.Range(0.62, 0.66), HeroSize(Prop.Whale, 1, r) * 1.05, "whale", flip: !faceIn, variant: 1, feature: creature);
+                        return Place(Prop.Whale, 2, 0.5 - _side * 0.08, r.Range(0.62, 0.66), Math.Min(0.44, HeroSize(Prop.Whale, 1, r)), "whale", flip: !faceIn, variant: 1, feature: creature);
                     return Place(Prop.Whale, 2, x, waterY + r.Range(0.12, 0.16), HeroSize(Prop.Whale, 0, r), "whale", flip: faceIn, feature: creature);
                 case PosterFeature.Otter:
                     return Place(Prop.Otter, 2, x, waterY + r.Range(0.13, 0.17), HeroSize(Prop.Otter, 0, r), "otter", flip: faceIn, feature: creature);

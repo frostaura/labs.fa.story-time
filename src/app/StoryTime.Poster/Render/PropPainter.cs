@@ -611,32 +611,25 @@ internal static partial class PropPainter
         }
     }
 
+    /// <summary>A toadstool. Lit ones are the storybook kind: a warm glowing cap with cream
+    /// spots and a lit underside.</summary>
     private static void Mushroom(K k)
     {
         var (x, y, s) = (k.X, k.Y, k.S);
-        using var stem = new SKPath();
-        stem.MoveTo(x - s * 0.12f, y + s * 0.02f);
-        stem.QuadTo(x - s * 0.1f, y - s * 0.4f, x - s * 0.07f, y - s * 0.55f);
-        stem.LineTo(x + s * 0.07f, y - s * 0.55f);
-        stem.QuadTo(x + s * 0.1f, y - s * 0.4f, x + s * 0.12f, y + s * 0.02f);
-        stem.Close();
-        using var cap = new SKPath();
-        cap.MoveTo(x - s * 0.42f, y - s * 0.5f);
-        cap.CubicTo(x - s * 0.4f, y - s * 1.0f, x + s * 0.4f, y - s * 1.0f, x + s * 0.42f, y - s * 0.5f);
-        cap.QuadTo(x, y - s * 0.6f, x - s * 0.42f, y - s * 0.5f);
-        cap.Close();
-        if (k.P.Lit)
-        {
-            var glow = new Oklch(0.8, 0.06, 80);
-            Paint.Glow(k.C, x, y - s * 0.7f, s * 1.4f, Paint.Sk(glow), 0.28);
-            k.Sil(stem);
-            k.Flat(cap, glow.Lighter(-0.12), 0.95);
-        }
-        else
-        {
-            stem.AddPath(cap);
-            k.Sil(stem);
-        }
+        var f = new Frame(x, y, s);
+        var stemCol = Local(k, 0.86, 0.035, 80);
+        var capCol = k.P.Lit ? new Oklch(0.78, 0.11, 62) : Local(k, 0.58, 0.12, 30);
+        if (k.P.Lit) Paint.Glow(k.C, x, y - s * 0.55f, s * 1.5f, Paint.Sk(k.Colors.WindowGlow), 0.32);
+        using var stem = Blob(f, (-0.13, 0.0), (-0.1, 0.36), (-0.08, 0.56), (0.08, 0.56), (0.1, 0.36), (0.13, 0.0));
+        Coat(k, stem, stemCol, 0.6, 0.6);
+        using var cap = Blob(f, (-0.44, 0.5), (-0.36, 0.76), (0.0, 0.9), (0.36, 0.76), (0.44, 0.5), (0.0, 0.56));
+        Coat(k, cap, capCol, 0.7, 0.8);
+        using var gills = Oval(f, 0, 0.53, 0.36, 0.04);
+        Mark(k, cap, gills, k.P.Lit ? ScenePalette.AmberSoft : stemCol.Lighter(-0.1), 0.9, 0.02);
+        using var spots = new SKPath();
+        foreach (var (su, sv, sr) in new[] { (-0.2, 0.7, 0.06), (0.06, 0.8, 0.05), (0.24, 0.66, 0.045), (-0.05, 0.65, 0.035) })
+            spots.AddCircle(f.U(su), f.V(sv), f.L(sr));
+        Mark(k, cap, spots, new Oklch(0.94, 0.03, 85), 0.95, 0.01);
     }
 
     private static void Flower(K k)
@@ -959,57 +952,70 @@ internal static partial class PropPainter
         Window(k, x - s * 0.03f, y - s * 0.3f, s * 0.06f, s * 0.09f, k.P.Lit || r.Chance(0.6));
     }
 
+    /// <summary>A bell tent seen at three-quarters: a lit front with its flaps tied back, a
+    /// darker side running back, guy ropes, bunting and a pennant on the pole.</summary>
     private static void Tent(K k)
     {
         var (x, y, s, r) = (k.X, k.Y, k.S, k.R);
-        Shadow(k, s * 0.62f);
-        var canvasCol = r.Chance(0.5) ? Local(k, 0.74, 0.08, 70) : Local(k, 0.62, 0.11, 32);
-        using var poles = new SKPath();
-        poles.MoveTo(x - s * 0.01f, y - s * 0.62f);
-        poles.LineTo(x - s * 0.07f, y - s * 0.78f);
-        poles.LineTo(x - s * 0.05f, y - s * 0.79f);
-        poles.LineTo(x + s * 0.02f, y - s * 0.64f);
-        poles.Close();
-        Coat(k, poles, Local(k, 0.45, 0.05, 50), 0.6, 0.3);
-        using var path = new SKPath();
-        path.MoveTo(x - s * 0.62f, y + s * 0.02f);
-        path.QuadTo(x - s * 0.3f, y - s * 0.32f, x, y - s * 0.66f);
-        path.QuadTo(x + s * 0.3f, y - s * 0.32f, x + s * 0.62f, y + s * 0.02f);
-        path.Close();
-        Coat(k, path, canvasCol, 0.8, 0.7);
-        using var seam = Paint.Stroke(Paint.Sk(canvasCol.Lighter(-0.1), 0.6), Math.Max(0.6f, s * 0.01f));
-        k.C.DrawLine(x, y - s * 0.66f, x - s * 0.36f, y, seam);
-        k.C.DrawLine(x, y - s * 0.66f, x + s * 0.36f, y, seam);
-        using var bunting = Paint.Fill(Paint.Sk(k.Colors.Grade(k.Colors.Accent2)));
-        for (var i = 0; i < 4; i++)
-        {
-            var t = 0.25f + i * 0.15f;
-            using var tri = new SKPath();
-            var bx = x + s * 0.62f * t;
-            var by = y - s * 0.66f * (1 - t) - s * 0.01f;
-            tri.MoveTo(bx - s * 0.025f, by);
-            tri.LineTo(bx + s * 0.025f, by + s * 0.02f);
-            tri.LineTo(bx, by + s * 0.06f);
-            tri.Close();
-            k.C.DrawPath(tri, bunting);
-        }
+        var f = new Frame(x, y, s);
+        Shadow(k, s * 0.66f, s * 0.08f);
+        var canvasCol = r.Chance(0.5) ? Local(k, 0.76, 0.07, 72) : Local(k, 0.64, 0.1, 34);
+        var pennant = k.Colors.Grade(k.Colors.Accent2);
+        using var ropes = Paint.Stroke(Paint.Sk(canvasCol.Lighter(-0.25), 0.7), Math.Max(0.6f, s * 0.008f));
+        k.C.DrawLine(f.U(-0.04), f.V(0.62), f.U(-0.66), f.V(0.0), ropes);
+        k.C.DrawLine(f.U(0.26), f.V(0.56), f.U(0.82), f.V(0.0), ropes);
+        using var pole = Paint.Stroke(Paint.Sk(Local(k, 0.42, 0.05, 50)), Math.Max(0.8f, s * 0.018f));
+        k.C.DrawLine(f.U(-0.04), f.V(0.6), f.U(-0.04), f.V(0.8), pole);
+        using var flag = Blob(f, (-0.04, 0.8), (0.1, 0.77), (-0.04, 0.73));
+        using var fp = Paint.Fill(Paint.Sk(pennant));
+        k.C.DrawPath(flag, fp);
+        // The side, running back and darker.
+        using var side = Blob(f, (-0.04, 0.66), (0.24, 0.6), (0.6, 0.02), (0.44, 0.0), (0.38, 0.02));
+        Coat(k, side, canvasCol.Lighter(-0.09), 0.7, 0.5);
+        // The front: a soft bell curve.
+        using var front = new SKPath();
+        front.MoveTo(f.P(-0.52, 0.0));
+        front.CubicTo(f.P(-0.36, 0.12), f.P(-0.14, 0.4), f.P(-0.04, 0.66));
+        front.CubicTo(f.P(0.06, 0.4), f.P(0.26, 0.12), f.P(0.42, 0.0));
+        front.Close();
+        Coat(k, front, canvasCol, 0.8, 0.7);
+        // The doorway, its flaps tied back.
         using var door = new SKPath();
-        door.MoveTo(x - s * 0.16f, y + s * 0.01f);
-        door.QuadTo(x - s * 0.05f, y - s * 0.22f, x, y - s * 0.44f);
-        door.QuadTo(x + s * 0.05f, y - s * 0.22f, x + s * 0.16f, y + s * 0.01f);
+        door.MoveTo(f.P(-0.2, 0.0));
+        door.QuadTo(f.P(-0.1, 0.22), f.P(-0.04, 0.46));
+        door.QuadTo(f.P(0.02, 0.22), f.P(0.12, 0.0));
         door.Close();
         if (k.P.Lit)
         {
-            Paint.Glow(k.C, x, y - s * 0.12f, s * 0.6f, Paint.Sk(k.Colors.WindowGlow), 0.4);
+            Paint.Glow(k.C, f.U(-0.04), f.V(0.14), f.L(0.7), Paint.Sk(k.Colors.WindowGlow), 0.4);
             using var dp = new SKPaint
             {
                 IsAntialias = true,
-                Shader = SKShader.CreateLinearGradient(new SKPoint(0, y - s * 0.44f), new SKPoint(0, y),
-                    [Paint.Sk(k.Colors.Window.Lighter(-0.1)), Paint.Sk(ScenePalette.AmberSoft)], SKShaderTileMode.Clamp),
+                Shader = SKShader.CreateLinearGradient(f.P(0, 0.46), f.P(0, 0.0),
+                    [Paint.Sk(k.Colors.Window.Lighter(-0.08)), Paint.Sk(ScenePalette.AmberSoft), Paint.Sk(new Oklch(0.92, 0.08, 85))], SKShaderTileMode.Clamp),
             };
             k.C.DrawPath(door, dp);
+            using var pillow = Oval(f, -0.04, 0.05, 0.08, 0.035);
+            Coat(k, pillow, k.Colors.Grade(k.Colors.Accent2).Lighter(0.05), 0.5, 0.3);
         }
-        else k.Flat(door, canvasCol.Lighter(-0.2));
+        else k.Flat(door, canvasCol.Lighter(-0.22));
+        using var flapL = Blob(f, (-0.2, 0.0), (-0.1, 0.22), (-0.04, 0.46), (-0.2, 0.2), (-0.3, 0.02));
+        using var flapR = Blob(f, (0.12, 0.0), (0.02, 0.22), (-0.04, 0.46), (0.1, 0.2), (0.2, 0.02));
+        Coat(k, flapL, canvasCol.Lighter(0.04), 0.6, 0.5);
+        Coat(k, flapR, canvasCol.Lighter(0.04), 0.6, 0.5);
+        using var tie = Paint.Fill(Paint.Sk(pennant));
+        k.C.DrawCircle(f.U(-0.24), f.V(0.12), Math.Max(0.6f, f.L(0.018)), tie);
+        k.C.DrawCircle(f.U(0.16), f.V(0.12), Math.Max(0.6f, f.L(0.018)), tie);
+        // Bunting along the front edge.
+        for (var i = 0; i < 5; i++)
+        {
+            var t = 0.2 + i * 0.15;
+            var bu = -0.04 + (0.42 + 0.04) * t;
+            var bv = 0.66 * (1 - t) - 0.01;
+            using var tri = Blob(f, (bu - 0.025, bv), (bu + 0.025, bv - 0.01), (bu, bv - 0.06));
+            using var tp = Paint.Fill(Paint.Sk(i % 2 == 0 ? pennant : k.Colors.Grade(CreamLocal)));
+            k.C.DrawPath(tri, tp);
+        }
     }
 
     /// <summary>Variant 0: a small camp lantern set on the ground (wild scenes); variant 1:
@@ -1145,10 +1151,9 @@ internal static partial class PropPainter
         stripe.MoveTo(x - s * 0.5f, y - s * 0.14f);
         stripe.QuadTo(x, y - s * 0.07f, x + s * 0.52f, y - s * 0.16f);
         using (var st = Paint.Stroke(Paint.Sk(k.Colors.Grade(CreamLocal), 0.9), Math.Max(0.8f, s * 0.025f))) k.C.DrawPath(stripe, st);
-        // A sleepy bundle: a cushion and blanket in the boat.
-        using var blanket = new SKPath();
-        blanket.AddOval(new SKRect(x - s * 0.36f, y - s * 0.24f, x - s * 0.04f, y - s * 0.12f));
-        Coat(k, blanket, k.Colors.Grade(k.Colors.Accent2), 0.6, 0.5);
+        // Oars shipped along the gunwale.
+        using var oar = Paint.Stroke(Paint.Sk(wood, 0.95), Math.Max(0.7f, s * 0.02f));
+        k.C.DrawLine(x - s * 0.42f, y - s * 0.24f, x + s * 0.02f, y - s * 0.15f, oar);
         if (k.P.Lit)
         {
             var lx = x + s * 0.24f;
