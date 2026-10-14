@@ -16,7 +16,7 @@ internal static class TerrainPainter
         var g = c.Ground(band.Tone);
         return band.Style switch
         {
-            TerrainStyle.Sand => g with { L = g.L + 0.035, C = g.C * 0.9 + 0.012, H = ScenePalette.HueLerp(g.H, 55, 0.35) },
+            TerrainStyle.Sand => g with { L = g.L + 0.015, C = g.C * 0.9 + 0.008, H = ScenePalette.HueLerp(g.H, 55, 0.25) },
             TerrainStyle.Cloud => Oklab.Mix(c.CloudLit.ToOklab(), c.CloudShade.ToOklab(), 0.3 + band.Tone * 0.4).ToOklch()
                 with { L = Math.Max(c.CloudShade.L + 0.06, 0.5 - band.Tone * 0.1) },
             TerrainStyle.Reef => g with { H = ScenePalette.HueLerp(g.H, 200, 0.4), C = g.C * 1.1 },
@@ -147,7 +147,7 @@ internal static class TerrainPainter
         // One continuous body under every roofline: no seam can open between buildings.
         if (band.Profile.Buildings.Count > 0)
         {
-            var baseTop = vp.Y(band.Profile.Buildings.Max(b => b.WallTop) + 0.02);
+            var baseTop = vp.Y(band.Profile.Buildings.Max(b => b.WallTop) + 0.08);
             using var body = Paint.Fill(Paint.Sk(color.Lighter(-0.01)));
             canvas.DrawRect(-2, baseTop, vp.Width + 4, bottom - baseTop, body);
         }
@@ -197,7 +197,7 @@ internal static class TerrainPainter
                 var wx = x0 + (x1 - x0) * (i + 1f) / (b.Windows + 1) - ww / 2;
                 var wy = wall + vp.S(0.018) + (float)r.Range(0, vp.S(0.02));
                 if (wy + wh > bottom) continue;
-                var lit = r.Chance(band.Tone < 0.3 ? 0.18 : 0.32);
+                var lit = r.Chance(b.LitChance);
                 if (lit)
                 {
                     Paint.Glow(canvas, wx + ww / 2, wy + wh / 2, ww * 2.6f, Paint.Sk(c.WindowGlow), 0.35);

@@ -70,8 +70,10 @@ public class PaletteTests
         foreach (var p in TestKit.Palettes)
         {
             var (sky, land, _, _) = ScenePalette.Family(p);
-            // Sky and land within a 120° arc: a family, never a clash.
-            Assert.True(HueDistance(sky, land) <= 120, $"{p}: sky {sky}° vs land {land}°");
+            // Sky and land within a 120° arc: a family, never a clash — except the deliberate
+            // lamplight scheme (warm amber land under a cool sky, so the windows sing).
+            var lamplight = HueDistance(land, ScenePalette.Amber.H) <= 30;
+            Assert.True(HueDistance(sky, land) <= 120 || lamplight, $"{p}: sky {sky}° vs land {land}°");
             var c = ScenePalette.Build(new PosterSpec { Palette = p, Scene = PosterScene.StarryHills, TimeOfDay = PosterTimeOfDay.Moonlit });
             Assert.True(HueDistance(c.SkyMid.H, sky) <= 12, $"{p}: sky drifted from its family");
         }

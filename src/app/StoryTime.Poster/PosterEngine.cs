@@ -99,6 +99,7 @@ public static class PosterEngine
             }
             else
             {
+                if (plan.Moon is { } moon && moon.Depth == depth) SkyPainter.PaintMoonOnLayer(bmp, plan, vp);
                 using var canvas = new SKCanvas(bmp);
                 foreach (var band in plan.Bands.Where(b => b.Depth == depth))
                     TerrainPainter.PaintBand(canvas, plan, band, vp);
@@ -107,7 +108,7 @@ public static class PosterEngine
                         plan.Bands.Where(b => b.Depth == depth && b.Profile.Kind != TerrainKind.Flat).ToList());
                 foreach (var p in plan.Placements.Where(p => p.Depth == depth))
                     PropPainter.Paint_(canvas, plan, p, vp);
-                Paint.Grain(canvas, vp.Width, vp.Height, 0.026 + depth * 0.006, depth * 977 + plan.Spec.Seed);
+                Paint.Grain(canvas, vp.Width, vp.Height, 0.036 - depth * 0.005, depth * 977 + plan.Spec.Seed);
             }
             if (bakeAmbient && plan.Ambient.Any(a => a.Depth == depth))
             {
@@ -165,13 +166,19 @@ public static class PosterEngine
             var ox = (float)(Math.Clamp(tiltX, -1, 1) * layer.Travel);
             var oy = (float)(Math.Clamp(tiltY, -1, 1) * layer.Travel);
             offsets[layer.Depth] = new SKPoint(ox, oy);
-            c.DrawImage(layer.Image, layer.Bounds.Left - vp.BleedX + ox, layer.Bounds.Top - vp.BleedY + oy);
         }
-        if (includeAmbient && !set.AmbientBaked && set.Plan.Ambient.Count > 0)
+        foreach (var layer in set.Layers)
         {
+            var o = offsets[layer.Depth];
+            c.DrawImage(layer.Image, layer.Bounds.Left - vp.BleedX + o.X, layer.Bounds.Top - vp.BleedY + o.Y);
+            // Each layer's particles right after it, so a twinkling star can never sit on a
+            // mountain and a firefly behind a near leaf stays behind it.
+            if (!includeAmbient || set.AmbientBaked) continue;
+            var own = set.Plan.Ambient.Where(a => a.Depth == layer.Depth).ToList();
+            if (own.Count == 0) continue;
             c.Save();
             c.Translate(-vp.BleedX, -vp.BleedY);
-            AmbientPainter.Draw(c, set.Plan.Ambient, vp, ambientTime, offsets);
+            AmbientPainter.Draw(c, own, vp, ambientTime, offsets);
             c.Restore();
         }
         c.DrawImage(set.Vignette, 0, 0);

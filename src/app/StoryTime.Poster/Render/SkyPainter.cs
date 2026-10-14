@@ -51,14 +51,14 @@ internal static class SkyPainter
             double g;
             if (underwater)
             {
-                if (hor.L > 0.42) hor = hor with { L = 0.42 };
+                if (hor.L > 0.36) hor = hor with { L = 0.36 };
                 // Water column: brighter toward the surface, deepening to the reef floor.
                 var t = Math.Clamp(ny / horizon, 0, 1.2);
                 baseLab = t < 0.45
                     ? Oklab.Mix(hor, mid, Noise.SmoothStep(0, 0.45, t))
                     : Oklab.Mix(mid, zen, Noise.SmoothStep(0.45, 1.1, t));
                 var s = ny / 0.16;
-                g = c.HorizonGlowStrength * 0.6 * Math.Exp(-s * s);
+                g = Math.Min(0.25, c.HorizonGlowStrength * 0.3) * Math.Exp(-s * s);
             }
             else
             {
@@ -92,15 +92,25 @@ internal static class SkyPainter
     /// <summary>Depth 0: everything in the sky that travels.</summary>
     public static void PaintCelestial(SKBitmap bmp, PosterPlan plan, PosterViewport vp)
     {
-        if (plan.Moon is { } moon) PaintHalo(bmp, plan, moon, vp);
+        if (plan.Moon is { Depth: 0 } moon) PaintHalo(bmp, plan, moon, vp);
         using var canvas = new SKCanvas(bmp);
         if (plan.Underwater) PaintShafts(canvas, plan, vp);
         if (plan.MilkyWay is { } mw) PaintMilkyWay(canvas, plan, mw, vp);
         if (plan.Aurora is { } au) PaintAurora(canvas, plan, au, vp);
         PaintStars(canvas, plan, vp);
+        if (plan.ShootingStar is { } ss) PaintShootingStar(canvas, ss, vp);   // behind clouds
+        if (plan.Moon is { Depth: 0 } m) PaintMoon(canvas, plan, m, vp);
         foreach (var cloud in plan.Clouds) PaintCloud(canvas, plan, cloud, vp);
-        if (plan.Moon is { } m) PaintMoon(canvas, plan, m, vp);
-        if (plan.ShootingStar is { } ss) PaintShootingStar(canvas, ss, vp);
+    }
+
+    /// <summary>The moon on the water's layer (when a moonglade must stay under it): halo
+    /// pixels first, then the disc — before any band of that layer is painted.</summary>
+    public static void PaintMoonOnLayer(SKBitmap bmp, PosterPlan plan, PosterViewport vp)
+    {
+        if (plan.Moon is not { } moon || moon.Depth == 0) return;
+        PaintHalo(bmp, plan, moon, vp);
+        using var canvas = new SKCanvas(bmp);
+        PaintMoon(canvas, plan, moon, vp);
     }
 
     /// <summary>Two-term halo: a tight bloom plus a long Lorentzian tail, written straight
@@ -161,7 +171,7 @@ internal static class SkyPainter
             bite.AddCircle(cx + (moon.LitFromRight ? -d : d), cy - r * 0.08f, r * 1.02f);
             lit = disc.Op(bite, SKPathOp.Difference) ?? new SKPath(disc);
             // Earthshine: the unlit disc, barely there.
-            using var es = Paint.Fill(Paint.Sk(cream, 0.05));
+            using var es = Paint.Fill(Paint.Sk(cream, 0.025));
             canvas.DrawPath(disc, es);
         }
 
@@ -361,7 +371,7 @@ internal static class SkyPainter
         };
         canvas.DrawPath(path, fill);
         var lx = plan.Moon is { } m ? Math.Sign(m.X - cloud.X) : 0;
-        Paint.Rim(canvas, path, Paint.Sk(ScenePalette.Cream, 0.18 * plan.Colors.RimStrength + 0.08), -lx * h * 0.10f, h * 0.12f);
+        Paint.Rim(canvas, path, Paint.Sk(ScenePalette.Cream, 0.1 * plan.Colors.RimStrength + 0.04), -lx * h * 0.10f, h * 0.12f);
         canvas.Restore();
     }
 

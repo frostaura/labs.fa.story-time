@@ -139,6 +139,11 @@ public class RenderTests(ITestOutputHelper output)
             var span = bmp.GetPixelSpan();
             for (var i = 3; i < span.Length; i += 4) if (span[i] > 0) painted++;
             Assert.True(painted > 30, $"{prop} painted {painted} px");
+            // Solid silhouettes must have body, not just a stroke (a GetFillPath bug once
+            // reduced the cat to its tail and the deer to its antlers).
+            if (prop is not (Prop.Birds or Prop.GrassTuft or Prop.Reeds or Prop.Vines or Prop.Flower or Prop.FishSchool
+                    or Prop.BranchCoral or Prop.Fence or Prop.Lantern or Prop.Telescope or Prop.Mushroom or Prop.Trunk))
+                Assert.True(painted > 0.08 * 60 * 60, $"{prop} is a sliver ({painted} px)");
         }
     }
 

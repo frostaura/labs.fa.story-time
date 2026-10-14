@@ -120,7 +120,7 @@ public sealed class ScenePalette
             PosterScene.DesertOasis => 0.19,
             PosterScene.CloudKingdom => 0.30,
             PosterScene.ReefAtDusk => 0.17,
-            _ => 0.145,
+            _ => 0.165,
         } + lift * 0.5;
         var landNear = new Oklch(landL, landC * chroma, landHue);
         var foliage = new Oklch(landL - 0.01, landC * chroma * 1.15, HueLerp(landHue, 150, 0.25));
@@ -187,10 +187,10 @@ public sealed class ScenePalette
         PosterPalette.PineForest => (232, 162, 0.050, 0.040),
         PosterPalette.CloudDrift => (282, 276, 0.042, 0.028),
         PosterPalette.StarfieldViolet => (296, 290, 0.080, 0.046),
-        PosterPalette.LanternGlow => (48, 52, 0.042, 0.032),
-        PosterPalette.TidePool => (200, 172, 0.056, 0.040),
+        PosterPalette.LanternGlow => (262, 48, 0.045, 0.034),
+        PosterPalette.TidePool => (212, 175, 0.054, 0.038),
         PosterPalette.SnowHush => (256, 250, 0.045, 0.028),
-        PosterPalette.EmberSky => (32, 28, 0.068, 0.046),
+        PosterPalette.EmberSky => (352, 30, 0.052, 0.04),
         PosterPalette.MistValley => (236, 226, 0.032, 0.024),
         _ => (284, 278, 0.068, 0.040),
     };

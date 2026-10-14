@@ -42,7 +42,8 @@ public readonly record struct NormRect(double Left, double Top, double Right, do
 }
 
 /// <summary>Phase: 0 = full, 1 = new. Crescents are ≈0.7.</summary>
-public sealed record MoonPlan(double X, double Y, double R, double Phase, bool LitFromRight, double Glow);
+/// <summary>Depth: 0 normally; the water's layer when a moonglade must stay under the moon.</summary>
+public sealed record MoonPlan(double X, double Y, double R, double Phase, bool LitFromRight, double Glow, int Depth = 0);
 
 public sealed record StarPlan(double X, double Y, double Size, double Alpha, int Tint, bool Sparkle);
 
@@ -166,7 +167,7 @@ public sealed class TerrainProfile
 public enum RoofKind { Gable, Flat, Steep, Dome }
 
 public sealed record Building(double X0, double X1, double WallTop, double RoofHeight, RoofKind Roof,
-    bool Chimney, double ChimneyX, int Windows, uint Seed)
+    bool Chimney, double ChimneyX, int Windows, uint Seed, double LitChance = 0.12)
 {
     public double Center => (X0 + X1) / 2;
 

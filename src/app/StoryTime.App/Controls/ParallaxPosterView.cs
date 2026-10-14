@@ -72,7 +72,7 @@ public sealed class ParallaxPosterView : ContentView
     private readonly Grid _stack = new() { IsClippedToBounds = true };
     private readonly Microsoft.Maui.Controls.Shapes.RoundRectangle _shape = new() { CornerRadius = new CornerRadius(20) };
     private readonly List<(Image View, double TravelPt)> _layers = [];
-    private SKCanvasView? _ambientView;
+    private readonly List<(SKCanvasView View, int Depth)> _ambientViews = [];
     private RenderedPoster? _rendered;
     private string? _renderedKey;
     private int _renderGeneration;
@@ -148,6 +148,8 @@ public sealed class ParallaxPosterView : ContentView
         _stack.Children.Add(PngImage(r.Backdrop, new Thickness(-bleedPt)));
         var fullW = r.VisibleWidthPx + 2 * r.BleedPx;
         var fullH = r.VisibleHeightPx + 2 * r.BleedPx;
+        _ambientViews.Clear();
+        var animated = !r.AmbientBaked;
         foreach (var layer in r.Layers.OrderBy(l => l.Depth))
         {
             var margin = new Thickness(
@@ -158,14 +160,16 @@ public sealed class ParallaxPosterView : ContentView
             var view = PngImage(layer.Png, margin);
             _stack.Children.Add(view);
             _layers.Add((view, layer.TravelPx / density));
-        }
-
-        _ambientView = null;
-        if (!r.AmbientBaked && r.Plan.Ambient.Count > 0)
-        {
-            _ambientView = new SKCanvasView { InputTransparent = true, IgnorePixelScaling = false };
-            _ambientView.PaintSurface += OnPaintAmbient;
-            _stack.Children.Add(_ambientView);
+            // Each depth's particles sit directly above their own layer, so a twinkling star
+            // stays behind the mountains and a firefly behind the near leaves.
+            var depth = layer.Depth;
+            if (animated && r.Plan.Ambient.Any(a => a.Depth == depth))
+            {
+                var canvasView = new SKCanvasView { InputTransparent = true };
+                canvasView.PaintSurface += (s, e) => OnPaintAmbient(e, depth);
+                _stack.Children.Add(canvasView);
+                _ambientViews.Add((canvasView, depth));
+            }
         }
         _stack.Children.Add(PngImage(r.Vignette, new Thickness(0)));
         ApplyOffsets();
@@ -184,7 +188,7 @@ public sealed class ParallaxPosterView : ContentView
         InputTransparent = true,
     };
 
-    private void OnPaintAmbient(object? sender, SKPaintSurfaceEventArgs e)
+    private void OnPaintAmbient(SKPaintSurfaceEventArgs e, int depth)
     {
         var canvas = e.Surface.Canvas;
         canvas.Clear(SKColors.Transparent);
@@ -196,7 +200,7 @@ public sealed class ParallaxPosterView : ContentView
         for (var i = 0; i < _layers.Count && i < 4; i++)
             offsets[i] = new SKPoint((float)(_layers[i].View.TranslationX * scale), (float)(_layers[i].View.TranslationY * scale));
         var t = AnimateAmbient && !TiltMotion.ReduceMotion ? (DateTime.UtcNow - _ambientStart).TotalSeconds : 0;
-        AmbientPainter.Draw(canvas, r.Plan.Ambient, vp, t, offsets);
+        AmbientPainter.Draw(canvas, r.Plan.Ambient.Where(a => a.Depth == depth).ToList(), vp, t, offsets);
     }
 
     // ------------------------------------------------------------------ motion
@@ -248,7 +252,12 @@ public sealed class ParallaxPosterView : ContentView
     private void OnTilt()
     {
         ApplyOffsets();
-        _ambientView?.InvalidateSurface();
+        InvalidateAmbient();
+    }
+
+    private void InvalidateAmbient()
+    {
+        foreach (var (view, _) in _ambientViews) view.InvalidateSurface();
     }
 
     private void ApplyOffsets()
@@ -264,18 +273,18 @@ public sealed class ParallaxPosterView : ContentView
 
     private void UpdateAmbientClock()
     {
-        var animate = _subscribed && _ambientView is not null && AnimateAmbient && !TiltMotion.ReduceMotion;
+        var animate = _subscribed && _ambientViews.Count > 0 && AnimateAmbient && !TiltMotion.ReduceMotion;
         if (!animate)
         {
             _ambientClock?.Stop();
-            _ambientView?.InvalidateSurface();
+            InvalidateAmbient();
             return;
         }
         if (_ambientClock is null)
         {
             _ambientClock = Dispatcher.CreateTimer();
             _ambientClock.Interval = TimeSpan.FromMilliseconds(33);
-            _ambientClock.Tick += (_, _) => _ambientView?.InvalidateSurface();
+            _ambientClock.Tick += (_, _) => InvalidateAmbient();
         }
         _ambientClock.Start();
     }

@@ -135,6 +135,15 @@ internal static class PropPainter
         }
     }
 
+    /// <summary>Appends the outline of a stroked path. (GetFillPath REPLACES its destination,
+    /// which once erased a deer's body behind its antlers and a cat behind its tail.)</summary>
+    private static void AddStroke(SKPath dst, SKPath src, SKPaint stroke)
+    {
+        using var outline = new SKPath();
+        stroke.GetFillPath(src, outline);
+        dst.AddPath(outline);
+    }
+
     private static SKPath Leaf(float x0, float y0, float x1, float y1, float width, float bend)
     {
         var path = new SKPath();
@@ -448,7 +457,7 @@ internal static class PropPainter
         fan.CubicTo(x - s * 0.7f, y - s * 0.3f, x - s * 0.5f, y - s * 1.0f, x, y - s * 0.95f);
         fan.CubicTo(x + s * 0.5f, y - s * 1.0f, x + s * 0.7f, y - s * 0.3f, x, y + s * 0.02f);
         fan.Close();
-        k.Flat(fan, k.Ink.Lighter(0.04), 0.55);
+        k.Sil(fan, 0.03, 0.02);
         using var veins = new SKPath();
         for (var i = 0; i < 9; i++)
         {
@@ -456,10 +465,15 @@ internal static class PropPainter
             veins.MoveTo(x, y);
             veins.QuadTo(x + MathF.Cos(a) * s * 0.4f, y + MathF.Sin(a) * s * 0.5f, x + MathF.Cos(a) * s * 0.55f, y + MathF.Sin(a) * s * 0.9f);
         }
-        using var stroke = Paint.Stroke(SKColors.White, Math.Max(0.8f, s * 0.025f));
-        using var outline = new SKPath();
-        stroke.GetFillPath(veins, outline);
-        k.Sil(outline, 0.03, 0);
+        // Lace: lighter veins over the opaque fan.
+        using var lace = Paint.Stroke(Paint.Sk(k.Ink.Lighter(0.06), 0.8), Math.Max(0.7f, s * 0.018f));
+        k.C.Save();
+        k.C.ClipPath(fan, SKClipOperation.Intersect, true);
+        k.C.DrawPath(veins, lace);
+        k.C.Restore();
+        // A short stem rooting it in the reef.
+        using var stem = Paint.Fill(Paint.Sk(k.Ink.Lighter(-0.02)));
+        k.C.DrawRect(x - s * 0.025f, y - s * 0.06f, s * 0.05f, s * 0.1f, stem);
     }
 
     /// <summary>Variant 0/2: a fan of broad jungle leaves rising from the bottom edge
@@ -610,7 +624,7 @@ internal static class PropPainter
             line.MoveTo(vx, top);
             line.CubicTo(vx + s * 0.08f, top + len * 0.3f, vx - s * 0.08f, top + len * 0.6f, vx + (float)r.Jitter(0.05) * s, top + len);
             using var stroke = Paint.Stroke(SKColors.White, Math.Max(0.8f, s * 0.012f));
-            stroke.GetFillPath(line, path);
+            AddStroke(path, line, stroke);
             for (var j = 1; j < 8; j++)
             {
                 var t = j / 8f;
@@ -864,9 +878,33 @@ internal static class PropPainter
         else k.Flat(door, k.Ink.Lighter(-0.04));
     }
 
+    /// <summary>Variant 0: a small camp lantern set on the ground (wild scenes); variant 1:
+    /// a crook-topped lamp post (village and town only).</summary>
     private static void Lantern(K k)
     {
         var (x, y, s) = (k.X, k.Y, k.S);
+        if (k.P.Variant == 0)
+        {
+            // s is the lantern's height: a cap, a glass body, a wire handle.
+            Shadow(k, s * 0.5f);
+            Paint.Glow(k.C, x, y - s * 0.45f, s * 3.2f, Paint.Sk(k.Colors.WindowGlow), 0.36);
+            using var body = new SKPath();
+            body.AddRoundRect(new SKRect(x - s * 0.34f, y - s * 0.12f, x + s * 0.34f, y + s * 0.02f), s * 0.05f, s * 0.05f);
+            body.MoveTo(x - s * 0.36f, y - s * 0.72f);
+            body.LineTo(x, y - s * 0.95f);
+            body.LineTo(x + s * 0.36f, y - s * 0.72f);
+            body.Close();
+            using var handle = new SKPath();
+            handle.AddArc(new SKRect(x - s * 0.2f, y - s * 1.2f, x + s * 0.2f, y - s * 0.82f), 180, 180);
+            using var handleStroke = Paint.Stroke(SKColors.White, Math.Max(0.7f, s * 0.05f));
+            AddStroke(body, handle, handleStroke);
+            k.Sil(body, 0.02, 0);
+            using var glass = Paint.Fill(Paint.Sk(k.Colors.Window));
+            k.C.DrawRoundRect(x - s * 0.26f, y - s * 0.72f, s * 0.52f, s * 0.6f, s * 0.08f, s * 0.08f, glass);
+            using var flame = Paint.Fill(Paint.Sk(ScenePalette.Cream, 0.9));
+            k.C.DrawOval(x, y - s * 0.42f, s * 0.07f, s * 0.13f, flame);
+            return;
+        }
         using var path = new SKPath();
         path.AddRect(new SKRect(x - s * 0.025f, y - s * 0.78f, x + s * 0.025f, y + s * 0.02f));
         path.AddRect(new SKRect(x - s * 0.1f, y - s * 0.02f, x + s * 0.1f, y + s * 0.02f));
@@ -875,7 +913,6 @@ internal static class PropPainter
         path.LineTo(x + s * 0.25f, y - s * 0.72f);
         path.QuadTo(x + s * 0.2f, y - s * 0.8f, x, y - s * 0.74f);
         path.Close();
-        // Lantern housing
         var lx = x + s * 0.255f;
         var ly = y - s * 0.62f;
         path.MoveTo(lx - s * 0.08f, ly - s * 0.06f);
@@ -899,7 +936,7 @@ internal static class PropPainter
         legs.MoveTo(x, y - s * 0.45f); legs.LineTo(x + s * 0.2f, y + s * 0.02f);
         legs.MoveTo(x, y - s * 0.45f); legs.LineTo(x + s * 0.02f, y + s * 0.02f);
         using var st = Paint.Stroke(SKColors.White, Math.Max(0.8f, s * 0.03f));
-        st.GetFillPath(legs, path);
+        AddStroke(path, legs, st);
         // Tube aimed up at the sky (toward the moon side after flip handling).
         using var tube = new SKPath();
         tube.AddRoundRect(new SKRect(-s * 0.32f, -s * 0.05f, s * 0.36f, s * 0.05f), s * 0.03f, s * 0.03f);
@@ -1036,6 +1073,12 @@ internal static class PropPainter
             path.AddRoundRect(new SKRect(cx, y - s * 1.0f, cx + carW - s * 0.2f, y - s * 0.1f), s * 0.15f, s * 0.15f);
         }
         path.AddRect(new SKRect(start - s * 0.3f, y - s * 0.12f, start + s * 2.6f + cars * carW, y));
+        // Rails and sleepers running on past both ends: the train is on a line, not a ridge.
+        var railL = start - s * 4f;
+        var railR = start + s * 2.6f + cars * carW + s * 4f;
+        path.AddRect(new SKRect(railL, y + s * 0.02f, railR, y + s * 0.1f));
+        for (var sx = railL; sx < railR; sx += s * 0.6f)
+            path.AddRect(new SKRect(sx, y + s * 0.08f, sx + s * 0.18f, y + s * 0.2f));
         k.Sil(path, 0.02, 0);
         // Lit windows
         for (var i = 0; i < cars; i++)
@@ -1213,11 +1256,18 @@ internal static class PropPainter
         var (cx, cy, s) = (k.X, k.Y, k.S);
         using var path = new SKPath();
         // Branch from beyond the right edge (mirrored by flip for the left edge).
-        var edge = k.Vp.Width + 6f;
-        var reach = Math.Max(edge - cx, s);
+        // A trunk just inside the nearer frame edge (in pre-flip coordinates when mirrored).
+        var trunkX = k.P.Flip ? 2 * cx - (k.Vp.X(0) + k.Vp.Unit * 0.02f) : k.Vp.X(1.0) - k.Vp.Unit * 0.02f;
+        var reach = Math.Max(trunkX - cx, s * 0.6f);
+        var far = trunkX + k.Vp.Unit * 2;
+        path.MoveTo(trunkX - s * 0.22f, k.Vp.Height + 4f);
+        path.CubicTo(trunkX - s * 0.16f, cy, trunkX - s * 0.2f, cy - s, trunkX - s * 0.14f, -4f);
+        path.LineTo(far, -4f);
+        path.LineTo(far, k.Vp.Height + 4f);
+        path.Close();
         path.MoveTo(cx - s * 0.5f, cy + s * 0.01f);
-        path.QuadTo(cx + reach * 0.4f, cy - s * 0.06f, cx + reach + s, cy - s * 0.12f);
-        path.LineTo(cx + reach + s, cy + s * 0.1f);
+        path.QuadTo(cx + reach * 0.4f, cy - s * 0.06f, cx + reach, cy - s * 0.12f);
+        path.LineTo(cx + reach, cy + s * 0.1f);
         path.QuadTo(cx + reach * 0.4f, cy + s * 0.08f, cx - s * 0.5f, cy + s * 0.06f);
         path.Close();
         // A twig with two leaves.
@@ -1231,12 +1281,20 @@ internal static class PropPainter
         path.CubicTo(cx + s * 0.30f, cy - s * 0.62f, cx + s * 0.34f, cy - s * 0.30f, cx + s * 0.26f, cy);
         path.Close();
         k.Sil(path);
-        using var eye = Paint.Fill(Paint.Sk(ScenePalette.AmberSoft, 0.85));
-        k.C.DrawCircle(cx - s * 0.095f, cy - s * 0.66f, s * 0.04f, eye);
-        k.C.DrawCircle(cx + s * 0.095f, cy - s * 0.66f, s * 0.04f, eye);
-        using var pupil = Paint.Fill(Paint.Sk(k.Ink.Lighter(-0.05)));
-        k.C.DrawCircle(cx - s * 0.09f, cy - s * 0.655f, s * 0.018f, pupil);
-        k.C.DrawCircle(cx + s * 0.1f, cy - s * 0.655f, s * 0.018f, pupil);
+        // Sleepy closed eyes and a small beak: a bedtime owl, never glowing eyes in the dark.
+        using var lids = Paint.Stroke(Paint.Sk(ScenePalette.Cream, 0.55), Math.Max(0.7f, s * 0.022f));
+        k.C.DrawArc(new SKRect(cx - s * 0.15f, cy - s * 0.72f, cx - s * 0.04f, cy - s * 0.62f), 20, 140, false, lids);
+        k.C.DrawArc(new SKRect(cx + s * 0.04f, cy - s * 0.72f, cx + s * 0.15f, cy - s * 0.62f), 20, 140, false, lids);
+        using var beak = Paint.Fill(Paint.Sk(ScenePalette.AmberSoft, 0.6));
+        using var bp = new SKPath();
+        bp.MoveTo(cx - s * 0.025f, cy - s * 0.6f);
+        bp.LineTo(cx + s * 0.025f, cy - s * 0.6f);
+        bp.LineTo(cx, cy - s * 0.55f);
+        bp.Close();
+        k.C.DrawPath(bp, beak);
+        // Belly: a lighter feathered patch.
+        using var belly = Paint.Fill(Paint.Sk(k.Ink.Lighter(0.05), 0.85));
+        k.C.DrawOval(cx, cy - s * 0.25f, s * 0.15f, s * 0.2f, belly);
     }
 
     private static void Deer(K k)
@@ -1252,7 +1310,7 @@ internal static class PropPainter
             legs.MoveTo(cx + s * 0.18f, legTop); legs.LineTo(cx + s * 0.145f, cy);
             legs.MoveTo(cx + s * 0.28f, legTop); legs.LineTo(cx + s * 0.315f, cy);
             using var st = Paint.Stroke(SKColors.White, s * 0.045f);
-            st.GetFillPath(legs, path);
+            AddStroke(path, legs, st);
         }
         path.MoveTo(cx - s * 0.36f, cy - s * 0.40f);
         path.CubicTo(cx - s * 0.42f, cy - s * 0.52f, cx - s * 0.30f, cy - s * 0.60f, cx - s * 0.12f, cy - s * 0.585f);
@@ -1276,7 +1334,7 @@ internal static class PropPainter
             antlers.CubicTo(ax - s * 0.10f, ay - s * 0.10f, ax - s * 0.17f, ay - s * 0.145f, ax - s * 0.22f, ay - s * 0.16f);
             antlers.MoveTo(ax - s * 0.115f, ay - s * 0.095f); antlers.LineTo(ax - s * 0.10f, ay - s * 0.185f);
             using var thin = Paint.Stroke(SKColors.White, s * 0.028f);
-            thin.GetFillPath(antlers, path);
+            AddStroke(path, antlers, thin);
         }
         path.MoveTo(cx + s * 0.33f, cy - s * 0.87f);
         path.LineTo(cx + s * 0.24f, cy - s * 0.95f);
@@ -1336,7 +1394,7 @@ internal static class PropPainter
             tail.MoveTo(cx - s * 0.2f, cy - s * 0.02f);
             tail.CubicTo(cx - s * 0.55f, cy - s * 0.02f, cx - s * 0.55f, cy - s * 0.3f, cx - s * 0.42f, cy - s * 0.38f);
             using var st = Paint.Stroke(SKColors.White, s * 0.07f);
-            st.GetFillPath(tail, path);
+            AddStroke(path, tail, st);
         }
         k.Sil(path);
     }
@@ -1392,22 +1450,28 @@ internal static class PropPainter
         using var path = new SKPath();
         if (k.P.Variant == 1)
         {
-            path.MoveTo(cx - s * 0.5f, cy);
-            path.CubicTo(cx - s * 0.4f, cy - s * 0.2f, cx + s * 0.2f, cy - s * 0.22f, cx + s * 0.42f, cy - s * 0.05f);
-            path.QuadTo(cx + s * 0.5f, cy + s * 0.02f, cx + s * 0.4f, cy + s * 0.08f);
-            path.CubicTo(cx + s * 0.1f, cy + s * 0.16f, cx - s * 0.3f, cy + s * 0.1f, cx - s * 0.5f, cy);
+            // A humpback gliding: long tapered body, pale throat, long swept-back flipper,
+            // a horizontal "W" fluke. Soft and far away in the blue.
+            path.MoveTo(cx + s * 0.5f, cy - s * 0.02f);
+            path.CubicTo(cx + s * 0.42f, cy - s * 0.14f, cx + s * 0.1f, cy - s * 0.17f, cx - s * 0.2f, cy - s * 0.1f);
+            path.CubicTo(cx - s * 0.36f, cy - s * 0.06f, cx - s * 0.5f, cy - s * 0.02f, cx - s * 0.58f, cy);
+            path.CubicTo(cx - s * 0.66f, cy - s * 0.08f, cx - s * 0.74f, cy - s * 0.1f, cx - s * 0.8f, cy - s * 0.08f);
+            path.QuadTo(cx - s * 0.72f, cy, cx - s * 0.8f, cy + s * 0.08f);
+            path.CubicTo(cx - s * 0.74f, cy + s * 0.1f, cx - s * 0.66f, cy + s * 0.08f, cx - s * 0.58f, cy + s * 0.01f);
+            path.CubicTo(cx - s * 0.4f, cy + s * 0.07f, cx - s * 0.1f, cy + s * 0.12f, cx + s * 0.2f, cy + s * 0.09f);
+            path.CubicTo(cx + s * 0.38f, cy + s * 0.07f, cx + s * 0.5f, cy + s * 0.04f, cx + s * 0.5f, cy - s * 0.02f);
             path.Close();
-            // tail
-            path.MoveTo(cx - s * 0.48f, cy);
-            path.LineTo(cx - s * 0.68f, cy - s * 0.1f);
-            path.QuadTo(cx - s * 0.62f, cy, cx - s * 0.68f, cy + s * 0.1f);
-            path.Close();
-            // flipper
-            path.MoveTo(cx + s * 0.1f, cy + s * 0.1f);
-            path.QuadTo(cx + s * 0.02f, cy + s * 0.25f, cx - s * 0.06f, cy + s * 0.24f);
-            path.QuadTo(cx + s * 0.02f, cy + s * 0.16f, cx + s * 0.02f, cy + s * 0.1f);
-            path.Close();
-            k.Sil(path, 0.02, 0.02);
+            using (var flipper = Leaf(cx + s * 0.18f, cy + s * 0.06f, cx - s * 0.12f, cy + s * 0.3f, s * 0.05f, s * 0.02f))
+                path.AddPath(flipper);
+            k.Sil(path, 0.03, 0.02);
+            using var throat = new SKPath();
+            throat.MoveTo(cx + s * 0.48f, cy + s * 0.01f);
+            throat.CubicTo(cx + s * 0.35f, cy + s * 0.07f, cx + s * 0.05f, cy + s * 0.1f, cx - s * 0.15f, cy + s * 0.08f);
+            throat.CubicTo(cx + s * 0.05f, cy + s * 0.06f, cx + s * 0.3f, cy + s * 0.03f, cx + s * 0.48f, cy + s * 0.01f);
+            throat.Close();
+            k.Flat(throat, k.Ink.Lighter(0.07), 0.8);
+            using var eye = Paint.Fill(Paint.Sk(k.Ink.Lighter(-0.05)));
+            k.C.DrawCircle(cx + s * 0.34f, cy - s * 0.01f, Math.Max(0.6f, s * 0.012f), eye);
             return;
         }
         var tipY = cy - s * 0.72f;
@@ -1464,13 +1528,13 @@ internal static class PropPainter
     {
         var (cx, cy, s, r) = (k.X, k.Y, k.S, k.R);
         var col = Oklab.Mix(ScenePalette.Cream.ToOklab(), k.Colors.SkyHorizon.ToOklab(), 0.55).ToOklch();
-        var n = 8 + r.Int(6);
+        var n = 7 + r.Int(5);
         for (var i = 0; i < n; i++)
         {
             var t = (float)i / n;
             var fx = cx + (t - 0.5f) * s * 1.6f + (float)r.Jitter(0.08) * s;
             var fy = cy + MathF.Sin(t * 3.1f) * s * 0.18f + (float)r.Jitter(0.06) * s;
-            var fs = s * (float)r.Range(0.06, 0.1);
+            var fs = s * (float)r.Range(0.1, 0.14);
             using var fish = new SKPath();
             fish.MoveTo(fx + fs, fy);
             fish.QuadTo(fx, fy - fs * 0.5f, fx - fs * 0.7f, fy);
@@ -1497,7 +1561,7 @@ internal static class PropPainter
             legs.MoveTo(cx + s * 0.16f, legTop); legs.LineTo(cx + s * 0.13f, cy);
             legs.MoveTo(cx + s * 0.25f, legTop); legs.LineTo(cx + s * 0.29f, cy);
             using var st = Paint.Stroke(SKColors.White, s * 0.05f);
-            st.GetFillPath(legs, path);
+            AddStroke(path, legs, st);
         }
         // Body with two soft humps, neck curving forward and up, small head.
         path.MoveTo(cx - s * 0.34f, cy - s * 0.42f);
@@ -1520,7 +1584,7 @@ internal static class PropPainter
             tail.MoveTo(cx - s * 0.34f, cy - s * 0.55f);
             tail.QuadTo(cx - s * 0.42f, cy - s * 0.5f, cx - s * 0.4f, cy - s * 0.38f);
             using var st = Paint.Stroke(SKColors.White, s * 0.025f);
-            st.GetFillPath(tail, path);
+            AddStroke(path, tail, st);
         }
         k.Sil(path);
     }
@@ -1539,7 +1603,7 @@ internal static class PropPainter
                 legs.LineTo(cx + lx * s, cy);
             }
             using var st = Paint.Stroke(SKColors.White, s * 0.08f, SKStrokeCap.Butt);
-            st.GetFillPath(legs, path);
+            AddStroke(path, legs, st);
         }
         path.MoveTo(cx - s * 0.75f, cy - s * 0.18f);
         path.CubicTo(cx - s * 0.5f, cy - s * 0.24f, cx - s * 0.4f, cy - s * 0.5f, cx - s * 0.05f, cy - s * 0.52f);
