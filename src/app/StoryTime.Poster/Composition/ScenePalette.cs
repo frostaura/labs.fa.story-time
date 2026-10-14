@@ -105,7 +105,7 @@ public sealed class ScenePalette
                 zL = 0.37; mL = 0.48; hL = 0.70; glowStrength = 0.75; stars = 0.12; glowMix = 0.85; moonGlow = 0.45; rimStrength = 0.42; local = 0.92;
                 break;
             case PosterTimeOfDay.Twilight:
-                zL = 0.30; mL = 0.40; hL = 0.64; glowStrength = 0.45; stars = 0.45; glowMix = 0.62; moonGlow = 0.6; rimStrength = 0.42; local = 0.85;
+                zL = 0.30; mL = 0.41; hL = 0.66; glowStrength = 0.5; stars = 0.4; glowMix = 0.7; moonGlow = 0.6; rimStrength = 0.42; local = 0.85;
                 break;
             case PosterTimeOfDay.Starlit:
                 zL = 0.21; mL = 0.285; hL = 0.47; glowStrength = 0.14; stars = 0.78; glowMix = 0.22; moonGlow = 0.55; rimStrength = 0.34; local = 0.7;
@@ -161,7 +161,7 @@ public sealed class ScenePalette
         var foliage = new Oklch(landL + 0.02, Math.Min(0.1, f.LandC * chroma * 1.25 + 0.01), HueLerp(landHue, 145, 0.35));
 
         var snowy = scene == PosterScene.SnowyVillage;
-        var snow = new Oklch((spec.TimeOfDay == PosterTimeOfDay.Dusk ? 0.6 : spec.TimeOfDay == PosterTimeOfDay.Twilight ? 0.52 : 0.5) + lift,
+        var snow = new Oklch((spec.TimeOfDay == PosterTimeOfDay.Dusk ? 0.6 : spec.TimeOfDay == PosterTimeOfDay.Twilight ? 0.48 : 0.5) + lift,
             0.035, HueLerp(skyHue, 265, 0.5));
 
         var waterTop = horizon with { L = hL * 0.86 + lift, C = horizon.C * 0.85 };
@@ -240,7 +240,7 @@ public sealed class ScenePalette
         PosterPalette.LanternGlow => new Script(42, 72, 38, 0.060, 0.050, 0.12),       // amber dusk
         PosterPalette.TidePool => new Script(196, 32, 176, 0.068, 0.050, 0.10),        // teal, coral
         PosterPalette.SnowHush => new Script(222, 334, 236, 0.055, 0.030, 0.08),        // rose-blue snow
-        PosterPalette.EmberSky => new Script(14, 62, 28, 0.055, 0.05, 0.11),          // sunset gold
+        PosterPalette.EmberSky => new Script(350, 62, 24, 0.06, 0.045, 0.13),          // sunset gold
         PosterPalette.MistValley => new Script(188, 102, 162, 0.05, 0.052, 0.09),      // misty teal, pale gold, sage land
         _ => new Script(232, 52, 222, 0.070, 0.045, 0.10),
     };

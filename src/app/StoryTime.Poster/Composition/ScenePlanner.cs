@@ -221,7 +221,9 @@ public static class ScenePlanner
             // "Real ground" = solidly above the shoreline fade, with room for a footprint.
             var solid = Math.Min(0.92, _horizon + 0.22);
             bool Ok(double v) => v is >= 0.12 and <= 0.88 && ground.Y(v - 0.09) < solid && ground.Y(v) < solid && ground.Y(v + 0.09) < solid
-                                 && !_props.Any(p => p.Prop == Prop.Pool && Math.Abs(v - p.X) < p.Size * 0.62);
+                                 && !_props.Any(p => p.Prop == Prop.Pool && Math.Abs(v - p.X) < p.Size * 0.62)
+                                 && !_props.Any(p => p.Prop == Prop.Palm && p.Depth == 2 && Math.Abs(v - p.X) < 0.07)
+                                 && (_water is null || ground.Y(v - 0.09) < _horizon + 0.16 && ground.Y(v + 0.09) < _horizon + 0.16);
             if (Ok(x)) return x;
             for (var d = 0.02; d < 0.9; d += 0.02)
             {
@@ -335,7 +337,7 @@ public static class ScenePlanner
             var r = R("lake");
             _horizon = H(0.64) + r.Jitter(0.03);
             Band(1, Mountains(_horizon, r.Range(0.19, 0.23), 1.3, "lake-mtn-a"), 0.0, TerrainStyle.Earth, fog: 0.35, snowCaps: true);
-            Band(1, Mountains(_horizon, r.Range(0.11, 0.14), 2.1, "lake-mtn-b"), 0.18, TerrainStyle.Earth, fog: 0.4, snowCaps: true);
+            Band(1, Mountains(_horizon, r.Range(0.11, 0.14), 2.1, "lake-mtn-b"), 0.18, TerrainStyle.Earth, fog: 0.4, rim: false, snowCaps: true);
             var line = Band(1, Hills(_horizon + 0.004, 0.012, 5, "lake-line"), 0.32, TerrainStyle.Earth, rim: false);
             Scatter(Prop.Pine, 1, line.Profile, -0.12, 1.12, 0.022, 0.035, 0.055, "lake-far-pines", 0.32);
             _water = new WaterPlan(1, _horizon + 0.006, Glade: true);
@@ -500,7 +502,7 @@ public static class ScenePlanner
             Band(2, Roofs(_horizon + 0.17, 0.10, 0.17, 0.08, 0.16, "town-mid", tower: false), 0.55, TerrainStyle.Roofs, fog: 0.1);
             // The near roof: a long, gently sagging ridge across the bottom.
             var near = Band(3, Hills(0.93, 0.035, 1.1, "town-near", 2), 1.0, TerrainStyle.Roofs);
-            var cx = 0.5 - _side * 0.36;
+            var cx = 0.5 - _side * 0.44;
             Place(Prop.Trunk, 3, cx, near.Profile.Y(cx) + 0.012, 0.16, "town-chimney", variant: 1);
         }
 
@@ -874,8 +876,8 @@ public static class ScenePlanner
                 if (nx is < 0.08 or > 0.92) { dir = -dir; nx = hero.X + dir * (hw + pw + 0.02); }
                 if (nx is < 0.06 or > 0.94)
                 {
-                    // Unlit scenery may simply step out; a lit home is the poster's light and stays.
-                    if (p.Feature is null && !p.Lit) { _props.RemoveAt(i--); continue; }
+                    // Scenery with no room steps out (a warm light is added beside the hero after).
+                    if (p.Feature is null) { _props.RemoveAt(i--); continue; }
                     nx = Math.Clamp(nx, 0.08, 0.92);
                 }
                 var ny = p.Y;
@@ -938,21 +940,21 @@ public static class ScenePlanner
                 var ground = Ground(p.Depth);
                 var lift = p.Y - ground.Y(p.X);
                 double? found = null;
-                var first = p.X >= hero.X ? 1 : -1;
+                var first = hero.Prop == Prop.Owl ? -_side : p.X >= hero.X ? 1 : -1;   // never under the owl's branch
                 foreach (var dir in new[] { first, -first })
                 {
                     var nx = hero.X + dir * (hw + lw + gap);
                     if (nx is < 0.1 or > 0.9) continue;
-                    if (ground.Y(nx) > (p.Depth >= 3 ? 0.95 : _horizon + 0.2)) continue;
+                    if (ground.Y(nx) > (p.Depth >= 3 ? 1.0 : _horizon + 0.2)) continue;
                     found = nx;
                     break;
                 }
                 if (found is { } fx) { _props[i] = p with { X = fx, Y = ground.Y(fx) + lift }; continue; }
                 // No room either side: the light takes the roomier side near the edge and the
                 // hero makes room for it (up to a quarter smaller); the light is never dropped.
-                var side = hero.X < 0.5 ? 1 : -1;
+                var side = hero.Prop == Prop.Owl ? -_side : hero.X < 0.5 ? 1 : -1;
                 var lx = Math.Clamp(hero.X + side * (hw + lw + gap), 0.11, 0.89);
-                for (var d = 0.0; d < 0.2 && ground.Y(lx) > (p.Depth >= 3 ? 0.95 : _horizon + 0.2); d += 0.02) lx = Math.Clamp(lx - side * 0.02, 0.11, 0.89);
+                for (var d = 0.0; d < 0.2 && ground.Y(lx) > (p.Depth >= 3 ? 1.0 : _horizon + 0.2); d += 0.02) lx = Math.Clamp(lx - side * 0.02, 0.11, 0.89);
                 _props[i] = p with { X = lx, Y = ground.Y(lx) + lift };
                 var room = Math.Abs(lx - hero.X) - lw - gap * 0.5;
                 if (room < hw)
@@ -1056,7 +1058,7 @@ public static class ScenePlanner
             if (hero is not null && _props.Any(p => p.Lit && p.Depth >= 2 && p.Prop is Prop.Lantern or Prop.Cabin or Prop.Tent or Prop.Campfire
                     && Math.Abs(p.X - hero.X) < 0.3 && p.X is > 0.15 and < 0.85)) return;
             var r = R("warm-light");
-            var dir = _layout == PosterLayout.Center ? _side : (_focalX > 0.5 ? -1 : 1);
+            var dir = hero?.Prop == Prop.Owl ? -_side : _layout == PosterLayout.Center ? _side : (_focalX > 0.5 ? -1 : 1);
             var hx = hero?.X ?? _focalX;
             var reach = hero is null ? 0.0 : hero.Size * (hero.Prop is Prop.Whale or Prop.Dinosaur or Prop.FoxCurled ? 0.75 : 0.5) + 0.07;
             var x = Math.Clamp(hx + dir * reach, 0.14, 0.86);
@@ -1071,7 +1073,7 @@ public static class ScenePlanner
                         || _spec.Scene == PosterScene.CloudKingdom;
             var ground = Ground(onMid ? 2 : 3);
             // Only on solid ground well above the frame's foot (never on the water).
-            var limit = onMid ? _horizon + 0.2 : 0.95;
+            var limit = onMid ? _horizon + 0.2 : 1.0;
             if (ground.Y(x) > limit)
             {
                 var best = x;
@@ -1158,7 +1160,8 @@ public static class ScenePlanner
                     // On a branch reaching out from a tree at the frame edge on its side.
                     var ox = _layout == PosterLayout.Center ? _focalX : 0.5 + _side * 0.25;
                     var size = HeroSize(Prop.Owl, 0, r);
-                    Place(Prop.Trunk, 3, 0.5 + _side * 0.5, 1.0, Math.Min(0.6, size * 1.6), "owl-tree", flip: _side < 0);
+                    // The tree stands fully inside the frame even at full tilt, so the branch never floats.
+                    Place(Prop.Trunk, 3, 0.5 + _side * 0.4, 1.0, Math.Min(0.6, size * 1.6), "owl-tree", flip: _side < 0);
                     return Place(Prop.Owl, 3, ox, Math.Min(0.82, near.Y(ox) - 0.1), size, "owl", flip: _side < 0, feature: tag);
                 }
                 case PosterFeature.Dinosaur:
@@ -1303,8 +1306,8 @@ public static class ScenePlanner
                 var inTitle = TitleSafe.Contains(x, y);
                 if (inTitle)
                 {
-                    if (r.Chance(0.75)) continue;   // a hush behind the title
-                    b = Math.Min(b, 0.12);
+                    if (r.Chance(0.85)) continue;   // a hush behind the title
+                    b = Math.Min(b, 0.08);
                 }
                 var alpha = Math.Clamp((0.22 + 0.78 * Math.Pow(b, 0.6)) * ext * moonWash, 0, 1);
                 if (alpha < 0.06) continue;

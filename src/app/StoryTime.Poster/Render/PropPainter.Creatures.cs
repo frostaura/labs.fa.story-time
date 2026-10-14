@@ -27,7 +27,7 @@ internal static partial class PropPainter
     /// by what is actually drawn).</summary>
     public static double HeightFactor(Prop p, int variant) => p switch
     {
-        Prop.FoxCurled => 0.62,
+        Prop.FoxCurled => 0.68,
         Prop.Whale => variant == 1 ? 0.54 : 0.86,
         Prop.Turtle => variant == 1 ? 0.6 : 0.7,
         Prop.FishSchool => 0.9,
@@ -96,19 +96,21 @@ internal static partial class PropPainter
         var gx = b.MidX + b.Width * 0.28f * lightDir;
         var gy = b.Top + b.Height * 0.3f;
         var radius = Math.Max(b.Width, b.Height) * 0.95f;
+        // The side facing a lantern or fire takes on its warmth, not just a rim.
+        var lit = k.WarmAmt > 0.08 ? Oklab.Mix(col.ToOklab(), k.Colors.WarmLight.ToOklab(), Math.Min(0.35, k.WarmAmt * 0.4)).ToOklch() : col;
         using (var fill = new SKPaint
                {
                    IsAntialias = true,
                    IsDither = true,
                    Shader = SKShader.CreateRadialGradient(new SKPoint(gx, gy), Math.Max(1, radius),
-                       [Paint.Sk(col.Lighter(0.06 * form)), Paint.Sk(col), Paint.Sk(col.Lighter(-0.075 * form).ScaleC(0.92))],
+                       [Paint.Sk(lit.Lighter(0.06 * form)), Paint.Sk(col), Paint.Sk(col.Lighter(-0.075 * form).ScaleC(0.92))],
                        [0f, 0.5f, 1f], SKShaderTileMode.Clamp),
                })
             k.C.DrawPath(path, fill);
         var rw = Math.Max(0.8f, k.S * 0.022f);
         if (k.RimAlpha > 0) Paint.Rim(k.C, path, Paint.Sk(k.Colors.Rim, Math.Min(0.75, k.RimAlpha * 0.85)), k.RimDx, rw * 0.8f);
         if (k.WarmAmt > 0.05)
-            Paint.Rim(k.C, path, Paint.Sk(k.Colors.WarmLight, Math.Min(0.8, k.WarmAmt * 0.85)), -k.WarmDir * rw * 1.2f, rw * 0.35f);
+            Paint.Rim(k.C, path, Paint.Sk(k.Colors.WarmLight, Math.Min(0.9, k.WarmAmt * 1.2)), -k.WarmDir * rw * 1.7f, rw * 0.35f);
         if (contour > 0)
         {
             using var line = Paint.Stroke(Paint.Sk(col.Lighter(-0.26).ScaleC(0.8), 0.55 * contour), Math.Max(0.7f, k.S * 0.012f));
@@ -206,7 +208,7 @@ internal static partial class PropPainter
     private static void Fox(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var fur = Local(k, 0.68, 0.15, 48);
+        var fur = Local(k, 0.68, 0.13, 48);
         var cream = Local(k, CreamLocal.L, CreamLocal.C, CreamLocal.H);
         var sock = Local(k, 0.34, 0.05, 40);
         var ink = Ink(fur);
@@ -256,37 +258,46 @@ internal static partial class PropPainter
         Blush(k, f, 0.23, 0.6, 0.04);
     }
 
-    /// <summary>Asleep in a ring: nose tucked into the tail, ears still up.</summary>
+    /// <summary>Asleep in a ring: a rounded crescent of a body, the head resting on its paws,
+    /// ears still up, and the big brush of a tail curled round over the nose.</summary>
     private static void FoxCurled(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var fur = Local(k, 0.68, 0.15, 48);
+        var fur = Local(k, 0.68, 0.13, 48);
         var cream = Local(k, CreamLocal.L, CreamLocal.C, CreamLocal.H);
         var sock = Local(k, 0.34, 0.05, 40);
         var ink = Ink(fur);
-        Contact(k, 0.62);
-        using var body = Blob(f, (-0.58, 0.04), (-0.66, 0.2), (-0.5, 0.4), (-0.15, 0.46), (0.2, 0.42), (0.5, 0.3), (0.6, 0.12), (0.5, 0.02), (0.0, -0.01));
+        Contact(k, 0.56);
+        using var body = Blob(f, (-0.52, 0.08), (-0.56, 0.26), (-0.42, 0.46), (-0.12, 0.56), (0.18, 0.52), (0.4, 0.4), (0.5, 0.22),
+            (0.42, 0.06), (0.1, 0.02), (-0.3, 0.03));
         Coat(k, body, fur);
-        using var belly = Oval(f, 0.0, 0.08, 0.4, 0.09);
-        Mark(k, body, belly, cream, 0.8);
-        using var ear1 = Blob(f, (0.02, 0.4), (0.06, 0.6), (0.11, 0.6), (0.17, 0.42));
-        using var ear2 = Blob(f, (0.2, 0.4), (0.27, 0.58), (0.32, 0.56), (0.35, 0.38));
-        Coat(k, ear1, fur);
-        Coat(k, ear2, fur);
-        using var in1 = Blob(f, (0.06, 0.43), (0.09, 0.55), (0.13, 0.44));
-        Mark(k, ear1, in1, sock, 0.9, 0.02);
-        using var head = Blob(f, (-0.08, 0.2), (0.0, 0.38), (0.2, 0.46), (0.42, 0.36), (0.48, 0.22), (0.3, 0.14), (0.05, 0.12));
+        using var haunch = Oval(f, -0.26, 0.3, 0.2, 0.15, 10);
+        Mark(k, body, haunch, fur.Lighter(0.05), 0.8, 0.06);
+        using var earL = Blob(f, (0.14, 0.44), (0.17, 0.66), (0.22, 0.66), (0.28, 0.46));
+        using var earR = Blob(f, (0.3, 0.44), (0.37, 0.62), (0.42, 0.6), (0.44, 0.4));
+        Coat(k, earL, fur);
+        Coat(k, earR, fur);
+        using var inL = Blob(f, (0.18, 0.47), (0.19, 0.6), (0.24, 0.48));
+        Mark(k, earL, inL, sock, 0.9, 0.02);
+        using var head = Blob(f, (0.04, 0.26), (0.1, 0.42), (0.28, 0.5), (0.44, 0.42), (0.56, 0.3), (0.42, 0.22), (0.18, 0.2));
         Coat(k, head, fur);
-        using var muzzle = Blob(f, (0.16, 0.22), (0.3, 0.3), (0.46, 0.26), (0.4, 0.17), (0.22, 0.16));
-        Mark(k, head, muzzle, cream);
-        // The tail wraps over the front, its cream tip under the chin.
-        using var tail = Blob(f, (-0.62, 0.12), (-0.5, 0.0), (0.0, -0.02), (0.4, 0.02), (0.62, 0.1), (0.56, 0.18), (0.2, 0.13), (-0.3, 0.12));
-        Coat(k, tail, fur);
-        using var tip = Oval(f, 0.52, 0.1, 0.1, 0.07);
-        Mark(k, tail, tip, cream);
-        SleepyEye(k, f, 0.26, 0.31, 0.045, ink);
-        Nose(k, f, 0.47, 0.25, 0.024, ink);
-        Blush(k, f, 0.33, 0.24, 0.035);
+        using var muzzle = Blob(f, (0.28, 0.26), (0.4, 0.33), (0.56, 0.3), (0.48, 0.23), (0.34, 0.22));
+        Mark(k, head, muzzle, cream, 0.95);
+        // The tail sweeps along the front and curls up over the muzzle, cream tip forward.
+        using var tail = Blob(f, (-0.56, 0.16), (-0.5, 0.02), (-0.1, -0.01), (0.32, 0.02), (0.6, 0.1), (0.62, 0.24), (0.5, 0.26),
+            (0.4, 0.17), (0.1, 0.14), (-0.3, 0.14));
+        // The tail is its own lighter, warmer form with a strong edge, so the ring reads.
+        Coat(k, tail, fur.Lighter(0.07).ScaleC(1.1), 1.4);
+        using var tipShape = Oval(f, 0.5, 0.17, 0.14, 0.09, 20);
+        Mark(k, tail, tipShape, cream, 1, 0.02);
+        using var sweep = Paint.Stroke(Paint.Sk(fur.Lighter(-0.12), 0.55), Math.Max(0.6f, k.S * 0.01f));
+        using var sweepPath = new SKPath();
+        sweepPath.MoveTo(f.P(-0.42, 0.1));
+        sweepPath.QuadTo(f.P(0.0, 0.06), f.P(0.3, 0.09));
+        k.C.DrawPath(sweepPath, sweep);
+        SleepyEye(k, f, 0.3, 0.37, 0.045, ink);
+        Nose(k, f, 0.55, 0.3, 0.024, ink);
+        Blush(k, f, 0.38, 0.3, 0.035);
     }
 
     private static void Rabbit(K k)
@@ -686,7 +697,8 @@ internal static partial class PropPainter
     private static void Turtle(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var shellCol = Local(k, 0.6, 0.1, 112);
+        var greenGround = k.Plan.Underwater || Math.Abs(((k.Colors.LandNear.H - 140) % 360 + 540) % 360 - 180) < 50;
+        var shellCol = greenGround ? Local(k, 0.62, 0.1, 78) : Local(k, 0.6, 0.1, 112);
         var skinCol = Local(k, 0.72, 0.09, 122);
         var ink = Ink(shellCol);
         var swim = k.P.Variant == 0;
@@ -791,8 +803,10 @@ internal static partial class PropPainter
     private static void Dinosaur(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var skin = Local(k, 0.66, 0.09, 165);
-        var belly = Local(k, 0.84, 0.055, 110);
+        // Teal on a green-teal jungle loses the silhouette: then it is an ochre grazer.
+        var clash = Math.Abs(((k.Colors.LandNear.H - 165) % 360 + 540) % 360 - 180) < 55;
+        var skin = clash ? Local(k, 0.7, 0.1, 72) : Local(k, 0.66, 0.09, 165);
+        var belly = Local(k, 0.86, 0.05, clash ? 90 : 110);
         var spot = skin.Lighter(-0.08);
         var ink = Ink(skin);
         Contact(k, 0.5, -0.1);
@@ -832,7 +846,7 @@ internal static partial class PropPainter
         using var p = Paint.Stroke(Paint.Sk(col, 0.95), Math.Max(1f, k.S * 0.028f));
         for (var i = 0; i < n; i++)
         {
-            var bx = k.X + (float)(i - n / 2.0) * k.S * 0.3f + (float)r.Jitter(0.05) * k.S;
+            var bx = k.X + (float)(i - n / 2.0) * k.S * 0.36f + (float)r.Jitter(0.03) * k.S;
             var by = k.Y + (float)Math.Sin(i * 1.3) * k.S * 0.12f + (float)r.Jitter(0.04) * k.S;
             var w = k.S * (float)r.Range(0.11, 0.14);
             var up = (float)r.Range(0.35, 0.6);

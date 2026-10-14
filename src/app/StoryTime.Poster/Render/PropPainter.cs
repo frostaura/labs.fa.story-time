@@ -47,6 +47,9 @@ internal static partial class PropPainter
             ink = plan.Colors.Ground(Math.Min(1, tone + 0.4)) with { L = plan.Colors.LandNear.L + 0.02 + (1 - tone) * 0.14 };
         if (plan.Colors.Snowy && p.Prop is Prop.House or Prop.Cabin)
             ink = plan.Colors.LandNear with { L = plan.Colors.LandNear.L + 0.05 + (1 - tone) * 0.08, H = ScenePalette.HueLerp(plan.Colors.LandNear.H, 40, 0.4) };
+        // A round tree on the meadow is foliage, not a hole: lift it toward its own green.
+        if (p.Prop is Prop.RoundTree or Prop.Bush && p.Depth < 3)
+            ink = Oklab.Mix(ink.ToOklab(), plan.Colors.Foliage.ToOklab(), 0.5).ToOklch().Lighter(0.05);
         if (plan.Underwater && p.Prop is Prop.BranchCoral or Prop.FanCoral or Prop.Kelp)
             ink = ink with
             {
@@ -744,7 +747,7 @@ internal static partial class PropPainter
             path.AddRect(new SKRect(x - s * 0.22f, y - s * 0.85f, x + s * 0.22f, y - s * 0.72f));
             path.AddRect(new SKRect(x - s * 0.1f, y - s, x - s * 0.02f, y - s * 0.84f));
             path.AddRect(new SKRect(x + s * 0.04f, y - s * 0.96f, x + s * 0.12f, y - s * 0.84f));
-            k.Sil(path, 0.02, 0);
+            Coat(k, path, Local(k, 0.46, 0.08, 32), 0.7, 0.6);   // warm brick, not a black slab
             Smoke(k, x - s * 0.06f, y - s, s * 0.9f);
             return;
         }

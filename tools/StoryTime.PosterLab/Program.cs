@@ -30,18 +30,23 @@ if (args.Length > 0 && args[0] == "one")
     var rng1 = new StoryTime.Poster.Core.Rng(1000 + idx);
     var compatible1 = Enum.GetValues<PosterFeature>().Where(f => PosterSpecRules.IsCompatible(scene1, f)).ToList();
     rng1.Shuffle(compatible1);
+    // Same draw order as the contact sheet, so `one N` is exactly sheet poster #N.
+    var features1 = compatible1.Take(1 + rng1.Int(3)).ToList();
     var spec1 = PosterSpecRules.Normalize(new PosterSpec
     {
         Scene = scene1,
         TimeOfDay = Enum.GetValues<PosterTimeOfDay>()[(idx / scenesAll.Length + idx) % 4],
         Mood = Enum.GetValues<PosterMood>()[rng1.Int(6)],
         Palette = rng1.Chance(0.6) ? PosterSpecRules.DefaultPalette(scene1) : (PosterPalette)rng1.Int(12),
-        Features = compatible1.Take(1 + rng1.Int(3)).ToList(),
+        Features = features1,
         Seed = 7919 * (idx + 1),
     });
     using var big1 = PosterEngine.RenderFlattened(spec1, 700, 700);
     File.WriteAllBytes(Path.Combine(outDir, $"one-{idx}.png"), PosterEngine.EncodePng(big1, fast: false));
     Console.WriteLine($"{spec1.Scene} {spec1.TimeOfDay} [{string.Join(",", spec1.Features)}]");
+    var plan1 = PosterEngine.Plan(spec1);
+    foreach (var p in plan1.Placements.Where(p => p.Depth >= 2 && p.Prop is not StoryTime.Poster.Composition.Prop.GrassTuft))
+        Console.WriteLine($"  d{p.Depth} {p.Prop} x={p.X:0.00} y={p.Y:0.00} s={p.Size:0.00} flip={p.Flip}{(ReferenceEquals(p, plan1.Focal) ? " HERO" : "")}");
     return;
 }
 
