@@ -4,12 +4,15 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using StoryTime.Core.Engines.Narration;
 using StoryTime.Core.Engines.Narration.Dsp;
+using StoryTime.NarrationLab;
 
 // StoryTime voice lab (macOS). Three steps, driven by run-lab.sh:
 //   plan    <story.txt> <plan.json>                       — the real SoothingPlanner's utterances
 //   (swift) render-utterances.swift <plan.json> <voice> <pcm-dir>   — macOS AVSpeechSynthesizer
-//   mix     <story.txt> <pcm-dir> <out.wav> [--no-pad]    — the real SoothingNarrator chain + report
+//   mix     <story.txt> <pcm-dir> <out.wav> [--no-pad] [--profile E|F|G|voice-lab] [--no-voice-stages]
+//                                                          — the real SoothingNarrator chain + report (default: the shipped profile)
 //   measure <wav>                                          — BS.1770 integrated + true peak of any 48k mono wav
+//   shift-check [pcm-dir] [--profile X]                    — pitch/time stage artifacts: sines, then real utterances
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
@@ -34,14 +37,15 @@ switch (args.FirstOrDefault())
         var outWav = args[3];
         var stems = new NarrationStems(Path.ChangeExtension(outWav, ".voice.wav"), pad ? Path.ChangeExtension(outWav, ".pad.wav") : null);
         var sw = Stopwatch.StartNew();
-        var narrator = new SoothingNarrator(new FileUtterances(args[2]))
+        var profile = ProfileArg(args);
+        var narrator = new SoothingNarrator(new FileUtterances(args[2]), profile)
         {
             MeasureOutputTruePeak = true,
             Trace = (phase, elapsed) => Console.Error.WriteLine($"phase {phase}: {elapsed.TotalMilliseconds:0} ms"),
         };
         var result = await narrator.RenderAsync(plan, new VoiceChoice { VoiceId = "lab" }, outWav, null, CancellationToken.None, stems);
         sw.Stop();
-        var report = Measure(text, plan, result, stems, sw.Elapsed);
+        var report = Measure(text, plan, result, stems, sw.Elapsed, profile);
         File.WriteAllText(Path.ChangeExtension(outWav, ".report.json"), JsonSerializer.Serialize(report, json));
         Console.WriteLine(JsonSerializer.Serialize(report, json));
         return 0;
@@ -58,9 +62,24 @@ switch (args.FirstOrDefault())
         }, json));
         return 0;
     }
+    case "shift-check":
+    {
+        var profile = ProfileArg(args);
+        var dir = args.Length >= 2 && !args[1].StartsWith("--", StringComparison.Ordinal) ? args[1] : null;
+        ShiftCheck.Run(profile, dir);
+        return 0;
+    }
     default:
-        Console.Error.WriteLine("usage: plan <story> <plan.json> | mix <story> <pcm-dir> <out.wav> [--no-pad] | measure <wav>");
+        Console.Error.WriteLine("usage: plan <story> <plan.json> | mix <story> <pcm-dir> <out.wav> [--no-pad] [--profile X] | measure <wav> | shift-check [pcm-dir] [--profile X]");
         return 2;
+}
+
+static MasteringProfile ProfileArg(string[] args)
+{
+    var i = Array.IndexOf(args, "--profile");
+    var profile = i >= 0 && i + 1 < args.Length ? MasteringProfile.Named(args[i + 1]) : MasteringProfile.Default;
+    // A/B the voice stages: the same chain on the voice as rendered.
+    return args.Contains("--no-voice-stages") ? profile with { Name = profile.Name + "-unshifted", VoiceStages = [] } : profile;
 }
 
 static NarrationPlan Plan(string story, bool pad) =>
@@ -76,7 +95,7 @@ static float[] ReadWav(string path, out int rate)
     return x;
 }
 
-static object Measure(string story, NarrationPlan plan, NarrationRenderResult r, NarrationStems stems, TimeSpan renderTime)
+static object Measure(string story, NarrationPlan plan, NarrationRenderResult r, NarrationStems stems, TimeSpan renderTime, MasteringProfile profile)
 {
     const int rate = SoothingNarrator.SampleRate;
     var words = plan.Segments.Sum(s => s.Spoken.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
@@ -123,6 +142,8 @@ static object Measure(string story, NarrationPlan plan, NarrationRenderResult r,
     return new
     {
         output = r.Manifest.AudioPath,
+        profile = profile.Name,
+        voiceStages = profile.VoiceStages.Select(v => v.Name).ToList(),
         seconds = Math.Round(duration, 2),
         words,
         wpmOverall = Math.Round(words / (duration / 60), 1),

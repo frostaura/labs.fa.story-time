@@ -8,7 +8,13 @@ engine iOS uses, and then measures the result.
 src/tools/StoryTime.NarrationLab/run-lab.sh            # Samantha, Moira, Daniel (+ Serena if installed)
 src/tools/StoryTime.NarrationLab/run-lab.sh Serena     # any installed English voice by name
 OUT=/some/dir STORY=other.txt src/tools/StoryTime.NarrationLab/run-lab.sh
+PROFILE=E src/tools/StoryTime.NarrationLab/run-lab.sh Samantha   # a named MasteringProfile → $OUT/E-samantha.m4a
 ```
+
+`PROFILE` takes any `MasteringProfile.Named` value — an audition letter (`E`, `F`, `G`) or a
+full name (`voice-lab`). Without it the lab renders the shipped `MasteringProfile.Default`.
+`mix … --no-voice-stages` renders the same chain on the voice as rendered, to A/B what the
+per-utterance voice stages (pitch/time) contribute.
 
 Steps:
 
@@ -21,6 +27,10 @@ Steps:
    loudness and the pad are the app's own code. It writes the `.wav`, the voice and pad
    stems, and a `.report.json`.
 4. `ffmpeg` encodes an `.m4a` and cross-checks loudness with `ebur128`.
+5. `shift-check`: the profile's voice stages measured on steady sines (pitch error in cents,
+   length error, sinusoid-fit residual, amplitude ripple, worst second-difference spike vs an
+   ideal sine, CPU) and on the real utterances (median-F0 shift vs target, duration ratio).
+   It writes `<slug>.shift-check.txt`.
 
 The report gives:
 
