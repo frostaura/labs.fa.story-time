@@ -223,7 +223,7 @@ public static class ScenePlanner
             bool Ok(double v) => v is >= 0.12 and <= 0.88 && ground.Y(v - 0.09) < solid && ground.Y(v) < solid && ground.Y(v + 0.09) < solid
                                  && !_props.Any(p => p.Prop == Prop.Pool && Math.Abs(v - p.X) < p.Size * 0.62)
                                  && !_props.Any(p => p.Prop == Prop.Palm && p.Depth == 2 && Math.Abs(v - p.X) < 0.07)
-                                 && (_water is null || ground.Y(v - 0.09) < _horizon + 0.16 && ground.Y(v + 0.09) < _horizon + 0.16);
+                                 && (_water is null || ground.Y(v - 0.13) < _horizon + 0.15 && ground.Y(v + 0.13) < _horizon + 0.15);
             if (Ok(x)) return x;
             for (var d = 0.02; d < 0.9; d += 0.02)
             {
@@ -826,6 +826,8 @@ public static class ScenePlanner
                     var lift = mover.Y - ground.Y(mover.X);
                     nx = GroundedX(ground, nx);
                     ny = ground.Y(nx) + lift;
+                    // No solid ground there (an island sinks below the frame): stay put.
+                    if (ground.Y(nx) > Math.Min(0.95, _horizon + 0.25)) { nx = mover.X; ny = mover.Y; }
                 }
                 var moved = mover with { X = nx, Y = ny };
                 var idx = _props.IndexOf(mover);
@@ -874,6 +876,20 @@ public static class ScenePlanner
                 var dir = p.X >= hero.X ? 1 : -1;
                 var nx = hero.X + dir * (hw + pw + 0.02);
                 if (nx is < 0.08 or > 0.92) { dir = -dir; nx = hero.X + dir * (hw + pw + 0.02); }
+                // Grounded props: the first spot, either side, that is solid AND clear of the hero.
+                if (p.Prop is not (Prop.Balloon or Prop.Boat or Prop.Sailboat))
+                {
+                    var g = Ground(p.Depth);
+                    double? spot = null;
+                    foreach (var d in new[] { dir, -dir })
+                    {
+                        var c = GroundedX(g, hero.X + d * (hw + pw + 0.02));
+                        if (Math.Abs(c - hero.X) >= hw + pw && g.Y(c) <= Math.Min(0.92, _horizon + 0.22) && c is >= 0.06 and <= 0.94) { spot = c; break; }
+                    }
+                    if (spot is { } sx) { _props[i] = p with { X = sx, Y = g.Y(sx) + (p.Y - g.Y(p.X)) }; continue; }
+                    if (p.Feature is null) { _props.RemoveAt(i--); continue; }
+                    nx = Math.Clamp(nx, 0.08, 0.92);
+                }
                 if (nx is < 0.06 or > 0.94)
                 {
                     // Scenery with no room steps out (a warm light is added beside the hero after).
@@ -1157,7 +1173,7 @@ public static class ScenePlanner
                     return Place(Prop.Otter, 2, x, waterY + r.Range(0.13, 0.17), HeroSize(Prop.Otter, 0, r), "otter", flip: faceIn, feature: tag);
                 case PosterFeature.Turtle:
                     if (_underwater)
-                        return Place(Prop.Turtle, 2, x, r.Range(0.68, 0.72), HeroSize(Prop.Turtle, 0, r), "turtle", flip: faceIn, feature: tag);
+                        return Place(Prop.Turtle, 2, x, r.Range(0.74, 0.77), HeroSize(Prop.Turtle, 0, r), "turtle", flip: faceIn, feature: tag);
                     return OnNear(Prop.Turtle, 1, "turtle");
                 case PosterFeature.Owl:
                 {
@@ -1188,8 +1204,9 @@ public static class ScenePlanner
                 case PosterFeature.Fox:
                 default:
                 {
-                    var curled = _spec.Mood is PosterMood.Sleepy or PosterMood.Calm or PosterMood.Dreamy ? r.Chance(0.6) : r.Chance(0.25);
-                    return OnNear(curled ? Prop.FoxCurled : Prop.Fox, 0, "fox");
+                    // The curled fox stays in the sheet but out of rotation: across three critique
+                    // rounds it read as a loaf at card size; the sitting fox reads as a fox.
+                    return OnNear(Prop.Fox, 0, "fox");
                 }
             }
         }
