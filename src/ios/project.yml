@@ -11,6 +11,8 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     STORYTIME_WEB_APP_URL: "http://localhost:5173"
     STORYTIME_API_BASE_URL: ""
+    # Device builds: pass DEVELOPMENT_TEAM (see scripts/ios-device.sh); automatic signing does the rest.
+    CODE_SIGN_STYLE: Automatic
 packages:
   StoryTimeKit:
     path: StoryTimeKit
@@ -29,7 +31,6 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: StoryTime/Resources/Info.plist
-        CODE_SIGN_ENTITLEMENTS: StoryTime/Resources/StoryTime.entitlements
 schemes:
   StoryTime:
     build:

@@ -26,6 +26,7 @@ import {
   type NativeCapabilities,
   type OnDeviceDraft,
 } from './services/nativeBridge'
+import { createSoftUserId } from './services/softUserId'
 import { createStoryTimeApi } from './services/storyTimeApi'
 import type {
   ChildProfile,
@@ -53,7 +54,7 @@ const getSoftUserId = (): string => {
     return existing
   }
 
-  const generated = crypto.randomUUID()
+  const generated = createSoftUserId()
   localStorage.setItem(runtimeConfig.storageKeys.softUserId, generated)
   return generated
 }

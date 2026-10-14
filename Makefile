@@ -4,7 +4,7 @@ FRONTEND_DIR := src/frontend
 IOS_DIR := src/ios
 IOS_SIMULATOR_DESTINATION ?= generic/platform=iOS Simulator
 
-.PHONY: ios-test ios-project ios-build traceability lint build test test-governance frontend-coverage validate-env test-coverage backend-coverage verify up down
+.PHONY: ios-test ios-project ios-build ios-device traceability lint build test test-governance frontend-coverage validate-env test-coverage backend-coverage verify up down
 
 traceability:
 	python3 scripts/traceability-check.py
@@ -54,3 +54,8 @@ ios-project:
 
 ios-build: ios-project
 	xcodebuild -project $(IOS_DIR)/StoryTime.xcodeproj -scheme StoryTime -destination '$(IOS_SIMULATOR_DESTINATION)' CODE_SIGNING_ALLOWED=NO build
+
+# Install + launch on a wirelessly paired iPhone and serve the API/web app on this Mac's LAN.
+# Usage: STORYTIME_TEAM_ID=<Apple Team ID> make ios-device
+ios-device:
+	./scripts/ios-device.sh

@@ -75,6 +75,8 @@ The mocked browser suite runs on `127.0.0.1` by design, so it asserts the unsupp
 make ios-test    # swift test --package-path src/ios/StoryTimeKit
 make ios-build   # xcodegen + xcodebuild for the iOS Simulator (CODE_SIGNING_ALLOWED=NO)
 ```
+Manual on-device regression over Wi-Fi: `STORYTIME_TEAM_ID=<team> make ios-device` (see README › Test on your iPhone). It runs `scripts/ios-device.sh`, which serves the API and web app on the Mac's LAN IP with parent approval defaulting to off, then builds, installs (`devicectl`) and launches on the paired device.
+
 `StoryTimeKit` bridge/prompt logic is platform-neutral, so `make ios-test` also runs on any host with a Swift 6 toolchain. Foundation Models and Speech code compiles only with the iOS 27 SDK. Manual regression of Apple Intelligence drafting and dictation needs an Apple Intelligence–eligible device or simulator.
 
 ## Docker (full stack)

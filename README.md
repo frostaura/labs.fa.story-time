@@ -81,6 +81,15 @@ npx playwright install chromium
 make ios-test     # StoryTimeKit unit tests (Swift Testing)
 make ios-build    # generate src/ios/StoryTime.xcodeproj and build for the simulator
 ```
+### Test on your iPhone over Wi-Fi
+1. Pair the phone once: plug it in, open Xcode › Window › Devices and Simulators, select it and tick **Connect via network**. Turn on Developer Mode on the phone (Settings › Privacy & Security). After that no cable is needed.
+2. Keep the phone unlocked and on the same Wi-Fi as your Mac, then run:
+   ```bash
+   STORYTIME_TEAM_ID=<your Apple Team ID> make ios-device
+   ```
+   The script serves the API and web app on your Mac's LAN IP, builds with automatic signing, installs over Wi-Fi with `devicectl`, and launches the app. It matches "iPhone Air" by default (`STORYTIME_DEVICE` overrides). Parent approval defaults to off for LAN testing (`STORYTIME_APPROVAL_REQUIRED=true` re-enables it), because passkeys need HTTPS on a real domain.
+3. On first launch, allow Local Network and Microphone. If prompted, trust the developer under Settings › General › VPN & Device Management.
+
 The host loads the web app from the `STORYTIME_WEB_APP_URL` build setting (default `http://localhost:5173`). Set `STORYTIME_API_BASE_URL` to point the web app at a specific API. Apple Intelligence drafting needs an Apple Intelligence–eligible device with it enabled; otherwise the API composes the story.
 
 ## Docker Full Stack
