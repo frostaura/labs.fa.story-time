@@ -52,7 +52,7 @@ internal static class TestKit
     {
         get
         {
-            const string dir = "/private/tmp/storytime-posters";
+            var dir = Environment.GetEnvironmentVariable("STORYTIME_REPORT_DIR") ?? "/private/tmp/storytime-posters-v2";
             Directory.CreateDirectory(dir);
             return dir;
         }

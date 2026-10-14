@@ -154,7 +154,7 @@ PosterSpec ─► PosterSpecRules.Normalize ─► ScenePlanner.Plan ─► Post
   - Under Reduce Motion: no tilt, and ambient baked.
   - The flattened thumbnail sits underneath, so a card is never blank while its layers
     load.
-- **Versioning.** `PosterEngineInfo.ArtVersion` (now 9) stamps thumbnail names and cache
+- **Versioning.** `PosterEngineInfo.ArtVersion` (now 10) stamps thumbnail names and cache
   keys.
 
 ### Scene vocabulary
@@ -179,15 +179,74 @@ variation:
 - side (focal on the left or right third), horizon jitter, ridge noise;
 - moon phase and position, star field, cloud count;
 - tree, house and palm counts and sizes;
-- creature pose (a fox sits or curls asleep).
+- creature pose (a fawn stands or lies folded);
+- layout: **Third** (hero on a third, moon on the other), **Center** (hero centred and
+  seen from low, moon over a shoulder) or **High** (a raised vantage, horizon 0.08 higher).
+  Reef, cloud kingdom, jungle and cove use Third and Center.
+
+### Picture-book pass (pass 2)
+
+The pass-1 engine read as dark wallpaper. Pass 2 sets a picture-book cover bar.
+
+- **Every cover has a character.** A listed creature is the hero. When the story lists
+  none, a scene-native **companion** creature becomes the hero, rotated evenly by seed: an
+  otter, fox, deer, bear, cat, turtle, dinosaur and so on. Companions are scenery, not
+  features, so the spec stays exactly what was asked. The scene's home prop (boat, cabin,
+  tent, castle, snowman, toadstools) still appears, smaller, on the other third.
+- **Hero size.** Heroes are sized by what is actually drawn
+  (`PropPainter.HeightFactor`), to 25–32% of the poster height. They are kept below the
+  title band, and stay inside the frame at full tilt (`FitHeroInFrame`).
+- **Creature sheet** (`PropPainter.Creatures.cs`). Every creature shares one shape
+  language:
+  - a big head on a small, soft body;
+  - a sleepy, kind face (smiling closed eyes; open eyes only on Curious nights), a
+    button nose and a blush;
+  - local colour graded into the night (`ScenePalette.Grade`);
+  - a form gradient, a moon rim, a warm wash and rim on the side facing its light, and a
+    soft ink contour;
+  - a dark contact pool behind the hero, so it separates on snow and in water.
+  - A dinosaur or turtle switches to ochre or amber-olive when its ground would swallow it.
+- **Structures** are in local colour: timber cabins, painted roofs, stone castles with
+  coloured caps, red or blue hulls, cream sails, bell tents and a brass telescope.
+- **Warm focal light.** Every poster carries one dominant warm light beside its hero: a
+  lit cabin or tent, a campfire, a lantern, or a glowing anemone on the reef.
+  - The light's pool (`LightPainter`) washes the ground and props of its own layer.
+  - The light keeps a clear gap from the hero (`KeepLightsOffHero`), and stands on solid
+    ground only.
+  - Campfires burn on a bare patch.
+  - The hero turns to face its light.
+- **Foreground framing** (`FrameCluster`). Each scene family has its own kit, rising in
+  both lower corners: full on the open side, and compressed beside the hero.
+  - meadow: leaves, grass and flowers;
+  - forest: ferns and toadstools;
+  - snow: a snowy fir, a drift and berries;
+  - shore: rocks and cattails;
+  - beach: rocks, fronds and a shell;
+  - desert: a dune and a rosette;
+  - reef: kelp and coral;
+  - cloud: puffs;
+  - town: a tiled roof corner with a lit dormer, and a window box beside the hero;
+  - jungle: leaves.
+- **Hero clear zone.** Landmarks and trees behind the hero step to its far side, and
+  only onto solid ground. Kelp, leaves and bushes that would slice through the hero
+  step out.
+- **Palettes are colour scripts.** Each has a sky hue, a glow hue and a land hue:
+  amber, rose and plum dusks, teal, moss, sunset gold and lilac, alongside the blues.
+  - The seed nudges sky and glow hues within the family.
+  - The sky ramp runs zenith, mid, low, horizon through a monotone cubic in LCH, so a dusk
+    blushes through rose instead of greying.
+  - The land keeps local colour a step below the sky.
+  - Town roofs go cool under a warm sky.
+  - The moon is a warm ivory, dimmer than the lantern core.
 
 Composition rules, enforced by the planner and checked by tests:
 - The horizon sits on or below the lower third.
-- The focal subject stands on a vertical third, and the moon takes the opposite third.
+- The hero stands on a vertical third (or is centred in the Center layout). A wide hero
+  may sit nearer the centre to stay in frame. The moon takes the other side.
 - The moon stays out of the title band and off the horizon.
-- Clouds and sparkles stay out of the title band.
+- Clouds, sparkles and the hero stay out of the title band.
 - Framing silhouettes go at the edges, never the centre.
-- There is one warm light family (amber), small and few.
+- There is one dominant warm light, beside the hero.
 
 ## Research highlights (Phase 1)
 
@@ -272,7 +331,9 @@ Composition rules, enforced by the planner and checked by tests:
 ## Test inventory
 
 The tests live in `tests/StoryTime.Poster.Tests`. Measured numbers are written to
-`/private/tmp/storytime-posters/*.txt` on every run.
+`/private/tmp/storytime-posters-v2/*.txt` on every run, or to `$STORYTIME_REPORT_DIR`
+when it is set. The assembly runs its classes serially, so the timing budgets measure the
+engine and not the test load.
 
 - **Spec contract**
   - fuzzed `Normalize` (3 000 garbage specs): valid and idempotent;
@@ -300,11 +361,19 @@ The tests live in `tests/StoryTime.Poster.Tests`. Measured numbers are written t
   - exact Hearth anchors;
   - dark, ordered, calm skies;
   - atmospheric depth ordering;
-  - analogous families;
+  - analogous families, and every palette its own colour script (sky and glow sectors);
   - gamut;
   - an OKLab round trip.
 - **Variety**: pHash plus mean-OKLab "alike" rate across 100 consecutive nights for one
   child, and across 300 random specs.
+- **Art direction** (`ArtDirectionTests`, pass 2):
+  - the hero's visible height (a render-with/without mask, so occlusion counts) is
+    0.20–0.38 of the poster;
+  - a warm focal glow is present (warm hue, ≥0.2% of the area, ≥0.30 L above the median);
+  - foreground framing covers ≥30% of one lower corner and ≥5% of the other;
+  - palette range across 300 posters: hue entropy, mean OKLab distance, navy/violet share
+    and within-poster value range;
+  - every listed feature is visible at card size (160 px, ≥0.25% of the area at ΔE > 0.05).
 - **Golden**: 12 fixed posters, one per scene, under
   `tests/StoryTime.Poster.Tests/golden/`. To approve a change, run
   `golden/regenerate.sh`, review the PNGs, and bump ArtVersion.
@@ -312,11 +381,14 @@ The tests live in `tests/StoryTime.Poster.Tests`. Measured numbers are written t
   budget of 250 ms on the Mac; memory budgets are 16 MB decoded and 3 MB PNG; thumbnails
   have a 120 ms budget; card timing is measured.
 
-`tools/StoryTime.PosterLab` renders the contact sheets and parallax previews to
-`/private/tmp/storytime-posters/`:
-- `dotnet run -c Release`;
-- `focus <Scene> [n]` for larger inspection sheets;
-- `layers <Scene>` for a per-layer dump.
+`tools/StoryTime.PosterLab` renders to `/private/tmp/storytime-posters-v2/`:
+- `dotnet run -c Release`: 60 posters on three contact sheets, a card-size sheet, and
+  3-frame parallax previews for 8;
+- `creatures`: every creature at player and card size on three nights;
+- `one <n>`: sheet poster #n at 700 px, with its placements printed;
+- `rand <i>`: the test kit's random spec #i, for a poster a metric flagged;
+- `perf`: render time with and without props, framing, creatures and lights;
+- `focus <Scene> [n]` and `layers <Scene>`.
 
 ## Visual critique log
 
@@ -505,3 +577,58 @@ Defects still open, on reviewer consensus:
   post-render visibility check per listed feature is proposed.
 - **Vertical tilt.** Reviewers want ≤ ⅓ of horizontal; the engine uses ½, respecting the
   founder's pinned-channel evidence. This needs a founder call on a device.
+
+## Picture-book pass critique log (pass 2)
+
+Same three lenses, run as independent reviewers on every round. The stop rule was two
+consecutive rounds with no MEDIUM-or-worse defect, within five rounds.
+
+**The loop did not go dry.** No round was free of MEDIUM defects. HIGH defects fell from 4
+to 2.
+
+| Round | Art director | Colour / value | Technical |
+|---|---|---|---|
+| 1 | 3 H · 5 M · 4 L | 0 H · 6 M · 5 L | 1 H · 10 M · 8 L |
+| 2 | 3 H · 7 M · 5 L | 0 H · 9 M · 3 L | 3 H · 5 M · 9 L |
+| 3 | 0 H · 8 M · 5 L | 0 H · 6 M · 4 L | 7 H · 6 M · 4 L |
+| 4 | 0 H · 6 M · 7 L | 0 H · 7 M · 4 L | 3 H · 4 M · 12 L |
+| 5 | 2 H · 7 M · 4 L | 0 H · 7 M · 4 L | 2 H · 7 M · 7 L |
+
+**Fixed along the way:**
+- **Round 1:** posters with no character got companion heroes; the campfire was redrawn;
+  props stopped standing on water; the moon was dimmed and shrunk; the olive skies were
+  removed; the depth ladders were deepened; the town got a roof corner; the boat lost its
+  "ladder" reflection; the surfaced whale was fixed; the birds were redrawn.
+- **Round 2:** fires on heroes; heroes cropped by the frame; the hedgehog was redesigned;
+  kelp sliced through swimmers; fireflies sat on heroes.
+- **Round 3:** lights were stuck against heroes, because a too-strict ground limit left
+  them nowhere to move; the owl's light went under its branch; a mast grew out of a
+  turtle; warm wash on heroes; ember and town palettes.
+- **Round 4:** the owl's own crowned tree; higher shores; the rooftop trough; grass in
+  fires; lighter coats.
+- **Round 5:** the curled fox was retired from rotation after three rounds of reading as
+  a loaf (the sitting fox reads well); a telescope stood over the hero; a swimming turtle
+  rose toward the title band; a lighthouse could be re-seated below the frame. All four
+  were verified fixed by inspection, without a sixth round.
+
+A defect found in passing: the lab's `one <n>` mode drew its random values in a
+different order from the contact sheet, so `one N` was not sheet poster #N. It is fixed.
+
+**Still open at the cap (MEDIUM, by reviewer consensus):**
+- **Set-level sameness.** Most heroes sit low in the frame, asleep, beside a lantern or a
+  fire. The pHash variety mean dropped about 1.6 bits against pass 1 (alike-pair rates are
+  flat and within thresholds). The next step is more layout archetypes (close-up, vista,
+  over-the-shoulder), a horizon range of 40–70%, and placing light and moon independently.
+- **Heroes don't use their props.** No hero holds the lantern, looks through the telescope
+  or sits in the boat or tent. Interaction poses per species are the next creature pass.
+- **Palette clustering at card size.** About two thirds of the set is teal or navy night,
+  because the story engine's palette and time choices drive this. Weighting toward warm
+  dusks belongs with the spec deriver and the integration lane, not this engine.
+- **Value and temperature separation.** Some heroes still sit close in value to their
+  ground (grey cat on snow, olive turtle on teal, a warm fox on a warm sky). Layers merge
+  in some night lake, cloud and reef posters.
+- **Weak creatures.** The camel, the standing deer, the upright otter and the swimming
+  whale read weakest. Fish and birds are props only and are never made the hero.
+- **Small features.** Birds, fireflies, aurora and snow pass the visibility metric, but
+  reviewers want a recognisability bar at card size.
+

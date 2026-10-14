@@ -114,6 +114,7 @@ public static class PosterEngine
                         plan.Bands.Where(b => b.Depth == depth && b.Profile.Kind != TerrainKind.Flat).ToList());
                 foreach (var p in plan.Placements.Where(p => p.Depth == depth))
                     PropPainter.Paint_(canvas, plan, p, vp);
+                LightPainter.Paint(canvas, plan, depth, vp);
                 Paint.Grain(canvas, vp.Width, vp.Height, 0.042 - depth * 0.005, depth * 977 + plan.Spec.Seed);
             }
             if (bakeAmbient && plan.Ambient.Any(a => a.Depth == depth))
@@ -212,8 +213,8 @@ public static class PosterEngine
             IsAntialias = true,
             IsDither = true,
             Shader = SKShader.CreateRadialGradient(new SKPoint(cx, cy), radius,
-                [SKColors.Black.WithAlpha(0), SKColors.Black.WithAlpha(0), SKColors.Black.WithAlpha(22)],
-                [0f, 0.6f, 1f], SKShaderTileMode.Clamp),
+                [SKColors.Black.WithAlpha(0), SKColors.Black.WithAlpha(0), SKColors.Black.WithAlpha(40)],
+                [0f, 0.55f, 1f], SKShaderTileMode.Clamp),
         };
         c.DrawRect(0, 0, w, h, p);
         // A quiet grade into the Hearth page (#201813) across the bottom 9%, so every

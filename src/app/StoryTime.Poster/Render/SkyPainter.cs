@@ -36,6 +36,8 @@ internal static class SkyPainter
         var sunX = 0.5 + plan.Side * 0.22;
         var dusk = plan.Spec.TimeOfDay == PosterTimeOfDay.Dusk;
 
+        var ramp = new SkyRamp([-0.1, 0.5, 0.8, 1.0], [c.SkyZenith, c.SkyMid, c.SkyLow, c.SkyHorizon]);
+
         // Per-column horizontal weighting of the afterglow (stronger where the sun went down).
         var colW = new float[w];
         for (var x = 0; x < w; x++)
@@ -64,10 +66,12 @@ internal static class SkyPainter
             }
             else
             {
+                // zenith → mid → low → horizon, interpolated in LCH so a blue-to-peach dusk
+                // passes through rose and lilac rather than grey.
+                // A monotone cubic through the four stops: no slope kinks, so no visible
+                // steps where one segment hands over to the next.
                 var t = Math.Clamp(ny / horizon, -0.3, 1.3);
-                baseLab = t < 0.55
-                    ? Oklab.Mix(zen, mid, Noise.SmoothStep(-0.1, 0.55, t))
-                    : Oklab.Mix(mid, hor, Noise.SmoothStep(0.55, 1.0, t));
+                baseLab = ramp.At(t).ToOklab();
                 var dh = (horizon - ny) / 0.2;
                 g = ny > horizon ? c.HorizonGlowStrength : c.HorizonGlowStrength * Math.Exp(-dh * dh);
             }
@@ -89,6 +93,65 @@ internal static class SkyPainter
                 span[i + 2] = Q(Srgb.EncodeFloat(b) + d);
                 span[i + 3] = 255;
             }
+        }
+    }
+
+    /// <summary>LCH sky ramp through a few stops, interpolated per channel by a monotone
+    /// (Fritsch–Carlson) cubic so the gradient has continuous slope. Hues are unwrapped
+    /// along the shortest arcs first, so a blue → rose → peach dusk never detours via green.</summary>
+    private sealed class SkyRamp
+    {
+        private readonly double[] _t;
+        private readonly double[][] _v;   // channel → values
+        private readonly double[][] _m;   // channel → tangents
+
+        public SkyRamp(double[] t, Oklch[] stops)
+        {
+            _t = t;
+            var n = t.Length;
+            var hue = new double[n];
+            hue[0] = stops[0].H;
+            for (var i = 1; i < n; i++)
+                hue[i] = hue[i - 1] + (((stops[i].H - stops[i - 1].H) % 360 + 540) % 360 - 180);
+            _v = [stops.Select(s => s.L).ToArray(), stops.Select(s => s.C).ToArray(), hue];
+            _m = _v.Select(Tangents).ToArray();
+        }
+
+        private double[] Tangents(double[] v)
+        {
+            var n = v.Length;
+            var d = new double[n - 1];
+            for (var i = 0; i < n - 1; i++) d[i] = (v[i + 1] - v[i]) / (_t[i + 1] - _t[i]);
+            var m = new double[n];
+            m[0] = d[0];
+            m[n - 1] = d[n - 2];
+            for (var i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+            for (var i = 0; i < n - 1; i++)
+            {
+                if (d[i] == 0) { m[i] = m[i + 1] = 0; continue; }
+                var a = m[i] / d[i];
+                var b = m[i + 1] / d[i];
+                var h = a * a + b * b;
+                if (h > 9) { var k = 3 / Math.Sqrt(h); m[i] = k * a * d[i]; m[i + 1] = k * b * d[i]; }
+            }
+            return m;
+        }
+
+        public Oklch At(double t)
+        {
+            t = Math.Clamp(t, _t[0], _t[^1]);
+            var i = 0;
+            while (i < _t.Length - 2 && t > _t[i + 1]) i++;
+            var h = _t[i + 1] - _t[i];
+            var u = (t - _t[i]) / h;
+            double Ch(int c)
+            {
+                var (p0, p1, m0, m1) = (_v[c][i], _v[c][i + 1], _m[c][i] * h, _m[c][i + 1] * h);
+                var u2 = u * u;
+                var u3 = u2 * u;
+                return (2 * u3 - 3 * u2 + 1) * p0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * p1 + (u3 - u2) * m1;
+            }
+            return new Oklch(Ch(0), Math.Max(0, Ch(1)), (Ch(2) % 360 + 360) % 360);
         }
     }
 
@@ -284,7 +347,7 @@ internal static class SkyPainter
                 if (g < 0.01) continue;
                 var n = Noise.Fbm2(along * 5 + 11, across * 9, mw.Seed, 4);
                 var lane = 1 - 0.55 * Math.Exp(-Math.Pow((across + 0.01 * Math.Sin(along * 7)) / (mw.Width * 0.18), 2));
-                var a = g * (0.45 + 0.55 * n) * lane * ext * 0.22;   // a soft band first, specks over it
+                var a = g * (0.45 + 0.55 * n) * lane * ext * 0.36;   // a soft band first, specks over it
                 if (TitleSafeFade(plan, nx, ny) is var tf && tf < 1) a *= tf;
                 var av = (byte)Math.Clamp(a * 255 + Dither(x, y) * 0.8, 0, 255);
                 if (av == 0) continue;
@@ -332,7 +395,7 @@ internal static class SkyPainter
             var by = vp.Y(au.Base + 0.025 * Math.Sin(nx * 5.5 + au.Seed % 7) + 0.02 * Noise.Fbm1(nx * 2, au.Seed + 9, 2));
             var height = vp.S(au.Height * (0.55 + 0.45 * n));
             p.Shader = SKShader.CreateLinearGradient(new SKPoint(0, by), new SKPoint(0, by - height),
-                [Paint.Sk(green, 0.30 * intensity), Paint.Sk(green, 0.14 * intensity), Paint.Sk(violet, 0.05 * intensity), Paint.Sk(violet, 0)],
+                [Paint.Sk(green, 0.6 * intensity), Paint.Sk(green, 0.3 * intensity), Paint.Sk(violet, 0.08 * intensity), Paint.Sk(violet, 0)],
                 [0f, 0.25f, 0.7f, 1f], SKShaderTileMode.Clamp);
             canvas.DrawRect(px, by - height, step + 0.6f, height + vp.S(0.006), p);
             p.Shader?.Dispose();
@@ -408,12 +471,12 @@ internal static class SkyPainter
             IsAntialias = true,
             Style = SKPaintStyle.Stroke,
             StrokeCap = SKStrokeCap.Round,
-            StrokeWidth = Math.Max(0.8f, vp.Unit * 0.0035f),
+            StrokeWidth = Math.Max(1.4f, vp.Unit * 0.008f),
             Shader = SKShader.CreateLinearGradient(new SKPoint(tx, ty), new SKPoint(hx, hy),
-                [cream.WithAlpha(0), cream.WithAlpha(70), cream.WithAlpha(210)], [0f, 0.6f, 1f], SKShaderTileMode.Clamp),
+                [cream.WithAlpha(0), cream.WithAlpha(120), cream.WithAlpha(240)], [0f, 0.55f, 1f], SKShaderTileMode.Clamp),
         };
         canvas.DrawLine(tx, ty, hx, hy, streak);
-        Paint.Glow(canvas, hx, hy, vp.Unit * 0.016f, cream, 0.55);
+        Paint.Glow(canvas, hx, hy, vp.Unit * 0.03f, cream, 0.7);
         using var head = Paint.Fill(cream);
         canvas.DrawCircle(hx, hy, Math.Max(0.8f, vp.Unit * 0.0035f), head);
     }
@@ -422,7 +485,8 @@ internal static class SkyPainter
     private static void PaintShafts(SKCanvas canvas, PosterPlan plan, PosterViewport vp)
     {
         var r = new Rng((ulong)(uint)plan.Spec.Seed ^ 0x5348414654UL);
-        var color = Oklab.Mix(ScenePalette.Cream.ToOklab(), plan.Colors.SkyHorizon.ToOklab(), 0.35).ToOklch();
+        // Shafts carry a little gold from the surface: the reef's warm counterpoint.
+        var color = Oklab.Mix(ScenePalette.AmberSoft.ToOklab(), plan.Colors.SkyHorizon.ToOklab(), 0.45).ToOklch();
         var n = 4 + r.Int(3);
         var slant = plan.Side * 0.12;
         for (var i = 0; i < n; i++)
