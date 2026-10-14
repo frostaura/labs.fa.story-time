@@ -40,12 +40,15 @@ public sealed record NarrationRenderResult
     public required long TotalFrames { get; init; }
     /// <summary>Integrated loudness of the delivered file (voice + pad), LUFS.</summary>
     public required double IntegratedLufs { get; init; }
-    public required double TruePeakDbtp { get; init; }
+    /// <summary>Delivered true peak, when <see cref="SoothingNarrator.MeasureOutputTruePeak"/> is on.</summary>
+    public required double? TruePeakDbtp { get; init; }
     /// <summary>Loudness the voice stem was normalised to (before the ending ramp), LUFS.</summary>
     public required double VoiceLufs { get; init; }
     /// <summary>Linear pad gain applied (0 when the pad is off).</summary>
     public required double PadGain { get; init; }
     public required double MaxCompressionDb { get; init; }
+    /// <summary>Deepest voice-limiter gain reduction, dB (0 when no limiter).</summary>
+    public required double MaxLimitingDb { get; init; }
     public required double MaxDeEssDb { get; init; }
     public required int VoiceFallbacks { get; init; }
 }
@@ -78,6 +81,13 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
     /// <summary>The mastering stage in force (EQ, de-ess, compressor, room, loudness, pad level).</summary>
     public MasteringProfile Profile { get; } = profile ?? MasteringProfile.Default;
 
+    /// <summary>Also true-peak-meter the delivered file (≈30% of the render pass; for the
+    /// voice lab and tests — the app trusts the limiter's ceiling).</summary>
+    public bool MeasureOutputTruePeak { get; init; }
+
+    /// <summary>Optional phase timing sink ("synthesis", "level", "analysis", "render").</summary>
+    public Action<string, TimeSpan>? Trace { get; init; }
+
     /// <summary>Same-voice retries for one segment before moving to the next voice.</summary>
     public int RetriesPerSegment { get; init; } = 1;
 
@@ -94,6 +104,9 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
         var workDir = outputPath + ".segments";
         try
         {
+            var phase = System.Diagnostics.Stopwatch.StartNew();
+            void Mark(string name) { Trace?.Invoke(name, phase.Elapsed); phase.Restart(); }
+
             // ---- 1. synthesise every segment to disk, falling back across voices ----
             var voices = new List<string> { voice.VoiceId };
             voices.AddRange(voice.Fallbacks.Where(v => v != voice.VoiceId));
@@ -114,6 +127,8 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                 }
             }
             files ??= [];
+
+            Mark("synthesis");
 
             // ---- 2. layout ----
             var placements = new List<SegmentPlacement>(files.Count);
@@ -136,6 +151,8 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             var rawLufs = rawMeter.IntegratedLufs;
             var preGain = rawLufs > -150 ? AudioShaper.DbToGain(Profile.PreChainLufs - rawLufs) : 1.0;
 
+            Mark("level");
+
             // ---- 3. analysis pass ----
             var reference = new GainEnvelope(plan, placements, includeEnding: false);
             var chainA = new MasteringChain(SampleRate, Profile);
@@ -148,28 +165,38 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                 tp.Add(block);
             }, ct, preGain);
             progress?.Report(0.9);
+            Mark("analysis");
 
             // ---- 4. gains ----
+            // Loudness gain to the target; then either the voice limiter takes the peaks
+            // (bounded by its max reduction) or, without one, the gain drops until the stem's
+            // true peak fits under the ceiling.
             var stemLufs = meter.IntegratedLufs;
             var ceiling = AudioShaper.DbToGain(Profile.PeakCeilingDbtp);
             var normGain = stemLufs > -150 ? AudioShaper.DbToGain(Profile.TargetLufs - stemLufs) : 1.0;
-            double padGain = 0;
-            for (var iteration = 0; iteration < 3; iteration++)
-            {
-                var voiceLufs = stemLufs + AudioShaper.GainToDb(normGain);
-                padGain = plan.Pad ? NarrationPad.GainFor(Math.Min(voiceLufs, Profile.TargetLufs), SampleRate, Profile.PadBelowVoiceLu) : 0;
-                var padPeak = padGain * PadPeakUnit;
-                if (tp.PeakLinear * normGain + padPeak <= ceiling) break;
-                normGain = Math.Max(0, (ceiling - padPeak) / Math.Max(tp.PeakLinear, 1e-9));
-            }
+            var limiterSettings = Profile.Limiter;
+            var peakBudget = limiterSettings is null
+                ? ceiling
+                : AudioShaper.DbToGain(Profile.PeakCeilingDbtp - limiterSettings.MarginDb + limiterSettings.MaxReductionDb);
+            if (tp.PeakLinear * normGain > peakBudget) normGain = peakBudget / Math.Max(tp.PeakLinear, 1e-9);
             var finalVoiceLufs = stemLufs + AudioShaper.GainToDb(normGain);
+            var padGain = plan.Pad
+                ? NarrationPad.GainFor(Math.Min(finalVoiceLufs, Profile.TargetLufs), SampleRate, Profile.PadBelowVoiceLu)
+                : 0;
 
             // ---- 5. render pass ----
             var full = new GainEnvelope(plan, placements, includeEnding: true);
             var chainB = new MasteringChain(SampleRate, Profile);
+            var limiter = limiterSettings is null
+                ? null
+                : new PeakLimiter(SampleRate, Profile.PeakCeilingDbtp - limiterSettings.MarginDb,
+                    limiterSettings.LookaheadMs, limiterSettings.ReleaseMs);
+            // The limiter delays its output; reading the timeline that far ahead keeps the
+            // voice exactly on the planned frames (the head is always silence).
+            var lead = limiter?.LatencySamples ?? 0;
             var pad = plan.Pad ? new NarrationPad(SampleRate, plan.TimelineOffsetSeconds) : null;
             var outMeter = new LoudnessMeter(SampleRate);
-            var outTp = new TruePeakMeter();
+            var outTp = MeasureOutputTruePeak ? new TruePeakMeter() : null;
             var fadeIn = Frames(plan.PadFadeInSeconds);
             var fadeOut = Frames(plan.PadFadeOutSeconds);
             var padBlock = new float[Block];
@@ -180,8 +207,9 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             using var padStem = stems?.PadStemPath is { } pp ? new WavWriter(pp, SampleRate, total) : null;
             Pass(timeline, total, chainB, (block, start) =>
             {
-                full.Apply(block, start);
+                full.Apply(block, start + lead);
                 for (var i = 0; i < block.Length; i++) block[i] = (float)(block[i] * normGain);
+                limiter?.Process(block);
                 voiceStem?.Write(block, null);
                 if (pad is not null)
                 {
@@ -200,10 +228,11 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                     padStem?.Write(pb, null);
                 }
                 outMeter.Add(block);
-                outTp.Add(block);
+                outTp?.Add(block);
                 writer.Write(block, dither);
-            }, ct, preGain);
+            }, ct, preGain, lead);
             progress?.Report(1.0);
+            Mark("render");
 
             return new NarrationRenderResult
             {
@@ -218,10 +247,11 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                 Placements = placements,
                 TotalFrames = total,
                 IntegratedLufs = outMeter.IntegratedLufs,
-                TruePeakDbtp = outTp.PeakDbtp,
+                TruePeakDbtp = outTp?.PeakDbtp,
                 VoiceLufs = finalVoiceLufs,
                 PadGain = padGain,
                 MaxCompressionDb = chainB.MaxCompressionDb,
+                MaxLimitingDb = limiter?.MaxReductionDb ?? 0,
                 MaxDeEssDb = chainB.MaxDeEssDb,
                 VoiceFallbacks = fallbacks,
             };
@@ -232,10 +262,6 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             catch (IOException) { /* best effort: scratch next to the output */ }
         }
     }
-
-    /// <summary>Peak of the unit pad is well under this (four tones × two oscillators,
-    /// 0.18 each, low-passed); used as a conservative bound for the ceiling.</summary>
-    private const double PadPeakUnit = 1.0;
 
     private static long Frames(double seconds) => (long)Math.Round(seconds * SampleRate);
 
@@ -330,7 +356,7 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
 
     /// <summary>Stream the dry timeline in blocks (× pre-gain), optionally through a chain.</summary>
     private static void Pass(Timeline timeline, long total, MasteringChain? chain, Action<Span<float>, long> sink,
-        CancellationToken ct, double preGain = 1.0)
+        CancellationToken ct, double preGain = 1.0, long readAhead = 0)
     {
         var buffer = new float[Block];
         timeline.Rewind();
@@ -339,7 +365,7 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
             ct.ThrowIfCancellationRequested();
             var n = (int)Math.Min(Block, total - start);
             var block = buffer.AsSpan(0, n);
-            timeline.Read(start, block);
+            timeline.Read(start + readAhead, block);
             if (preGain != 1.0)
                 for (var i = 0; i < n; i++) block[i] = (float)(block[i] * preGain);
             chain?.Process(block);

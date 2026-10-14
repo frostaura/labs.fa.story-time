@@ -41,8 +41,13 @@ public sealed class NarrationPad
 
     private readonly int _sampleRate;
     private readonly Biquad _lp1, _lp2;
-    private readonly double[][] _freqs;     // per chord, per oscillator (tone × 2)
+    private readonly double[][] _freqs;     // per chord, per oscillator (tone × 2), Hz
+    private readonly double[][] _phase;     // per chord, per oscillator, cycles in [0,1)
+    private readonly double[][] _step;      // per chord, per oscillator, cycles per sample
+    private readonly double[] _weight = new double[4];
+    private readonly double[] _weightStep = new double[4];
     private long _frame;                    // absolute frame index of the next output sample
+    private const int ControlInterval = 64; // chord weights move over seconds: block-rate is exact enough
 
     public NarrationPad(int sampleRate, double startSeconds)
     {
@@ -55,10 +60,15 @@ public sealed class NarrationPad
             var f = AmbientComposer.MidiToHz(m);
             return new[] { f / detune, f * detune };
         }).ToArray()).ToArray();
+        _step = _freqs.Select(fs => fs.Select(f => f / sampleRate).ToArray()).ToArray();
 
         var start = (long)Math.Round(startSeconds * sampleRate);
         var warm = (long)(WarmUpSeconds * sampleRate);
         _frame = start - warm;
+        // Oscillator phase is a function of absolute time, so any start point continues the
+        // exact waveform a generator started at 0 would produce.
+        var t0 = _frame / (double)sampleRate;
+        _phase = _freqs.Select(fs => fs.Select(f => Frac(f * t0)).ToArray()).ToArray();
         // Run the filters into their steady state over the warm-up, discarding output.
         Span<float> scratch = stackalloc float[256];
         var remaining = warm;
@@ -69,6 +79,8 @@ public sealed class NarrationPad
             remaining -= n;
         }
     }
+
+    private static double Frac(double x) => x - Math.Floor(x);
 
     /// <summary>Equal-power chord weight for chord <paramref name="k"/> at time t (seconds).</summary>
     public static double ChordWeight(int k, double t)
@@ -89,27 +101,45 @@ public sealed class NarrationPad
     public void Render(Span<float> dest)
     {
         const int size = AmbientComposer.WavetableSize;
-        var amp = 0.18;
+        const double amp = 0.18;
         for (var i = 0; i < dest.Length; i++)
         {
-            var t = (_frame + i) / (double)_sampleRate;
+            var f = _frame + i;
+            if (f % ControlInterval == 0 || i == 0)
+            {
+                // Chord weights at this block's start and end, interpolated per sample.
+                var blockLeft = ControlInterval - (int)(((f % ControlInterval) + ControlInterval) % ControlInterval);
+                var t0 = f / (double)_sampleRate;
+                var t1 = (f + blockLeft) / (double)_sampleRate;
+                for (var k = 0; k < Chords.Length; k++)
+                {
+                    _weight[k] = ChordWeight(k, t0);
+                    _weightStep[k] = (ChordWeight(k, t1) - _weight[k]) / blockLeft;
+                }
+            }
             double sum = 0;
             for (var k = 0; k < Chords.Length; k++)
             {
-                var w = ChordWeight(k, t);
-                if (w <= 0) continue;
-                var freqs = _freqs[k];
-                double chord = 0;
-                for (var o = 0; o < freqs.Length; o++)
+                var w = _weight[k];
+                _weight[k] += _weightStep[k];
+                var phases = _phase[k];
+                var steps = _step[k];
+                if (w <= 0 && _weightStep[k] <= 0)
                 {
-                    var phase = freqs[o] * t;
-                    phase -= Math.Floor(phase);
-                    var idx = phase * size;
+                    for (var o = 0; o < phases.Length; o++) { var p = phases[o] + steps[o]; phases[o] = p >= 1 ? p - 1 : p; }
+                    continue;
+                }
+                double chord = 0;
+                for (var o = 0; o < phases.Length; o++)
+                {
+                    var idx = phases[o] * size;
                     var i0 = (int)idx;
                     var frac = idx - i0;
                     chord += Table[i0] + (Table[(i0 + 1) & (size - 1)] - Table[i0]) * frac;
+                    var p = phases[o] + steps[o];
+                    phases[o] = p >= 1 ? p - 1 : p;
                 }
-                sum += chord * w;
+                sum += chord * Math.Max(0, w);
             }
             dest[i] = (float)_lp2.Tick(_lp1.Tick(sum * amp));
         }

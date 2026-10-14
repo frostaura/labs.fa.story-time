@@ -23,6 +23,9 @@ public sealed record CompressorSettings(
     double ThresholdDb = -26.0, double Ratio = 2.5, double AttackMs = 12.0, double ReleaseMs = 180.0,
     double KneeDb = 6.0, double MakeupDb = 2.0);
 
+/// <summary>Look-ahead limiter on the normalised voice (ceiling = profile ceiling − margin).</summary>
+public sealed record LimiterSettings(double LookaheadMs = 5, double ReleaseMs = 60, double MarginDb = 0.5, double MaxReductionDb = 10);
+
 public sealed record ReverbSettings(
     double DecaySeconds = 0.35, double PreDelaySeconds = 0.010, double WetLowHz = 200, double WetHighHz = 5000,
     double WetDb = -17.0);
@@ -31,7 +34,8 @@ public sealed record ReverbSettings(
 /// Every number of the SoothingNarrator mastering stage, as data — so a re-voiced chain (e.g.
 /// the founder's "loud whisper" bedtime character) is a new profile, not a code change.
 /// Order is fixed: pre-EQ bands → de-esser → post-EQ bands → compressor → reverb; then, outside
-/// the chain, loudness normalisation and the (never compressed) pad mix.
+/// the chain, loudness normalisation, the voice-only peak limiter, and the (never compressed)
+/// pad mix.
 /// </summary>
 public sealed record MasteringProfile
 {
@@ -52,6 +56,9 @@ public sealed record MasteringProfile
     /// <summary>Integrated loudness of the delivered voice.</summary>
     public double TargetLufs { get; init; } = -18.0;
     public double PeakCeilingDbtp { get; init; } = -2.0;
+    /// <summary>Peak limiter on the normalised voice stem (null: the loudness gain is instead
+    /// lowered until the stem's true peak fits the ceiling). Never applied to the voice + pad mix.</summary>
+    public LimiterSettings? Limiter { get; init; } = new();
     /// <summary>How far under the voice the pad sits, LU.</summary>
     public double PadBelowVoiceLu { get; init; } = 28.0;
 

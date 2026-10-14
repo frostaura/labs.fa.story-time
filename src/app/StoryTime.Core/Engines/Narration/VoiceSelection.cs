@@ -93,6 +93,8 @@ public static class VoiceRanker
         if (v.IsNovelty || v.IsPersonal) return false;
         var id = v.Identifier;
         if (id.StartsWith("com.apple.eloquence", StringComparison.OrdinalIgnoreCase)) return false;
+        // Legacy MacinTalk voices (Fred, Ralph, Kathy…): macOS-only and robotic.
+        if (id.StartsWith("com.apple.speech.synthesis.voice.", StringComparison.OrdinalIgnoreCase)) return false;
         if (id.Contains("siri", StringComparison.OrdinalIgnoreCase) && !v.IsSiriDerived) return false;
         if (v.Quality == VoiceQualityTier.None) return false;
         return policy.Accepts(v.Language);

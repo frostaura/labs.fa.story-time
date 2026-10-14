@@ -130,3 +130,80 @@ public sealed class DeEsser
         }
     }
 }
+
+/// <summary>
+/// Look-ahead peak limiter for the normalised VOICE stem (never the voice + pad mix).
+/// Compact voices carry transients 16–20 dB above their loudness, so normalising to −18 LUFS
+/// under a −2 dBTP ceiling would otherwise leave the story 2–5 dB too quiet. Gain is the
+/// sliding minimum of the required gain over the look-ahead window, released exponentially,
+/// then box-smoothed over the window — so it is already down when the peak arrives and
+/// never steps. Latency = look-ahead; callers feed the input that many samples early.
+/// </summary>
+public sealed class PeakLimiter
+{
+    private readonly double _ceiling;
+    private readonly double _release;
+    private readonly int _look;
+    private readonly float[] _delay;
+    private readonly double[] _box;           // released gain ring (look)
+    private int _pos, _boxPos;
+    private double _boxSum, _released = 1.0;
+    // Monotonic deque (ring of capacity look+1) for the sliding minimum.
+    private readonly long[] _qIndex;
+    private readonly double[] _qGain;
+    private int _qHead, _qCount;
+    private long _n;
+
+    public PeakLimiter(int sampleRate, double ceilingDbfs, double lookaheadMs = 5, double releaseMs = 60)
+    {
+        _ceiling = AudioShaper.DbToGain(ceilingDbfs);
+        _look = Math.Max(1, (int)Math.Round(lookaheadMs / 1000 * sampleRate));
+        _release = Math.Exp(-1.0 / (releaseMs / 1000 * sampleRate));
+        _delay = new float[_look + 1];
+        _qIndex = new long[_look + 2];
+        _qGain = new double[_look + 2];
+        _box = new double[_look];
+        Array.Fill(_box, 1.0);
+        _boxSum = _look;
+    }
+
+    /// <summary>Output lags input by this many samples.</summary>
+    public int LatencySamples => _look;
+    public double MaxReductionDb { get; private set; }
+
+    public void Process(Span<float> samples)
+    {
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var x = samples[i];
+            var a = Math.Abs((double)x);
+            var g = a > _ceiling ? _ceiling / a : 1.0;
+
+            // Sliding minimum of the required gain over the last look+1 inputs.
+            var cap = _qIndex.Length;
+            while (_qCount > 0 && _qGain[(_qHead + _qCount - 1) % cap] >= g) _qCount--;
+            var tail = (_qHead + _qCount) % cap;
+            _qIndex[tail] = _n;
+            _qGain[tail] = g;
+            _qCount++;
+            while (_qIndex[_qHead] <= _n - _delay.Length) { _qHead = (_qHead + 1) % cap; _qCount--; }
+            var min = _qGain[_qHead];
+
+            _released = min < _released ? min : min - (min - _released) * _release;
+            _boxSum += _released - _box[_boxPos];
+            _box[_boxPos] = _released;
+            _boxPos = (_boxPos + 1) % _box.Length;
+            var gain = Math.Min(1.0, _boxSum / _box.Length);
+
+            var outIdx = (_pos + 1) % _delay.Length;   // oldest = input from `look` samples ago
+            _delay[_pos] = x;
+            var y = _delay[outIdx] * gain;
+            _pos = outIdx;
+            _n++;
+
+            var reduction = -AudioShaper.GainToDb(gain);
+            if (reduction > MaxReductionDb) MaxReductionDb = reduction;
+            samples[i] = (float)y;
+        }
+    }
+}

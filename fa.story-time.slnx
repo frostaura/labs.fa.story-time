@@ -6,6 +6,9 @@
     <Project Path="src/app/StoryTime.Core/StoryTime.Core.csproj" />
     <Project Path="src/app/StoryTime.App/StoryTime.App.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="src/tools/StoryTime.NarrationLab/StoryTime.NarrationLab.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/StoryTime.Core.Tests/StoryTime.Core.Tests.csproj" />
   </Folder>

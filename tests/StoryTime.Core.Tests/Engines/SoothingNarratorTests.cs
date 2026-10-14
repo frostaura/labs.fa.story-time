@@ -71,7 +71,7 @@ public sealed class SoothingNarratorTests : IDisposable
     {
         var plan = SoothingPlanner.Plan(script, options);
         var fake = voice ?? new FakeVoice();
-        var result = await new SoothingNarrator(fake).RenderAsync(plan, Serena, Path.Combine(_dir, name), null, CancellationToken.None, stems);
+        var result = await new SoothingNarrator(fake) { MeasureOutputTruePeak = true }.RenderAsync(plan, Serena, Path.Combine(_dir, name), null, CancellationToken.None, stems);
         return (result, plan, fake);
     }
 
