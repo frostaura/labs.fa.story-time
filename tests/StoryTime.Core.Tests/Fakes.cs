@@ -310,3 +310,59 @@ public sealed class TestEnv : IAsyncDisposable
         Mode = mode,
     };
 }
+
+/// <summary>Scriptable IPremiumStore. Purchase/restore outcomes run through a real
+/// PremiumLedger, exactly as the StoreKit implementation does.</summary>
+public sealed class FakePremiumStore : IPremiumStore
+{
+    private readonly PremiumLedger _ledger;
+
+    public FakePremiumStore(PremiumLedger ledger) => _ledger = ledger;
+
+    public PremiumProductInfo Product { get; set; } = new(PremiumProductState.Available, "R 49,99");
+    public PremiumPurchaseResult NextPurchase { get; set; } = PremiumPurchaseResult.Purchased;
+    public PremiumPurchaseResult NextRestore { get; set; } = PremiumPurchaseResult.NothingToRestore;
+    public int LoadCount { get; private set; }
+    public int PurchaseCount { get; private set; }
+    public int RestoreCount { get; private set; }
+    public int SubscriberCount => EntitlementChanged?.GetInvocationList().Length ?? 0;
+
+    public Task<PremiumProductInfo> LoadProductAsync(CancellationToken ct)
+    {
+        LoadCount++;
+        return Task.FromResult(Product);
+    }
+
+    public Task<PremiumPurchaseResult> PurchaseAsync(CancellationToken ct)
+    {
+        PurchaseCount++;
+        if (NextPurchase == PremiumPurchaseResult.Purchased) _ledger.RecordGranted(PremiumProduct.Id);
+        return Task.FromResult(NextPurchase);
+    }
+
+    public Task<PremiumPurchaseResult> RestoreAsync(CancellationToken ct)
+    {
+        RestoreCount++;
+        if (NextRestore == PremiumPurchaseResult.Restored) _ledger.RecordRestoreFinished(sawPremium: true);
+        else if (NextRestore == PremiumPurchaseResult.NothingToRestore) _ledger.RecordRestoreFinished(sawPremium: false);
+        return Task.FromResult(NextRestore);
+    }
+
+    /// <summary>Simulates an out-of-band transaction (Ask to Buy approval, refund).</summary>
+    public void RaiseOutOfBand(bool granted)
+    {
+        if (granted) _ledger.RecordGranted(PremiumProduct.Id);
+        else _ledger.RecordRevoked([PremiumProduct.Id]);
+        EntitlementChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public event EventHandler? EntitlementChanged;
+
+    /// <summary>A PremiumViewModel over a fake store sharing <paramref name="settings"/>.</summary>
+    public static ViewModels.PremiumViewModel CreateViewModel(ISettingsStore settings, INavigator navigator,
+        IHaptics haptics, FakePremiumStore? store = null)
+    {
+        var ledger = new PremiumLedger(settings);
+        return new ViewModels.PremiumViewModel(settings, navigator, haptics, store ?? new FakePremiumStore(ledger), ledger);
+    }
+}

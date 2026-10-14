@@ -25,7 +25,11 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IDeviceCapabilities, DefaultDeviceCapabilities>();
         services.TryAddSingleton<ISettingsStore, InMemorySettingsStore>();
         services.TryAddSingleton<IHaptics, NullHaptics>();
-        services.TryAddSingleton<IEntitlements, StubEntitlements>();
+        services.TryAddSingleton<IEntitlements, StoreEntitlements>();
+        // Premium is one on-device, one-off purchase. The ledger is the single writer of the
+        // local entitlement; the store seam is StoreKit on iOS (MauiProgram.RegisterEntitlements).
+        services.TryAddSingleton<PremiumLedger>();
+        services.TryAddSingleton<IPremiumStore, UnavailablePremiumStore>();
         // One notification seam for every story mutation; the store raises it, every list
         // view-model subscribes (see IStoryCatalog). The App layer replaces this
         // registration with one that marshals raises to the UI thread.

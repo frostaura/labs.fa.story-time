@@ -25,7 +25,7 @@ public class StoryPipelineTests
         {
             var h = new Harness { Env = await TestEnv.CreateAsync() };
             h.Env.Options.ForcedWeaveStrategy = forced;
-            h.Cooldown = new CooldownService(h.Settings, h.Clock, new StubEntitlements(h.Settings, h.Clock));
+            h.Cooldown = new CooldownService(h.Settings, h.Clock, new StoreEntitlements(h.Settings, h.Clock));
             return h;
         }
 

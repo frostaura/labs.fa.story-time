@@ -26,7 +26,7 @@ public class HomeViewModelTests : IAsyncLifetime
         _env = await TestEnv.CreateAsync();
         _clock = new FakeClock();
         _settings = new InMemorySettingsStore();
-        var entitlements = new StubEntitlements(_settings, _clock);
+        var entitlements = new StoreEntitlements(_settings, _clock);
         _cooldown = new CooldownService(_settings, _clock, entitlements);
         _host = new FakeWeaveHost();
         _navigator = new FakeNavigator();
@@ -252,9 +252,9 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         _settings = new InMemorySettingsStore();
         _kidMode = new KidModeService();
         var clock = new FakeClock();
-        var cooldown = new CooldownService(_settings, clock, new StubEntitlements(_settings, clock));
+        var cooldown = new CooldownService(_settings, clock, new StoreEntitlements(_settings, clock));
         _vm = new WeaveSheetViewModel(_host, _env.Store, cooldown, _navigator, new PlayerLaunchContext(), _settings,
-            new NullHaptics(), new StubEntitlements(_settings, clock), _kidMode);
+            new NullHaptics(), new StoreEntitlements(_settings, clock), _kidMode);
         await _env.Store.SaveProfileAsync(TestEnv.Profile());
     }
 
@@ -551,7 +551,7 @@ public class SettingsViewModelTests : IAsyncLifetime
         _settings = new InMemorySettingsStore();
         _navigator = new FakeNavigator();
         var clock = new FakeClock();
-        _vm = new SettingsViewModel(_gate, _settings, new StubEntitlements(_settings, clock), _env.Store, _navigator,
+        _vm = new SettingsViewModel(_gate, _settings, new StoreEntitlements(_settings, clock), _env.Store, _navigator,
             new NullHaptics());
         await _env.Store.SaveProfileAsync(TestEnv.Profile());
     }
@@ -771,7 +771,7 @@ public class OnboardingViewModelTests : IAsyncLifetime
     public async Task VoiceStep_GatesFifteenAndKeepsHintCopy()
     {
         var clock = new FakeClock();
-        var vm = new OnboardingVoiceViewModel(_state, _navigator, new FakeTtsEngine(), new StubEntitlements(_settings, clock),
+        var vm = new OnboardingVoiceViewModel(_state, _navigator, new FakeTtsEngine(), new StoreEntitlements(_settings, clock),
             new NullHaptics(), new NullVoiceSamplePlayer());
         vm.SelectLengthCommand.Execute(StoryLength.Fifteen);
         Assert.True(vm.ShowPremiumHint);
@@ -833,8 +833,8 @@ public class PremiumViewModelTests
     {
         var settings = new InMemorySettingsStore();
         var navigator = new FakeNavigator();
-        var entitlements = new StubEntitlements(settings, new FakeClock());
-        var vm = new PremiumViewModel(settings, navigator, new NullHaptics());
+        var entitlements = new StoreEntitlements(settings, new FakeClock());
+        var vm = FakePremiumStore.CreateViewModel(settings, navigator, new NullHaptics());
 
         Assert.False(vm.IsUnlockedForTesting);
         vm.ToggleTestingUnlockCommand.Execute(null);
@@ -859,11 +859,11 @@ public class PremiumViewModelTests
     }
 
     [Fact]
-    public void Activate_ReadsOverrideFromStore()
+    public async Task Activate_ReadsOverrideFromStore()
     {
         var settings = new InMemorySettingsStore { DebugPremiumOverride = true };
-        var vm = new PremiumViewModel(settings, new FakeNavigator(), new NullHaptics());
-        vm.Activate();
+        var vm = FakePremiumStore.CreateViewModel(settings, new FakeNavigator(), new NullHaptics());
+        await vm.ActivateAsync();
         Assert.True(vm.IsUnlockedForTesting);
         Assert.StartsWith("Premium · unlocked for testing", vm.TestingRowText);
     }
@@ -872,7 +872,7 @@ public class PremiumViewModelTests
     public async Task Close_NavigatesBack()
     {
         var navigator = new FakeNavigator();
-        var vm = new PremiumViewModel(new InMemorySettingsStore(), navigator, new NullHaptics());
+        var vm = FakePremiumStore.CreateViewModel(new InMemorySettingsStore(), navigator, new NullHaptics());
         await vm.CloseCommand.ExecuteAsync(null);
         Assert.Equal(1, navigator.BackCount);
     }

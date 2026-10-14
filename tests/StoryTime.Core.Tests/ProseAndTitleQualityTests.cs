@@ -191,7 +191,7 @@ public class ProseAndTitleQualityTests
         var settings = new InMemorySettingsStore();
         var pipeline = new StoryPipeline(
             engine, new FakeTtsEngine(), new PosterComposer(), new NullPosterRasterizer(),
-            env.Store, settings, new CooldownService(settings, clock, new StubEntitlements(settings, clock)),
+            env.Store, settings, new CooldownService(settings, clock, new StoreEntitlements(settings, clock)),
             new SafetyFilter(), new FakeNotificationService(), env.Options, clock);
 
         var story = await pipeline.WeaveAsync(profile, null, CancellationToken.None);

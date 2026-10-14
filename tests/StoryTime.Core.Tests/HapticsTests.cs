@@ -203,7 +203,7 @@ public class WeaveSheetHapticsTests : IAsyncLifetime
         _haptics = new FakeHaptics();
         var settings = new InMemorySettingsStore();
         var clock = new FakeClock();
-        var entitlements = new StubEntitlements(settings, clock);
+        var entitlements = new StoreEntitlements(settings, clock);
         var cooldown = new CooldownService(settings, clock, entitlements);
         _vm = new WeaveSheetViewModel(_host, _env.Store, cooldown, new FakeNavigator(), new PlayerLaunchContext(),
             settings, _haptics, entitlements, new KidModeService());
@@ -399,11 +399,11 @@ public class HapticMapTests : IAsyncLifetime
     }
 
     [Fact]
-    public void PremiumDebugUnlock_CelebrateIsTheTerminalCall()
+    public async Task PremiumDebugUnlock_CelebrateIsTheTerminalCall()
     {
         var haptics = new FakeHaptics();
-        var vm = new PremiumViewModel(new InMemorySettingsStore(), new FakeNavigator(), haptics);
-        vm.Activate();
+        var vm = FakePremiumStore.CreateViewModel(new InMemorySettingsStore(), new FakeNavigator(), haptics);
+        await vm.ActivateAsync();
         haptics.Calls.Clear();
 
         vm.ToggleTestingUnlockCommand.Execute(null);
@@ -415,7 +415,7 @@ public class HapticMapTests : IAsyncLifetime
     {
         var haptics = new FakeHaptics();
         var settings = new InMemorySettingsStore();
-        var vm = new PremiumViewModel(settings, new FakeNavigator(), haptics);
+        var vm = FakePremiumStore.CreateViewModel(settings, new FakeNavigator(), haptics);
 
         vm.ToggleTestingUnlockCommand.Execute(null);   // unlock
         Assert.Equal(1, haptics.Count("Celebrate"));
@@ -426,11 +426,11 @@ public class HapticMapTests : IAsyncLifetime
     }
 
     [Fact]
-    public void PremiumOpen_AnswersWithLight()
+    public async Task PremiumOpen_AnswersWithLight()
     {
         var haptics = new FakeHaptics();
-        var vm = new PremiumViewModel(new InMemorySettingsStore(), new FakeNavigator(), haptics);
-        vm.Activate();
+        var vm = FakePremiumStore.CreateViewModel(new InMemorySettingsStore(), new FakeNavigator(), haptics);
+        await vm.ActivateAsync();
         Assert.Equal(1, haptics.Count("Light"));
     }
 
@@ -459,7 +459,7 @@ public class HapticMapTests : IAsyncLifetime
         var settings = new InMemorySettingsStore();
         var clock = new FakeClock();
         var haptics = new FakeHaptics();
-        var vm = new SettingsViewModel(gate, settings, new StubEntitlements(settings, clock), _env.Store,
+        var vm = new SettingsViewModel(gate, settings, new StoreEntitlements(settings, clock), _env.Store,
             new FakeNavigator(), haptics);
 
         await _env.Store.SaveProfileAsync(TestEnv.Profile());

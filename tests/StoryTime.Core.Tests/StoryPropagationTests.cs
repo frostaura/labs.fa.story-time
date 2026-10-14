@@ -32,7 +32,7 @@ public class StoryPropagationTests : IAsyncLifetime
         _env = await TestEnv.CreateAsync();
         var clock = new FakeClock();
         var settings = new InMemorySettingsStore();
-        var entitlements = new StubEntitlements(settings, clock);
+        var entitlements = new StoreEntitlements(settings, clock);
         var cooldown = new CooldownService(settings, clock, entitlements);
         _host = new FakeWeaveHost();
         var navigator = new FakeNavigator();

@@ -246,9 +246,12 @@ public interface ISettingsStore
     long? CooldownAnchorMonotonicMs { get; set; }
     DateTime? CooldownEndsUtc { get; set; }
     /// <summary>Debug-only local premium unlock (the PremiumPage testing row). Read by
-    /// StubEntitlements; no billing exists until M4. Harmless if set in Release — the
-    /// UI that flips it is compiled out of Release builds.</summary>
+    /// StoreEntitlements. Harmless if set in Release — the UI that flips it is compiled
+    /// out of Release builds.</summary>
     bool DebugPremiumOverride { get; set; }
+    /// <summary>True once the one-off Premium purchase was bought or restored on this device.
+    /// Written only by PremiumLedger from App Store transactions; re-validated by Restore.</summary>
+    bool PremiumPurchased { get; set; }
     /// <summary>Premium ambient-bed mix level 0..1, persisted per app (not per story).
     /// Default 0.3 — the bed is meant to sit far under the voice. (Additive, 2026-07-30.)</summary>
     double MusicVolume { get; set; }
@@ -260,7 +263,7 @@ public interface ISettingsStore
 
 public interface IEntitlements
 {
-    bool IsPremium { get; }                             // stub: always false until M4
+    bool IsPremium { get; }                             // bought/restored Premium (or the Debug testing unlock)
     int TrialNightsLeft { get; }
     int CooldownMinutes { get; }                        // 30, or 15 when premium
     bool CanUseLength(StoryLength length);
