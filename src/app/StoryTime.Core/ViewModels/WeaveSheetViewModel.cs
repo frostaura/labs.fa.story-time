@@ -131,9 +131,6 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         Dismissed?.Invoke(this, EventArgs.Empty);   // hosts refresh: CTA returns, lists drop the row
     }
 
-    /// <summary>Set once by the App layer at startup; drives the platform copy split.</summary>
-    public bool IsIos { get; set; }
-
     /// <summary>Foreground gate, pushed by the App layer (WeaveSheetHost mirrors the
     /// controller's window Resumed/Stopped state). Weave-driven haptics — the stage-change
     /// loom-click and the story-ready Celebrate — only fire while true: a phone in a
@@ -215,14 +212,11 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
 
     public const string MiniTitleReady = "Story ready — tap for the teaser ▶︎";
 
-    /// <summary>iOS copy differs by design (documented reinterpretation): the weave suspends
-    /// in the background there.</summary>
-    public static string BackgroundHintAndroid => "Close the app if you like — we'll send a gentle ping when it's ready.";
     /// <summary>iOS keeps generating in the background only while the loom hum is audible
     /// (verified 2026-07-31: 39 min backgrounded, unlimited assertion while the audio session
     /// lives). Conditional by design — the hum is a parent-switchable feature, and if it is
     /// off the weave suspends and resumes on return, so this must never promise a ping.</summary>
-    public static string BackgroundHintIos => "The loom hums while it works — leave it playing and it keeps weaving.";
+    public static string BackgroundHint => "The loom hums while it works — leave it playing and it keeps weaving.";
 
     /// <summary>Home calls this right after starting a weave: reset to a fresh weaving
     /// state and open the sheet expanded. No page navigation happens any more.</summary>
@@ -245,7 +239,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         if (!IsDone && !IsFailed)
         {
             Headline = $"Weaving {_childName}'s story…";
-            SubText = IsIos ? BackgroundHintIos : BackgroundHintAndroid;
+            SubText = BackgroundHint;
             MiniTitle = $"Weaving {_childName}'s story…";
             if (string.IsNullOrEmpty(MiniDetail)) MiniDetail = $"Outline · {DisplayFloorPercent}%";
             if (Percent < DisplayFloorPercent) Percent = DisplayFloorPercent;
@@ -358,7 +352,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         _lastTickedStage = null;
         foreach (var row in Stages) row.State = StageRowState.Waiting;
         Headline = $"Weaving {_childName}'s story…";
-        SubText = IsIos ? BackgroundHintIos : BackgroundHintAndroid;
+        SubText = BackgroundHint;
         MiniTitle = $"Weaving {_childName}'s story…";
         MiniDetail = $"Outline · {DisplayFloorPercent}%";
         RefreshCooldownLine();

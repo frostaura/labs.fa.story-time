@@ -1,7 +1,7 @@
 using StoryTime.Contracts;
 using StoryTime.Core.Abstractions;
 using StoryTime.Core.Engines;
-using StoryTime.Core.Engines.Llama;
+using StoryTime.Core.Engines.Prompts;
 using StoryTime.Core.Pipeline;
 using StoryTime.Core.Poster;
 using StoryTime.Core.Services;
@@ -11,7 +11,7 @@ namespace StoryTime.Core.Tests;
 
 /// <summary>Founder title/prose quality pass (2026-07-31): titles must be shape-diverse and
 /// non-echoing; template prose must flow (long/short rhythm), not read as stitched short
-/// sentences. Thresholds here are the same ones the harness `titles` / `prose` reports print.</summary>
+/// sentences. Thresholds are the ProseMetrics/TitleMetrics acceptance bars.</summary>
 public class ProseAndTitleQualityTests
 {
     private static TemplateStoryEngine Engine(int seed) => new(() => seed);
@@ -208,7 +208,7 @@ public class ProseAndTitleQualityTests
     {
         var profile = TestEnv.Profile();
         profile.RecentTitles = ["The Lantern Fox", "The Softest Sound"];
-        var prompt = LlamaPrompts.OutlineUser(profile, null, 5);
+        var prompt = StoryPrompts.OutlineUser(profile, null, 5);
         Assert.Contains("\"The Lantern Fox\"; \"The Softest Sound\"", prompt);
         Assert.Contains("do not reuse their distinctive words", prompt);
         Assert.Contains("do not repeat their shapes", prompt);
@@ -217,9 +217,9 @@ public class ProseAndTitleQualityTests
     [Fact]
     public void OutlinePrompt_UsesShapeHint_NoLiteralExampleTitles_AndSkipsNegativesWhenShelfEmpty()
     {
-        var prompt = LlamaPrompts.OutlineUser(TestEnv.Profile(), null, 5, LlamaPrompts.TitleShapeHints[0]);
+        var prompt = StoryPrompts.OutlineUser(TestEnv.Profile(), null, 5, StoryPrompts.TitleShapeHints[0]);
         Assert.Contains("Vary the title's shape", prompt);
-        Assert.Contains("Tonight, shape the title as: " + LlamaPrompts.TitleShapeHints[0], prompt);
+        Assert.Contains("Tonight, shape the title as: " + StoryPrompts.TitleShapeHints[0], prompt);
         Assert.Contains("Never shape it as \"The <adjective> <noun>\"", prompt);
         Assert.DoesNotContain("recent stories were titled", prompt);
         // A small model copies literal example titles verbatim (observed 2026-07-31), so
@@ -231,17 +231,17 @@ public class ProseAndTitleQualityTests
     [Fact]
     public void TitleShapeHints_CoverAtLeastFiveDistinctShapes()
     {
-        Assert.True(LlamaPrompts.TitleShapeHints.Length >= 5);
-        Assert.Equal(LlamaPrompts.TitleShapeHints.Length, LlamaPrompts.TitleShapeHints.Distinct().Count());
+        Assert.True(StoryPrompts.TitleShapeHints.Length >= 5);
+        Assert.Equal(StoryPrompts.TitleShapeHints.Length, StoryPrompts.TitleShapeHints.Distinct().Count());
     }
 
     [Fact]
     public void SystemPrompts_CarryFlowingProseGuidance_PerBand()
     {
-        Assert.Contains("Never write three short sentences in a row", LlamaPrompts.SystemPrompt(AgeBand.Age5To6));
-        Assert.Contains("Never write three short sentences in a row", LlamaPrompts.SystemPrompt(AgeBand.Age7To8));
+        Assert.Contains("Never write three short sentences in a row", StoryPrompts.SystemPrompt(AgeBand.Age5To6));
+        Assert.Contains("Never write three short sentences in a row", StoryPrompts.SystemPrompt(AgeBand.Age7To8));
         // 3–4 keeps short sentences with only a gentle stretch — no flowing mandate.
-        var young = LlamaPrompts.SystemPrompt(AgeBand.Age3To4);
+        var young = StoryPrompts.SystemPrompt(AgeBand.Age3To4);
         Assert.Contains("short sentences of five to ten words", young);
         Assert.DoesNotContain("Never write three short sentences in a row", young);
     }
@@ -251,7 +251,7 @@ public class ProseAndTitleQualityTests
     {
         var profile = TestEnv.Profile();
         var outline = new StoryOutline { Title = "T", Moral = "m", Scenes = [new SceneOutline { Id = 1, Summary = "s" }] };
-        var prompt = LlamaPrompts.SceneUser(profile, outline, outline.Scenes[0], string.Empty);
+        var prompt = StoryPrompts.SceneUser(profile, outline, outline.Scenes[0], string.Empty);
         Assert.Contains("concrete sensory details", prompt);
         Assert.Contains("gentle surprise", prompt);
     }
@@ -259,7 +259,7 @@ public class ProseAndTitleQualityTests
     [Fact]
     public void PolishPrompt_MergesChoppyRuns_AndKeepsPacingPunctuation()
     {
-        var prompt = LlamaPrompts.PolishUser(TestEnv.Profile(), "text");
+        var prompt = StoryPrompts.PolishUser(TestEnv.Profile(), "text");
         Assert.Contains("merge them into one longer flowing sentence", prompt);
         Assert.Contains("ellipsis", prompt);        // pacing channel stays
         Assert.Contains("em-dash", prompt);

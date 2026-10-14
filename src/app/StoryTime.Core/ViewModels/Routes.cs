@@ -1,7 +1,7 @@
 namespace StoryTime.Core.ViewModels;
 
 /// <summary>Shell route names (architecture §12). None collides with the single root tab
-/// route ("home") — a push route starting with a tab route name crashes Shell on Android.</summary>
+/// route ("home") — a push route starting with a tab route name crashes Shell (MAUI 10.0.60).</summary>
 public static class Routes
 {
     public const string Home = "//home";
@@ -18,6 +18,6 @@ public static class Routes
     public const string Library = "library";
     public const string Premium = "premium";
     /// <summary>Pushed from Settings (inside the biometric-gated flow — no extra gate).
-    /// Flat name; does not start with the "home" tab route (Android Shell gotcha).</summary>
+    /// Flat name; does not start with the "home" tab route (Shell gotcha).</summary>
     public const string ContentFilters = "content-filters";
 }

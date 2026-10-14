@@ -37,13 +37,13 @@ public sealed class StoryPipeline
     public const int ScenesPerWindow = 2;
 
     /// <summary>Devices under this physical-memory floor fall back to the sequential
-    /// strategy (LLM ~1.2 GB mmap + Kokoro fp32 ~0.4 GB co-resident needs headroom).</summary>
+    /// strategy (co-resident text + speech engines need headroom; tuned for the previous
+    /// bundled-model engines — re-measure once the Apple engines land).</summary>
     public const long OverlapMinPhysicalMemoryBytes = 6L * 1024 * 1024 * 1024;
 
-    /// <summary>Overlap also needs CPU headroom: llama and sherpa each run min(4, cores)
-    /// threads, and on a 4-core device the co-resident stages thrash each other — the
-    /// 4-vCPU emulator measured overlapped SLOWER than sequential+KV (16.6 vs 10.7 min,
-    /// 2026-07-31). Six or more cores (every 8 GB-class phone) → overlap wins.</summary>
+    /// <summary>Overlap also needs CPU headroom: on a 4-core device the co-resident stages
+    /// thrashed each other and overlapped measured SLOWER than sequential (16.6 vs 10.7 min,
+    /// 2026-07-31, bundled-model engines). Six or more cores → overlap wins.</summary>
     public const int OverlapMinProcessorCount = 6;
 
     private const string OverlappedName = "overlapped";
@@ -53,7 +53,7 @@ public sealed class StoryPipeline
 
     /// <summary>Fixed scene-beat pause carried at the head of every narration window ≥ 1
     /// (the inter-window paragraph beat; windows are always paragraph boundaries).</summary>
-    private const double InterWindowGapSeconds = Engines.Sherpa.ProsodyDirector.ParagraphBaseSeconds;
+    private const double InterWindowGapSeconds = Engines.Narration.ProsodyDirector.ParagraphBaseSeconds;
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = false };
 
@@ -73,7 +73,7 @@ public sealed class StoryPipeline
     private readonly object _progressGate = new();
     private int _lastPercent;
 
-    /// <summary>Optional measurement sink (harness `weave --timings`); null in the app.</summary>
+    /// <summary>Optional measurement sink (measurement runs, tests); null in the app.</summary>
     public WeaveTelemetry? Telemetry { get; set; }
 
     public StoryPipeline(
@@ -301,7 +301,7 @@ public sealed class StoryPipeline
         // ---- Stage 4 · Narration, teaser first (weight 50) ----
         stageStart = swTotal.Elapsed;
         // Paragraph-aware script: prosody engines render paragraph breaks as scene-beat pauses.
-        var script = Engines.Sherpa.SentenceSplitter.SplitScript(polished);
+        var script = Engines.Narration.SentenceSplitter.SplitScript(polished);
 
         var teaserPath = Path.Combine(_options.MediaDirectory, $"story-{story.Id}-teaser.wav");
         var teaser = await _tts.SynthesizeAsync(script.Take(3), profile.Voice, teaserPath,
@@ -506,7 +506,7 @@ public sealed class StoryPipeline
             {
                 if (narrationStart == TimeSpan.MinValue) narrationStart = swTotal.Elapsed;
                 var isLast = w == windows.Count - 1;
-                var script = Engines.Sherpa.SentenceSplitter.SplitScript(text);
+                var script = Engines.Narration.SentenceSplitter.SplitScript(text);
                 var windowScript = new NarrationScript
                 {
                     SentenceList = script.SentenceList,
@@ -590,7 +590,7 @@ public sealed class StoryPipeline
         double totalDuration;
         if (partPaths.All(File.Exists))
         {
-            totalDuration = Engines.Sherpa.WavAudio.Concat(audioPath, partPaths);
+            totalDuration = Engines.Narration.WavAudio.Concat(audioPath, partPaths);
         }
         else if (File.Exists(audioPath))
         {
@@ -760,7 +760,7 @@ public sealed class StoryPipeline
     /// splitter treats paragraph blocks independently, so split(join(windows)) is exactly
     /// the concatenation of the per-window splits the narration used.</summary>
     public static List<string> SplitSentences(string text)
-        => Engines.Sherpa.SentenceSplitter.Split(text);
+        => Engines.Narration.SentenceSplitter.Split(text);
 
     private static string Tail(string sceneText)
     {

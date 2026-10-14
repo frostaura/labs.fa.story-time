@@ -3,8 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>StoryTime.Core</RootNamespace>
-    <!-- Engines/Llama/LlamaNative.cs (native-AI agent) uses pointer marshalling -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,10 +12,11 @@
     <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
     <!-- bundle_green lifts the NU1903 advisory on sqlite-net-pcl's transitive raw bundle -->
     <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
-    <!-- SherpaTtsEngine (Engines/Sherpa): managed C# wrapper over sherpa-onnx C API.
-         Pulls RID-specific native runtimes (osx-arm64 desktop, android-arm64) automatically;
-         no iOS natives exist in this package — iOS uses the platform-TTS fallback for now. -->
-    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Pipeline internals (window planning, preview runner) are pinned by the unit tests. -->
+    <InternalsVisibleTo Include="StoryTime.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>

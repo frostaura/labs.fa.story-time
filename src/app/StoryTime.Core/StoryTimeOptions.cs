@@ -9,8 +9,8 @@ public sealed class StoryTimeOptions
     /// <summary>Directory where narration audio and poster thumbnails are written.</summary>
     public string MediaDirectory { get; set; } = Path.Combine(Path.GetTempPath(), "storytime-media");
 
-    /// <summary>Force a pipeline strategy (harness --strategy / tests). Null → the pipeline
-    /// picks: Overlapped unless the device is low-memory (&lt; 6 GB or platform lowRam flag),
+    /// <summary>Force a pipeline strategy (tests, measurement runs). Null → the pipeline
+    /// picks: Overlapped unless the device is low-memory (&lt; 6 GB or platform low-RAM flag),
     /// then Sequential. Additive 2026-07-31.</summary>
     public Abstractions.WeaveStrategy? ForcedWeaveStrategy { get; set; }
 }

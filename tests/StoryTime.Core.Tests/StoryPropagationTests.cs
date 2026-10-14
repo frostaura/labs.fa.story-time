@@ -234,9 +234,9 @@ public class StoryPropagationTests : IAsyncLifetime
         Assert.Equal(10, _library.Stories.Count);   // "Every story" means every story
     }
 
-    /// <summary>A new story is inserted at index 0, and Android's RecyclerView anchors on
+    /// <summary>A new story is inserted at index 0, and the native carousel anchors on
     /// the card it was already showing — so without this signal tonight's story sits
-    /// off-screen to the left (observed on the emulator 2026-07-31). It must fire exactly
+    /// off-screen to the left (observed 2026-07-31). It must fire exactly
     /// when the head changes identity, and stay quiet on a plain in-place refresh.</summary>
     [Fact]
     public async Task NewNewestStory_SignalsTheCarouselToSnapBackToTheHead()

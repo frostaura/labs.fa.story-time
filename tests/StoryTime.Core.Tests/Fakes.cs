@@ -51,7 +51,7 @@ public sealed class FakeTtsEngine : ITtsEngine
             t += dur;
         }
         // Real (silent) PCM so WavAudio.Concat/ReadDurationSeconds work on the output.
-        StoryTime.Core.Engines.Sherpa.WavAudio.Write(outputPath,
+        StoryTime.Core.Engines.Narration.WavAudio.Write(outputPath,
             [new short[(int)(t * SampleRate)]], SampleRate);
         progress?.Report(0.5);
         progress?.Report(1.0);

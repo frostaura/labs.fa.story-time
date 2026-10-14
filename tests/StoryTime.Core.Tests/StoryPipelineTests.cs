@@ -396,7 +396,7 @@ public class StoryPipelineTests
         }
         Assert.True(File.Exists(story.AudioPath));
         Assert.Equal(story.DurationSeconds,
-            StoryTime.Core.Engines.Sherpa.WavAudio.ReadDurationSeconds(story.AudioPath), 2);
+            StoryTime.Core.Engines.Narration.WavAudio.ReadDurationSeconds(story.AudioPath), 2);
         // Part files are working files — cleaned up after assembly.
         Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(story.AudioPath)!, "*-part*.wav"));
     }
@@ -504,7 +504,7 @@ public class StoryPipelineTests
         h.Capabilities = new FakeCapabilities { IsLowMemoryDevice = true };
         Assert.Equal(WeaveStrategy.Sequential, h.Pipeline().PickStrategy());
 
-        // 4-core device (emulator-shaped): co-residency thrashes → sequential is faster.
+        // 4-core device: co-residency thrashes → sequential is faster.
         h.Capabilities = new FakeCapabilities { ProcessorCount = 4 };
         Assert.Equal(WeaveStrategy.Sequential, h.Pipeline().PickStrategy());
 

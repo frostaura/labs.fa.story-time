@@ -156,10 +156,10 @@ public sealed partial class HomeViewModel : ObservableObject
         StoryListItem.SyncInto(Stories, visible);
         OnPropertyChanged(nameof(HasStories));
 
-        // A newly-woven story is inserted at index 0, and Android's RecyclerView anchors on
-        // the item it was already showing — so the carousel kept the OLD first card on
-        // screen and tonight's story sat off to the left, unseen (observed on the emulator
-        // 2026-07-31). The view listens for this and snaps back to the head.
+        // A newly-woven story is inserted at index 0, and the native carousel anchors on
+        // the item it was already showing — so it kept the OLD first card on screen and
+        // tonight's story sat off to the left, unseen (observed 2026-07-31). The view
+        // listens for this and snaps back to the head.
         if (Stories.Count > 0 && Stories[0].Id != previousHeadId)
             HeadStoryChanged?.Invoke(this, EventArgs.Empty);
     }

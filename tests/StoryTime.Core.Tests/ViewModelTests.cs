@@ -394,11 +394,10 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task IosCopy_UsesResumeWording()
+    public async Task WeavingCopy_UsesLoomHumWording()
     {
-        _vm.IsIos = true;
         await _vm.ShowForWeaveAsync();
-        Assert.Equal(WeaveSheetViewModel.BackgroundHintIos, _vm.SubText);
+        Assert.Equal(WeaveSheetViewModel.BackgroundHint, _vm.SubText);
     }
 
     [Fact]

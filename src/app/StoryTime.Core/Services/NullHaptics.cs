@@ -2,7 +2,7 @@ using StoryTime.Core.Abstractions;
 
 namespace StoryTime.Core.Services;
 
-/// <summary>No-op haptics for tests, the harness, and non-mobile TFMs. The App registers
+/// <summary>No-op haptics for tests and the headless net10.0 Core. The App registers
 /// PlatformHaptics before AddStoryTimeCore, which wins via TryAdd ordering.</summary>
 public sealed class NullHaptics : IHaptics
 {

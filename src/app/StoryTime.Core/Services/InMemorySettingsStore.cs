@@ -3,7 +3,7 @@ using StoryTime.Core.Abstractions;
 
 namespace StoryTime.Core.Services;
 
-/// <summary>Core fallback for tests and the harness. App registers PreferencesSettingsStore,
+/// <summary>Core fallback for tests. App registers PreferencesSettingsStore,
 /// which wins via TryAdd ordering.</summary>
 public sealed class InMemorySettingsStore : ISettingsStore
 {

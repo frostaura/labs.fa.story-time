@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace StoryTime.Core.Engines.Sherpa;
+namespace StoryTime.Core.Engines.Narration;
 
 /// <summary>
 /// Splits story prose into narration sentences for per-sentence TTS synthesis.

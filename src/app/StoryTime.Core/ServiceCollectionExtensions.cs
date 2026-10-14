@@ -20,8 +20,8 @@ public static class ServiceCollectionExtensions
 
         // Core services
         services.TryAddSingleton<IClock, SystemClock>();
-        // Weave-strategy memory signal (overlapped vs sequential). TryAdd so a platform
-        // head may pre-register a richer signal (Android lowRam flag) without Core changes.
+        // Weave-strategy memory signal (overlapped vs sequential). TryAdd so the App head
+        // may pre-register a richer signal without Core changes.
         services.TryAddSingleton<IDeviceCapabilities, DefaultDeviceCapabilities>();
         services.TryAddSingleton<ISettingsStore, InMemorySettingsStore>();
         services.TryAddSingleton<IHaptics, NullHaptics>();
@@ -42,8 +42,10 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<PosterArtRefresher>();
         services.TryAddSingleton<StoryPipeline>();
 
-        // Engines — Phase C swaps these registrations for model-gated selection
-        // (LlamaStoryEngine / SherpaTtsEngine chosen by IModelProvider.Availability).
+        // Story engine fallback — the deterministic template engine. TryAdd: the App head
+        // registers its engine first (MauiProgram.RegisterStoryEngine, the swap point for the
+        // Apple Foundation Models engine), so this only serves tests and headless hosts.
+        // ITtsEngine has no Core default: speech is platform-only (MauiProgram.RegisterTtsEngine).
         services.TryAddSingleton<IStoryEngine>(_ => new TemplateStoryEngine(() => Random.Shared.Next()));
 
         // Shared app state

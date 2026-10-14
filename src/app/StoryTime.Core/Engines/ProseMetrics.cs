@@ -1,11 +1,11 @@
-using StoryTime.Core.Engines.Sherpa;
+using StoryTime.Core.Engines.Narration;
 
 namespace StoryTime.Core.Engines;
 
 /// <summary>Deterministic prose-rhythm metrics (founder discipline: metrics, not vibes —
 /// 2026-07-31 title/prose quality pass). Sentence segmentation is the canonical
 /// SentenceSplitter, so these numbers describe exactly what the narrator will read.
-/// Used by the harness `prose` report and pinned by unit tests.</summary>
+/// Pinned by unit tests.</summary>
 public static class ProseMetrics
 {
     /// <summary>A sentence under this many words counts as "short" for rhythm metrics.</summary>
@@ -64,7 +64,7 @@ public static class ProseMetrics
 }
 
 /// <summary>Title similarity + shape classification for the title-variety guard
-/// (TemplateStoryEngine redraw, harness `titles` report, unit thresholds).</summary>
+/// (TemplateStoryEngine redraw, unit thresholds).</summary>
 public static class TitleMetrics
 {
     private static readonly HashSet<string> Stopwords = new(StringComparer.OrdinalIgnoreCase)

@@ -5,10 +5,4 @@
     <RootNamespace>StoryTime.Contracts</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- GBNF grammars + JSON schemas ship as embedded resources -->
-    <EmbeddedResource Include="Grammars/**/*.gbnf" />
-    <EmbeddedResource Include="Schemas/**/*.json" />
-  </ItemGroup>
-
 </Project>

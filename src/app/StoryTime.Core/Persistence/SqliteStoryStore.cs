@@ -16,7 +16,7 @@ public sealed class SqliteStoryStore : IStoryStore, IAsyncDisposable
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private SQLiteAsyncConnection? _db;
 
-    /// <summary>The catalog is optional so tests and the harness can new this up bare;
+    /// <summary>The catalog is optional so tests can new this up bare;
     /// in the app it is always injected, which is what makes "every story mutation
     /// notifies every list" true by construction rather than by discipline.</summary>
     public SqliteStoryStore(StoryTimeOptions options, IStoryCatalog? catalog = null)

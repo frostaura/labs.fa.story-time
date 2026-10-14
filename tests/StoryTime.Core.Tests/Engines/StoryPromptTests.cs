@@ -1,10 +1,10 @@
 using StoryTime.Contracts;
-using StoryTime.Core.Engines.Llama;
+using StoryTime.Core.Engines.Prompts;
 using Xunit;
 
 namespace StoryTime.Core.Tests.Engines;
 
-public class LlamaPromptTests
+public class StoryPromptTests
 {
     [Theory]
     [InlineData(AgeBand.Age3To4)]
@@ -12,7 +12,7 @@ public class LlamaPromptTests
     [InlineData(AgeBand.Age7To8)]
     public void EveryBand_CarriesTheHardExclusions(AgeBand band)
     {
-        var prompt = LlamaPrompts.SystemPrompt(band);
+        var prompt = StoryPrompts.SystemPrompt(band);
         Assert.Contains("no violence", prompt);
         Assert.Contains("no weapons", prompt);
         Assert.Contains("no death", prompt);
@@ -23,7 +23,7 @@ public class LlamaPromptTests
     [Fact]
     public void Band3To4_HasVocabularyCeilingAndNoPeril()
     {
-        var prompt = LlamaPrompts.SystemPrompt(AgeBand.Age3To4);
+        var prompt = StoryPrompts.SystemPrompt(AgeBand.Age3To4);
         Assert.Contains("3 to 4", prompt);
         Assert.Contains("five to ten words", prompt);
         Assert.Contains("no peril of any kind", prompt);
@@ -32,7 +32,7 @@ public class LlamaPromptTests
     [Fact]
     public void Band5To6_AllowsTinyAdventuresOnly()
     {
-        var prompt = LlamaPrompts.SystemPrompt(AgeBand.Age5To6);
+        var prompt = StoryPrompts.SystemPrompt(AgeBand.Age5To6);
         Assert.Contains("5 to 6", prompt);
         Assert.Contains("nothing is ever dangerous", prompt);
     }
@@ -40,7 +40,7 @@ public class LlamaPromptTests
     [Fact]
     public void Band7To8_AllowsGentleSuspenseThatResolves()
     {
-        var prompt = LlamaPrompts.SystemPrompt(AgeBand.Age7To8);
+        var prompt = StoryPrompts.SystemPrompt(AgeBand.Age7To8);
         Assert.Contains("7 to 8", prompt);
         Assert.Contains("Gentle suspense is allowed", prompt);
         Assert.Contains("resolve kindly", prompt);
@@ -55,7 +55,7 @@ public class LlamaPromptTests
     public void EveryBand_CarriesTheHardExclusions_AtBraveishToo(AgeBand band)
     {
         // The level must never weaken a safety layer: the absolute rules are identical.
-        var prompt = LlamaPrompts.SystemPrompt(band, ContentFilterLevel.Braveish);
+        var prompt = StoryPrompts.SystemPrompt(band, ContentFilterLevel.Braveish);
         Assert.Contains("no violence", prompt);
         Assert.Contains("no weapons", prompt);
         Assert.Contains("no death", prompt);
@@ -68,13 +68,13 @@ public class LlamaPromptTests
     [InlineData(AgeBand.Age7To8)]
     public void Braveish_WidensThemePaletteForOlderBands(AgeBand band)
     {
-        var braveish = LlamaPrompts.SystemPrompt(band, ContentFilterLevel.Braveish);
+        var braveish = StoryPrompts.SystemPrompt(band, ContentFilterLevel.Braveish);
         Assert.Contains("a small brave journey", braveish);
         Assert.Contains("a puzzle to solve", braveish);
         Assert.Contains("a storm watched safely from indoors", braveish);
         Assert.Contains("a lost thing found", braveish);
         // Widening is purely additive — everything in the Gentle prompt survives.
-        var gentle = LlamaPrompts.SystemPrompt(band);
+        var gentle = StoryPrompts.SystemPrompt(band);
         Assert.DoesNotContain("Brave-ish", gentle);
         Assert.DoesNotContain("a small brave journey", gentle);
     }
@@ -84,8 +84,8 @@ public class LlamaPromptTests
     {
         // The youngest band tones Brave-ish down automatically — byte-identical prompt.
         Assert.Equal(
-            LlamaPrompts.SystemPrompt(AgeBand.Age3To4, ContentFilterLevel.Gentle),
-            LlamaPrompts.SystemPrompt(AgeBand.Age3To4, ContentFilterLevel.Braveish));
+            StoryPrompts.SystemPrompt(AgeBand.Age3To4, ContentFilterLevel.Gentle),
+            StoryPrompts.SystemPrompt(AgeBand.Age3To4, ContentFilterLevel.Braveish));
     }
 
     [Theory]
@@ -93,23 +93,13 @@ public class LlamaPromptTests
     [InlineData(AgeBand.Age5To6)]
     [InlineData(AgeBand.Age7To8)]
     public void DefaultLevel_IsGentle(AgeBand band) =>
-        Assert.Equal(LlamaPrompts.SystemPrompt(band), LlamaPrompts.SystemPrompt(band, ContentFilterLevel.Gentle));
-
-    [Fact]
-    public void ChatTemplate_UsesQwen3ChatMlWithNoThink()
-    {
-        var chat = LlamaPrompts.Chat("SYS", "USER");
-        Assert.Contains("<|im_start|>system\nSYS /no_think<|im_end|>", chat);
-        Assert.Contains("<|im_start|>user\nUSER<|im_end|>", chat);
-        // assistant pre-filled with an empty think block so grammar-constrained output starts clean
-        Assert.EndsWith("<|im_start|>assistant\n<think>\n\n</think>\n\n", chat);
-    }
+        Assert.Equal(StoryPrompts.SystemPrompt(band), StoryPrompts.SystemPrompt(band, ContentFilterLevel.Gentle));
 
     [Fact]
     public void OutlinePrompt_CarriesProfileAndSceneCount()
     {
         var profile = new ChildProfile { Name = "Riley", Age = 5, Interests = ["foxes", "ocean"] };
-        var prompt = LlamaPrompts.OutlineUser(profile, null, 6);
+        var prompt = StoryPrompts.OutlineUser(profile, null, 6);
         Assert.Contains("Riley", prompt);
         Assert.Contains("foxes, ocean", prompt);
         Assert.Contains("exactly 6 scenes", prompt);
@@ -126,7 +116,7 @@ public class LlamaPromptTests
             Characters = [new CharacterCard { Name = "Pip", Kind = "fox", Trait = "curious" }],
             Places = ["the quiet shore"],
         };
-        var prompt = LlamaPrompts.OutlineUser(profile, bible, 5);
+        var prompt = StoryPrompts.OutlineUser(profile, bible, 5);
         Assert.Contains("Pip the curious fox", prompt);
         Assert.Contains("Previously: Pip found a lantern.", prompt);
     }
@@ -140,8 +130,8 @@ public class LlamaPromptTests
             Title = "T",
             Scenes = [new SceneOutline { Id = 1 }, new SceneOutline { Id = 2 }],
         };
-        var mid = LlamaPrompts.SceneUser(profile, outline, outline.Scenes[0], "");
-        var final = LlamaPrompts.SceneUser(profile, outline, outline.Scenes[1], "tail text");
+        var mid = StoryPrompts.SceneUser(profile, outline, outline.Scenes[0], "");
+        var final = StoryPrompts.SceneUser(profile, outline, outline.Scenes[1], "tail text");
         Assert.Contains("settled, never on a cliffhanger", mid);
         Assert.Contains("final scene", final);
         Assert.Contains("drifting toward sleep", final);
@@ -152,7 +142,7 @@ public class LlamaPromptTests
     public void PolishWindowUser_MiddleWindow_ForbidsClosingTheStory()
     {
         var profile = new ChildProfile { Name = "Aria", Age = 6 };
-        var mid = LlamaPrompts.PolishWindowUser(profile, "Window text.", "previous tail.", isFinalWindow: false);
+        var mid = StoryPrompts.PolishWindowUser(profile, "Window text.", "previous tail.", isFinalWindow: false);
         Assert.Contains("middle of a bedtime story", mid);
         Assert.Contains("Do NOT end the story here", mid);
         Assert.Contains("...previous tail.", mid);
@@ -166,7 +156,7 @@ public class LlamaPromptTests
     public void PolishWindowUser_FinalWindow_ClosesGently()
     {
         var profile = new ChildProfile { Name = "Aria", Age = 6 };
-        var final = LlamaPrompts.PolishWindowUser(profile, "Window text.", "previous tail.", isFinalWindow: true);
+        var final = StoryPrompts.PolishWindowUser(profile, "Window text.", "previous tail.", isFinalWindow: true);
         Assert.Contains("closing passage", final);
         Assert.Contains("soft goodnight", final);
         Assert.DoesNotContain("Do NOT end the story here", final);

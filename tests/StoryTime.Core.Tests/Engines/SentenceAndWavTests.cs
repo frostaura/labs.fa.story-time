@@ -1,5 +1,5 @@
 using StoryTime.Core.Abstractions;
-using StoryTime.Core.Engines.Sherpa;
+using StoryTime.Core.Engines.Narration;
 using Xunit;
 
 namespace StoryTime.Core.Tests.Engines;
@@ -151,7 +151,7 @@ public class WavAudioTests
     [Fact]
     public void TimestampMath_AccumulatesLikeTheEngine_IncludingPlannedGaps()
     {
-        // Mirror of SherpaTtsEngine accumulation with the ProsodyDirector plan: sentences
+        // Mirror of a PCM narration engine's accumulation with the ProsodyDirector plan: sentences
         // of 1.0s and 0.5s with the planned (content-aware, varied) gap between them —
         // timestamps include exactly the inserted gap, so player seeks stay accurate.
         const int rate = 24000;

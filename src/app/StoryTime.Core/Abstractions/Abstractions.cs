@@ -5,7 +5,9 @@ namespace StoryTime.Core.Abstractions;
 // ============ Engine seams (binding — see docs/architecture/overview.md §2) ============
 
 /// <summary>Text generation: outline, scene prose, polish, poster spec. Implementations:
-/// TemplateStoryEngine (deterministic, always available) and LlamaStoryEngine (model-gated).</summary>
+/// TemplateStoryEngine (deterministic, always available — the current default) and, from the
+/// Apple-models lane, an on-device Apple Foundation Models engine (iOS 26+). Swap point:
+/// MauiProgram.RegisterStoryEngine.</summary>
 public interface IStoryEngine
 {
     string Name { get; }
@@ -24,7 +26,10 @@ public interface IStoryEngine
     Task<string> RepairPassageAsync(ChildProfile profile, string passage, string reason, CancellationToken ct);
 }
 
-/// <summary>Sentence-batch TTS. Implementations: PlatformTtsEngine (degraded fallback) and SherpaTtsEngine.</summary>
+/// <summary>Sentence-batch TTS. Implementations: PlatformTtsEngine (MAUI TextToSpeech — the
+/// current default) and, from the narration lane, an AVSpeechSynthesizer engine that renders
+/// to PCM and runs it through Engines/Narration (ProsodyDirector + AudioShaper cozy
+/// mastering). Swap point: MauiProgram.RegisterTtsEngine.</summary>
 public interface ITtsEngine
 {
     string Name { get; }
@@ -33,7 +38,7 @@ public interface ITtsEngine
     /// <summary>Render sentences to a single audio file; returns manifest with per-sentence timestamps.</summary>
     Task<NarrationManifest> SynthesizeAsync(IReadOnlyList<string> sentences, NarratorVoice voice, string outputPath,
         IProgress<double>? progress, CancellationToken ct);
-    /// <summary>Paragraph-aware synthesis: engines that shape prosody (SherpaTtsEngine) honor
+    /// <summary>Paragraph-aware synthesis: engines that shape prosody (ProsodyDirector) honor
     /// paragraph boundaries as longer scene-beat pauses. Default falls back to the flat call,
     /// so existing engines (PlatformTtsEngine) need no change.</summary>
     Task<NarrationManifest> SynthesizeAsync(NarrationScript script, NarratorVoice voice, string outputPath,
@@ -136,9 +141,9 @@ public interface INotificationService
     Task ShowStoryReadyAsync(string childName, string storyTitle);
 }
 
-/// <summary>Semantic haptic feedback. Platform impls map to UIFeedbackGenerator (iOS) and
-/// VibrationEffect predefined effects (Android); both honour the OS haptics settings and
-/// no-op gracefully when hardware is absent. NullHaptics serves tests and the harness.
+/// <summary>Semantic haptic feedback. The platform impl maps to UIFeedbackGenerator, honours
+/// the OS haptics settings and no-ops gracefully when hardware is absent. NullHaptics serves
+/// tests.
 /// Wire semantically, never on scroll or passive events.</summary>
 public interface IHaptics
 {
@@ -167,76 +172,35 @@ public interface IHaptics
 public enum WeaveStrategy
 {
     /// <summary>Classic order: all scenes → whole-story polish → poster → narration.
-    /// LLM and TTS are never co-resident — the memory-safe path for low-RAM devices.</summary>
+    /// Text and speech engines are never co-resident — the memory-safe path for low-RAM devices.</summary>
     Sequential,
     /// <summary>Producer–consumer: polish per ~2-scene window as scenes complete; narration
     /// consumes polished windows while later scenes still generate; poster runs after the
-    /// final scene's LLM work, in parallel with the remaining narration. LLM + TTS are
-    /// co-resident BY DESIGN (~1.6 GB models on ≥ 6 GB devices; see architecture §6).</summary>
+    /// final scene's text work, in parallel with the remaining narration. Text + speech
+    /// engines are co-resident BY DESIGN on capable devices.</summary>
     Overlapped,
 }
 
 /// <summary>Device memory signal for the strategy pick. The Core default reads the GC's
-/// view of total addressable memory; platform heads may pre-register a richer
-/// implementation (Android ActivityManager.isLowRamDevice, iOS NSProcessInfo). Additive
-/// 2026-07-31.</summary>
+/// view of total addressable memory; the App head may pre-register a richer
+/// implementation (NSProcessInfo). Additive 2026-07-31.</summary>
 public interface IDeviceCapabilities
 {
     long PhysicalMemoryBytes { get; }
-    /// <summary>Platform low-RAM flag (Android lowRam); Core default is false.</summary>
+    /// <summary>Platform low-RAM flag; Core default is false.</summary>
     bool IsLowMemoryDevice { get; }
-    /// <summary>Logical processor count. Overlap needs real CPU headroom: llama and
-    /// sherpa each run min(4, cores) threads, so on ≤ 4-core devices co-residency
-    /// thrashes and sequential is FASTER (measured on the 4-vCPU emulator, 2026-07-31).</summary>
+    /// <summary>Logical processor count. Overlap needs real CPU headroom: on ≤ 4-core
+    /// devices co-resident text + speech work thrashes and sequential is FASTER
+    /// (measured 2026-07-31; re-measure once the Apple engines land).</summary>
     int ProcessorCount => Environment.ProcessorCount;
 }
 
 public sealed class DefaultDeviceCapabilities : IDeviceCapabilities
 {
-    /// <summary>Real device RAM. On Android/Linux this reads /proc/meminfo MemTotal —
-    /// the Mono GC's TotalAvailableMemoryBytes under-reports there (heap budget, not
-    /// device memory; observed forcing the sequential fallback on an 8 GB emulator,
-    /// 2026-07-31). Elsewhere (macOS, iOS) the GC signal reports physical memory.</summary>
-    public long PhysicalMemoryBytes
-    {
-        get
-        {
-            try
-            {
-                if (File.Exists("/proc/meminfo"))
-                {
-                    foreach (var line in File.ReadLines("/proc/meminfo"))
-                    {
-                        if (!line.StartsWith("MemTotal:", StringComparison.Ordinal)) break;
-                        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length >= 2 && long.TryParse(parts[1], out var kb)) return kb * 1024;
-                        break;
-                    }
-                }
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-            return GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
-        }
-    }
+    /// <summary>Device memory as the GC sees it — on iOS this reports physical memory.</summary>
+    public long PhysicalMemoryBytes => GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
 
     public bool IsLowMemoryDevice => false;
-}
-
-public enum ModelKind { Llm, Tts }
-
-public sealed class ModelAvailability
-{
-    public bool LlmReady { get; init; }
-    public bool TtsReady { get; init; }
-    public string? LlmPath { get; init; }
-    public string? TtsDirectory { get; init; }
-}
-
-/// <summary>Resolves model files: AppData override first, then bundle/asset-pack. Debug builds may fetch.</summary>
-public interface IModelProvider
-{
-    Task<ModelAvailability> GetAvailabilityAsync(CancellationToken ct);
 }
 
 /// <summary>WAV → m4a/AAC via the platform encoder; identity fallback returns the wav.</summary>

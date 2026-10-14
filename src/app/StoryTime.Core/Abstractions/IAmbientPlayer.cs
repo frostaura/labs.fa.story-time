@@ -1,8 +1,8 @@
 namespace StoryTime.Core.Abstractions;
 
 /// <summary>Looping ambient-bed playback with live volume, mixing WITH (never instead of)
-/// the narration player. Platform implementations (AVAudioPlayer / Android MediaPlayer)
-/// fade in on start and fade out on stop (~1.5 s) and ramp volume changes smoothly; the
+/// the narration player. The platform implementation (AVAudioPlayer)
+/// fades in on start, fades out on stop (~1.5 s) and ramps volume changes smoothly; the
 /// ViewModel owns the ducking policy and only ever states a target volume. (Additive
 /// Premium-music seam, 2026-07-30.)</summary>
 public interface IAmbientPlayer

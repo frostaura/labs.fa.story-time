@@ -30,8 +30,8 @@ public sealed class StoryChangedEventArgs(StoryChangeKind kind, int storyId, int
 ///
 /// Every list view-model subscribes and reloads (coalesced — see
 /// <see cref="Services.CoalescingReloader"/>). Raises are marshalled to the UI thread by
-/// the App layer through <see cref="Services.StoryCatalog.Dispatcher"/>; tests and the
-/// harness get direct, synchronous invocation.</summary>
+/// the App layer through <see cref="Services.StoryCatalog.Dispatcher"/>; tests get
+/// direct, synchronous invocation.</summary>
 public interface IStoryCatalog
 {
     event EventHandler<StoryChangedEventArgs>? Changed;

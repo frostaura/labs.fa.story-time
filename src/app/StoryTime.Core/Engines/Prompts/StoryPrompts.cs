@@ -1,27 +1,17 @@
 using System.Text;
 using StoryTime.Contracts;
 
-namespace StoryTime.Core.Engines.Llama;
+namespace StoryTime.Core.Engines.Prompts;
 
 /// <summary>
-/// Prompt construction for LlamaStoryEngine: Qwen3 ChatML formatting with /no_think,
-/// age-banded system prompts (safety layer 1 of the kid-safety stack), and the
-/// per-stage user prompts. Kept engine-local (Core/Prompts belongs to another workstream).
+/// Engine-agnostic prompt text for any language-model story engine: age-banded system
+/// prompts (the model-side layer of the kid-safety stack; StoryPipeline's SafetyFilter +
+/// repair loop still checks every passage) and the per-stage user prompts (outline, scene, polish, repair, poster).
+/// Plain strings with no chat-template markup — an engine wraps them in whatever session
+/// shape its model expects (instructions + prompt for Apple Foundation Models).
 /// </summary>
-internal static class LlamaPrompts
+public static class StoryPrompts
 {
-    /// <summary>
-    /// Qwen3 chat template (ChatML) built by hand — stable for Qwen3, avoids jinja.
-    /// The assistant turn is pre-filled with an empty think block so generation starts
-    /// directly on content (required under GBNF grammar, which would otherwise block "&lt;think&gt;").
-    /// </summary>
-    public static string Chat(string system, string user) =>
-        new StringBuilder()
-            .Append("<|im_start|>system\n").Append(system).Append(" /no_think<|im_end|>\n")
-            .Append("<|im_start|>user\n").Append(user).Append("<|im_end|>\n")
-            .Append("<|im_start|>assistant\n<think>\n\n</think>\n\n")
-            .ToString();
-
     // ---------------- age-banded system prompts (write them well — they matter) ----------------
 
     private const string SharedRules =
@@ -89,7 +79,7 @@ internal static class LlamaPrompts
 
     // ---------------- per-stage user prompts ----------------
 
-    /// <summary>Title shape menu for the outline stage. A small instruct model anchors on
+    /// <summary>Title shape menu for the outline stage. A small on-device model anchors on
     /// literal example titles (it copies them verbatim — observed 2026-07-31: four different
     /// seeds all produced the example title), so the shapes are described abstractly and ONE
     /// is picked per weave by the engine (seeded), which is what actually rotates the shelf
@@ -120,7 +110,7 @@ internal static class LlamaPrompts
         sb.Append("Respond with compact JSON only, matching exactly this shape: ");
         sb.Append("{\"title\":...,\"moral\":...,\"settings\":[...],\"characters\":[{\"name\":...,\"kind\":...,\"trait\":...}],");
         sb.Append($"\"scenes\":[{{\"id\":1,\"summary\":...,\"beats\":[...]}}]}} with {sceneCount} scenes, ids 1..{sceneCount}. ");
-        // Title craft (2026-07-31): a 1.7B model anchors hard on "The <Adjective> <Noun>"
+        // Title craft (2026-07-31): a small model anchors hard on "The <Adjective> <Noun>"
         // unless steered, and it copies literal example titles verbatim — so the shape is a
         // per-weave seeded hint (TitleShapeHints, no examples) and the child's recent
         // titles are injected as negatives (threaded via ChildProfile.RecentTitles).

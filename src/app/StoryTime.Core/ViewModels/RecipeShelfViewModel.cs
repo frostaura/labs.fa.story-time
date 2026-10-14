@@ -87,7 +87,7 @@ public sealed partial class RecipeShelfViewModel : ObservableObject
         foreach (var voice in Voices) voice.IsSelected = voice.Voice == profile.Voice;
         IsSeries = profile.Mode == StoryMode.Series;
         IsWeaving = _weaveHost.IsWeaving;
-        // Cold neural renders read as a dead button — warm the samples the moment the
+        // Cold sample renders read as a dead button — warm the samples the moment the
         // picker is visible so the first ▶ tap plays instantly.
         _warmer.Warm(profile.Voice);
         IsOpen = true;

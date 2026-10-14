@@ -1,8 +1,8 @@
 namespace StoryTime.Core.Pipeline;
 
 /// <summary>
-/// Optional per-weave measurement sink (harness `weave --timings`; never required by the
-/// app). The pipeline stamps stage wall-clock spans as they run; consumers read after the
+/// Optional per-weave measurement sink (measurement runs and tests; never required by
+/// the app). The pipeline stamps stage wall-clock spans as they run; consumers read after the
 /// weave completes. Under the overlapped strategy the stage spans OVERLAP by design, so
 /// their sum exceeds <see cref="TotalSeconds"/> — the difference is the overlap saving.
 /// </summary>

@@ -5,7 +5,7 @@ namespace StoryTime.Core.Services;
 
 /// <summary>
 /// Pre-renders the three narrator samples into the engine's cache so a ▶ preview ring plays
-/// instantly instead of stalling on a cold neural render (measured ~50 s on the emulator,
+/// instantly instead of stalling on a cold render (measured ~50 s with the previous bundled voice,
 /// seconds on device — long enough that the founder read the button as broken, 2026-07-31).
 ///
 /// <para>Fire-and-forget, lowest possible ceremony: called when a narrator picker becomes

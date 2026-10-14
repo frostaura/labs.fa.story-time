@@ -5,7 +5,7 @@ namespace StoryTime.Core.Services;
 /// <summary>Singleton implementation of <see cref="IStoryCatalog"/>. Core cannot reference
 /// MAUI, so the UI-thread marshalling is injected as a delegate by the App layer
 /// (MauiProgram sets <see cref="Dispatcher"/> to MainThread.BeginInvokeOnMainThread).
-/// Left null — tests, the harness — raises happen inline on the calling thread.</summary>
+/// Left null (tests) — raises happen inline on the calling thread.</summary>
 public sealed class StoryCatalog : IStoryCatalog
 {
     public event EventHandler<StoryChangedEventArgs>? Changed;

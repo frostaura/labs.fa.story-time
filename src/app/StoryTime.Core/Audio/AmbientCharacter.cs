@@ -86,7 +86,7 @@ public static class AmbientMoodMap
         _ => NightCalm,
     };
 
-    /// <summary>Poster mood vocabulary (calm/dreamy/cozy/gentle/wonder/sleepy per poster.gbnf)
+    /// <summary>Poster mood vocabulary (calm/dreamy/cozy/gentle/wonder/sleepy)
     /// nudges the character rather than replacing it — same key, different breath.</summary>
     public static AmbientCharacter ApplyMood(AmbientCharacter c, string mood) => mood.ToLowerInvariant() switch
     {

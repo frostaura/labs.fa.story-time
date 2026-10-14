@@ -102,7 +102,7 @@ public enum PosterPalette
     CloudDrift, StarfieldViolet, LanternGlow, TidePool, SnowHush, EmberSky, MistValley
 }
 
-/// <summary>Scene vocabulary for the formation grammar. Grouped by role; the composer
+/// <summary>Scene vocabulary for poster formations. Grouped by role; the composer
 /// knows each shape's category (scatter / sky / terrain / grounded / water-bound / focal)
 /// and repairs accordingly. v1 shapes stay first so stored specs keep deserializing.</summary>
 public enum PosterShape

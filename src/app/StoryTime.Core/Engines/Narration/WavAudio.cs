@@ -1,4 +1,4 @@
-namespace StoryTime.Core.Engines.Sherpa;
+namespace StoryTime.Core.Engines.Narration;
 
 /// <summary>Minimal 16-bit PCM mono WAV writing + PCM concat math for narration assembly.</summary>
 public static class WavAudio

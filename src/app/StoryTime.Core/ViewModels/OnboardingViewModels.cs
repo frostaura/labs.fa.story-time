@@ -95,7 +95,7 @@ public sealed partial class VoiceOption : ObservableObject
     private bool _isSelected;
 
     /// <summary>True from the instant the ▶ ring is tapped until the sample has been handed
-    /// to the player (or has failed). A neural render is not instant, so the ring must show
+    /// to the player (or has failed). A rendered sample is not instant, so the ring must show
     /// SOMETHING immediately or the button reads as dead — the exact founder-reported bug
     /// of 2026-07-31.</summary>
     [ObservableProperty]
@@ -105,8 +105,7 @@ public sealed partial class VoiceOption : ObservableObject
 /// <summary>Why this exists: both ▶-preview call sites used to `catch (Exception) { }`, so a
 /// broken preview was indistinguishable from a dead button — the preview was reported fixed
 /// twice while still failing silently. Every step of the chain now leaves a breadcrumb.
-/// Greppable on Android with `logcat | grep TWVoice` (stdout is redirected to logcat) and in
-/// the iOS simulator console. Failures stay non-fatal: a bad sample must never block
+/// Greppable as `TWVoice` in the iOS simulator / device console. Failures stay non-fatal: a bad sample must never block
 /// onboarding or the shelf.</summary>
 internal static class VoicePreviewTrace
 {
@@ -122,7 +121,7 @@ internal static class VoicePreviewTrace
 /// <para>Cancel-and-replace: a second tap cancels the sample still in flight rather than
 /// queueing behind it or being refused. <see cref="VoiceOption.IsPreviewing"/> flips true
 /// synchronously on entry so the ring can acknowledge the tap before the render (which is
-/// seconds on the neural path) produces anything.</para></summary>
+/// seconds on a file-rendering engine) produces anything.</para></summary>
 internal sealed class VoicePreviewRunner(ITtsEngine tts, IVoiceSamplePlayer player)
 {
     private CancellationTokenSource? _cts;

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace StoryTime.Core.Engines.Sherpa;
+namespace StoryTime.Core.Engines.Narration;
 
 /// <summary>Punctuation class of an inter-sentence gap (derived from how the previous
 /// sentence ends; Paragraph wins when the next sentence opens a new paragraph).</summary>
@@ -26,7 +26,7 @@ public sealed record ProsodyGap
     public required double Seconds { get; init; }
     public required IReadOnlyList<string> Tags { get; init; }
 
-    /// <summary>"sent(0.55) conn(-40%) jit(+8%) → 0.36s" — the harness report row core.</summary>
+    /// <summary>"sent(0.55) conn(-40%) jit(+8%) → 0.36s" — one prosody-report row.</summary>
     public string Describe() =>
         string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{string.Join(" ", Tags)} → {Seconds:0.00}s");
 }
@@ -42,7 +42,7 @@ public sealed record ProsodyGap
 /// </summary>
 public static class ProsodyDirector
 {
-    /// <summary>Median speaking speed (sherpa "speed"; &lt;1 is slower). Bedtime pace —
+    /// <summary>Median speaking speed (engine speed multiplier; &lt;1 is slower). Bedtime pace —
     /// slowed 2026-07-30 by founder ear ("could be a little slower").</summary>
     public const float BaseSpeed = 0.85f;
     /// <summary>Max deviation applied deterministically per sentence so pacing breathes.</summary>
@@ -106,7 +106,7 @@ public static class ProsodyDirector
     /// Plan every inter-sentence gap for a narration script. Mirrors the synthesis loop
     /// exactly: whitespace-only sentences are skipped, a gap precedes each spoken sentence
     /// after the first, and a paragraph start wins over the previous terminator. The plan
-    /// is a pure function of the script — the engine and the harness report call this
+    /// is a pure function of the script — the narration engine and the prosody report call this
     /// independently and get identical numbers.
     /// </summary>
     public static IReadOnlyList<ProsodyGap> PlanGaps(Abstractions.NarrationScript script)
@@ -309,7 +309,7 @@ public static class ProsodyDirector
     private static int WordCount(string sentence)
         => sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
 
-    /// <summary>Split an overlong sentence at comma boundaries into clause chunks the model
+    /// <summary>Split an overlong sentence at comma boundaries into clause chunks the voice
     /// narrates separately (joined with CommaPauseSeconds). Normal sentences pass through.</summary>
     public static List<string> ChunkSentence(string sentence)
     {
@@ -335,8 +335,7 @@ public static class ProsodyDirector
 }
 
 /// <summary>Pacing metrics over a gap plan — the measurement half of the 2026-07-30
-/// "measure it" mandate. Used by the harness `tts --report` table and pinned by unit
-/// tests (CV ≥ 0.25, longest near-identical run ≤ 2 on the acceptance fixture).</summary>
+/// "measure it" mandate. Pinned by unit tests (CV ≥ 0.25, longest near-identical run ≤ 2 on the acceptance fixture).</summary>
 public static class ProsodyReport
 {
     /// <summary>Two consecutive gaps within this window count as "near-identical".</summary>
@@ -400,7 +399,7 @@ public static class ProsodyReport
 
 /// <summary>
 /// Sample-domain shaping for narration chunks: silence trimming so the prosody gaps are
-/// what we insert (not what the model happened to emit), short fades that kill joint
+/// what we insert (not what the voice happened to emit), short fades that kill joint
 /// clicks, whole-story loudness normalization, and the cozy mastering chain (founder
 /// voice-character pass 2026-07-31: "warm, cozy… almost too loud, too high-pitched" —
 /// pitch-down via duration-compensated resampling, high-shelf de-brightening, low-shelf
@@ -424,9 +423,11 @@ public static class AudioShaper
     public const float MaxGain = 3.0f;
 
     // ---- Cozy mastering chain (founder voice-character pass 2026-07-31). Each element is
-    // a tunable const; CozyMastering is the master switch (harness `tts --no-mastering`
-    // renders the legacy chain for A/B). Applies to every voice, every render — narration,
-    // teaser, and cached voice samples (VoiceSampleVersion bumped so caches regenerate).
+    // a tunable const; CozyMastering is the master switch (off renders the legacy
+    // chain for A/B). Engine-agnostic: any ITtsEngine that renders float PCM chunks runs
+    // them through MasterChunk → ShapeChunk → StoryGain, for every voice and every render —
+    // narration, teaser, and cached voice samples (version cached samples so a tuning
+    // change regenerates them).
 
     /// <summary>Master on/off for the cozy chain (pitch shift + shelves + RMS loudness).</summary>
     public static bool CozyMastering { get; set; } = true;
@@ -452,13 +453,13 @@ public static class AudioShaper
     /// <summary>Perceived-loudness target: −26 dBFS RMS over voiced audio (gaps excluded).</summary>
     public const double CozyTargetRmsDb = -26.0;
 
-    /// <summary>Sherpa speed that compensates the resampler's time-stretch: rendering at
+    /// <summary>Engine speed that compensates the resampler's time-stretch: rendering at
     /// speed/PitchRatio is 1/PitchRatio faster, the resample stretches by 1/PitchRatio,
     /// net pacing unchanged. Identity when the chain is off.</summary>
     public static float RenderSpeed(float prosodySpeed)
         => CozyMastering ? (float)(prosodySpeed / PitchRatio) : prosodySpeed;
 
-    /// <summary>Cozy mastering for one raw model chunk: pitch-down resample, then the two
+    /// <summary>Cozy mastering for one raw synthesized chunk: pitch-down resample, then the two
     /// shelves. Pass-through (same reference) when the chain is off or the chunk is empty.
     /// Runs BEFORE <see cref="ShapeChunk"/> so trims/fades see the final signal.</summary>
     public static float[] MasterChunk(float[] samples, int sampleRate)
@@ -521,7 +522,7 @@ public static class AudioShaper
         return Math.Min(gain, MaxGain);
     }
 
-    /// <summary>Trim model-emitted edge silence down to small fixed margins, then apply
+    /// <summary>Trim voice-emitted edge silence down to small fixed margins, then apply
     /// fade-in/out. Returns a new array (or the input when nothing changed).</summary>
     public static float[] ShapeChunk(float[] samples, int sampleRate)
     {
