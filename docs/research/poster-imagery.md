@@ -1,7 +1,6 @@
 # On-device imagery for parallax posters (research, 2026-10-14)
 
-The founder asked for on-device image generation for the parallax backgrounds. Status: **decision
-pending.** Results from the empirical lab go in [`genai-lab.md`](genai-lab.md).
+The founder asked for on-device image generation for the parallax backgrounds. Status: **decided 2026-10-14 — procedural only.** The founder ruled out third-party models ("AFM usage would make Apple happy… the opposite of 3rd party models" — App Store hassle). Posters are a procedural parallax engine; this file is kept as the record of why generative imagery was rejected. Results from the empirical lab go in [`genai-lab.md`](genai-lab.md).
 
 ## Findings
 
