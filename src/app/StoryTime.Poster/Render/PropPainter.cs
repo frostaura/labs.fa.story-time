@@ -74,7 +74,7 @@ internal static partial class PropPainter
         {
             if (Math.Abs(light.Depth - p.Depth) > 1 || Math.Abs(light.X - p.X) < 1e-6 && Math.Abs(light.Y - p.Y) < p.Size) continue;
             var d = Math.Sqrt((light.X - p.X) * (light.X - p.X) + (light.Y - (p.Y - p.Size * 0.4)) * (light.Y - (p.Y - p.Size * 0.4)));
-            var reach = Math.Max(0.12, light.Radius * 1.6) + p.Size * 0.5;
+            var reach = Math.Max(0.16, light.Radius * 2.2) + p.Size * 0.5;
             var amt = light.Strength * Math.Clamp(1 - d / reach, 0, 1);
             if (amt <= warmAmt) continue;
             warmAmt = amt;
@@ -741,6 +741,30 @@ internal static partial class PropPainter
     {
         var (x, y, s, r) = (k.X, k.Y, k.S, k.R);
         using var path = new SKPath();
+        if (k.P.Variant == 2)
+        {
+            // The owl's tree: a bark trunk rising from below the frame to a leafy crown that
+            // stops short of the title band.
+            var crownY = k.Vp.Y(0.47);
+            var bark = Local(k, 0.36, 0.045, 45);
+            var tw = s * 0.12f;
+            using var trunk = new SKPath();
+            trunk.MoveTo(x - tw * 1.3f, k.Vp.Height + 4f);
+            trunk.CubicTo(x - tw, y - s * 0.6f, x - tw * 0.9f, crownY + s * 0.2f, x - tw * 0.7f, crownY);
+            trunk.LineTo(x + tw * 0.7f, crownY);
+            trunk.CubicTo(x + tw * 0.9f, crownY + s * 0.2f, x + tw, y - s * 0.6f, x + tw * 1.3f, k.Vp.Height + 4f);
+            trunk.Close();
+            Coat(k, trunk, bark, 0.7, 0.6);
+            using var grooves = Paint.Stroke(Paint.Sk(bark.Lighter(-0.07), 0.6), Math.Max(0.6f, s * 0.01f));
+            for (var i = 0; i < 4; i++) k.C.DrawLine(x - tw * 0.4f + i * tw * 0.25f, crownY + s * 0.3f, x - tw * 0.5f + i * tw * 0.28f, y - s * 0.2f, grooves);
+            var leaf = Local(k, 0.4, 0.08, 140);
+            using var crown = new SKPath();
+            foreach (var (cx, cy, cr) in new[] { (0f, 0f, 0.3f), (-0.26f, 0.08f, 0.22f), (0.26f, 0.06f, 0.22f), (-0.12f, -0.12f, 0.2f), (0.14f, -0.1f, 0.2f) })
+                crown.AddCircle(x + cx * s * 0.8f, crownY + cy * s * 0.7f, cr * s * 0.7f);
+            using var crownShape = crown.Simplify() ?? new SKPath(crown);
+            Coat(k, crownShape, leaf, 0.6, 0.8);
+            return;
+        }
         if (k.P.Variant == 1)
         {
             path.AddRect(new SKRect(x - s * 0.18f, y - s * 0.75f, x + s * 0.18f, y + s * 0.1f));

@@ -485,7 +485,8 @@ internal static class SkyPainter
     private static void PaintShafts(SKCanvas canvas, PosterPlan plan, PosterViewport vp)
     {
         var r = new Rng((ulong)(uint)plan.Spec.Seed ^ 0x5348414654UL);
-        var color = Oklab.Mix(ScenePalette.Cream.ToOklab(), plan.Colors.SkyHorizon.ToOklab(), 0.35).ToOklch();
+        // Shafts carry a little gold from the surface: the reef's warm counterpoint.
+        var color = Oklab.Mix(ScenePalette.AmberSoft.ToOklab(), plan.Colors.SkyHorizon.ToOklab(), 0.45).ToOklch();
         var n = 4 + r.Int(3);
         var slant = plan.Side * 0.12;
         for (var i = 0; i < n; i++)

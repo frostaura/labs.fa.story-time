@@ -303,7 +303,7 @@ public static class ScenePlanner
                     SideEnvelope(-headSide, 0.22, 0.06), 1.25), 0.5, TerrainStyle.Earth);
             }
 
-            var shore = Band(3, Hills(0.975, 0.085, 1.5, "sea-shore", 3), 1.0, TerrainStyle.Earth);
+            var shore = Band(3, Hills(0.94, 0.07, 1.5, "sea-shore", 3), 1.0, TerrainStyle.Earth);
             Grass(3, shore.Profile, 1.0, "sea-grass");
             var rx = 0.5 - _side * 0.38;
             Place(Prop.Reeds, 3, rx, shore.Profile.Y(rx) + 0.01, r.Range(0.13, 0.17), "sea-reeds");
@@ -350,7 +350,7 @@ public static class ScenePlanner
             var shore = Band(2, Hills(_horizon + 0.15, 0.06, 2.2, "lake-shore", 3, SideEnvelope(shoreSide, 0.36), 1.25), 0.6, TerrainStyle.Earth);
             Scatter(Prop.Pine, 2, shore.Profile, shoreSide > 0 ? 0.72 : -0.15, shoreSide > 0 ? 1.15 : 0.28, 0.05, 0.15, 0.24, "lake-pines", 0.6);
 
-            var near = Band(3, Hills(0.975, 0.08, 1.6, "lake-near"), 1.0, TerrainStyle.Earth);
+            var near = Band(3, Hills(0.94, 0.07, 1.6, "lake-near"), 1.0, TerrainStyle.Earth);
             var rockX = 0.5 + _side * 0.42;
             Place(Prop.Rock, 3, rockX, near.Profile.Y(rockX) + 0.02, 0.12, "lake-rock");
             Place(Prop.Reeds, 3, 0.5 - _side * 0.40, near.Profile.Y(0.5 - _side * 0.40) + 0.01, 0.14, "lake-reeds");
@@ -443,7 +443,7 @@ public static class ScenePlanner
                 if (isle.Profile.Y(px) > _horizon + 0.07) continue;   // palms only on the island itself
                 Place(Prop.Palm, 2, px, isle.Profile.Y(px) - 0.004, r.Range(0.2, 0.27), $"cove-palm-{i}", flip: isleSide > 0 == (i % 2 == 0));
             }
-            var beach = Band(3, Hills(0.98, 0.06, 1.3, "cove-beach", 2), 1.0, TerrainStyle.Sand);
+            var beach = Band(3, Hills(0.95, 0.05, 1.3, "cove-beach", 2), 1.0, TerrainStyle.Sand);
             Grass(3, beach.Profile, 0.5, "cove-grass");
             if (r.Chance(0.35))
             {
@@ -967,6 +967,10 @@ public static class ScenePlanner
                     hw = hero.Size * HalfWidth(hero);
                 }
             }
+            // A campfire burns on a bare patch: no grass or stray flower in its flames.
+            foreach (var fire in _props.Where(p => p.Prop == Prop.Campfire).ToList())
+                _props.RemoveAll(p => p.Feature is null && p.Prop is Prop.GrassTuft or Prop.Flower or Prop.Fern or Prop.Reeds
+                                      && Math.Abs(p.X - fire.X) < fire.Size * 0.9 + 0.03 && p.Depth == fire.Depth);
             // The hero looks toward its light (the owl keeps its tree on the frame side).
             if (Render.PropPainter.IsCreatureProp(hero.Prop) && hero.Prop is not (Prop.Owl or Prop.FishSchool)
                 && _props.Where(p => p.Lit && !ReferenceEquals(p, hero) && p.Depth >= 2).OrderBy(p => Math.Abs(p.X - hero.X)).FirstOrDefault() is { } light)
@@ -1161,8 +1165,11 @@ public static class ScenePlanner
                     var ox = _layout == PosterLayout.Center ? _focalX : 0.5 + _side * 0.25;
                     var size = HeroSize(Prop.Owl, 0, r);
                     // The tree stands fully inside the frame even at full tilt, so the branch never floats.
-                    Place(Prop.Trunk, 3, 0.5 + _side * 0.4, 1.0, Math.Min(0.6, size * 1.6), "owl-tree", flip: _side < 0);
-                    return Place(Prop.Owl, 3, ox, Math.Min(0.82, near.Y(ox) - 0.1), size, "owl", flip: _side < 0, feature: tag);
+                    var oy = Math.Min(0.82, near.Y(ox) - 0.1);
+                    // The branch ends inside the trunk; the tree is crowned below the title band.
+                    Place(Prop.Trunk, 3, Math.Clamp(ox + _side * size * 0.92, 0.04, 0.96), 1.0, Math.Min(0.6, size * 1.6), "owl-tree",
+                        flip: _side < 0, variant: 2);
+                    return Place(Prop.Owl, 3, ox, oy, size, "owl", flip: _side < 0, feature: tag);
                 }
                 case PosterFeature.Dinosaur:
                     return OnNear(Prop.Dinosaur, 0, "dinosaur");
@@ -1351,7 +1358,7 @@ public static class ScenePlanner
                 // Full-height framers (trunks, vines, the owl's tree) occlude top to bottom;
                 // anything else up to its height. Parallax travel is added to the reach so a
                 // tilt can never slide an occluder across the moon.
-                var tall = p.Prop is Prop.Trunk && p.Variant == 0 || p.Prop is Prop.Vines || p.Prop is Prop.Owl;
+                var tall = p.Prop is Prop.Trunk && p.Variant is 0 or 2 || p.Prop is Prop.Vines || p.Prop is Prop.Owl;
                 var reach = (tall ? p.Size * 0.45 + 0.04 : p.Size * 0.6) + 0.06;
                 var px = p.Prop is Prop.Owl ? (p.X > 0.5 ? 0.98 : 0.02) : p.X;
                 if (px + reach < x0 || px - reach > x1) continue;

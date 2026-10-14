@@ -63,6 +63,16 @@ internal static partial class PropPainter
                 Paint.Silhouette(k.C, merged, shade with { L = Math.Max(0.3, shade.L - 0.04) }, ScenePalette.Cream, 0.45, k.RimDx, k.RimDy * 1.5f, 0.06, 0.04);
                 return;
             }
+            case FrameKit.Roof when k.P.Variant >= 16:
+            {
+                // Beside the hero: a window box on a ledge, never a second roof (no gutter trough).
+                using var box = new SKPath();
+                box.AddRoundRect(new SKRect(f.U(-0.6), f.V(0.28), f.U(0.5), f.V(0.0)), f.L(0.03), f.L(0.03));
+                Coat(k, box, k.Colors.Grade(new Oklch(0.48, 0.07, 45)), 0.8, 0.6);
+                Foliage(k, f, r, leafBase, -0.55, 0.45, 0.26, 0.58, 8);
+                Flowerheads(k, f, r, 4, -0.4, 0.4, 0.42, 0.62);
+                return;
+            }
             case FrameKit.Roof:
             {
                 // The corner of a near roof: a tiled slope rising from the edge with rows of
@@ -98,7 +108,7 @@ internal static partial class PropPainter
             case FrameKit.Reef:
             {
                 Kelps(k, f, r, leafBase, 3);
-                var coral = k.Colors.Grade(new Oklch(0.54, 0.09, CoralHue(k.Plan)));
+                var coral = k.Colors.Grade(new Oklch(0.52, 0.06, CoralHue(k.Plan)));
                 using var clump = new SKPath();
                 for (var i = 0; i < 7; i++)
                     clump.AddCircle(f.U(-0.4 + i * 0.16 + r.Jitter(0.03)), f.V(0.16 + r.Range(0, 0.22) * (1 - i / 8.0)), f.L(r.Range(0.13, 0.19)));

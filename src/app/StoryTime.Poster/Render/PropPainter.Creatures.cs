@@ -339,13 +339,13 @@ internal static partial class PropPainter
     private static void Owl(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var feather = Local(k, 0.56, 0.07, 55);
+        var feather = Local(k, 0.62, 0.07, 58);
         var disc = Local(k, 0.8, 0.045, 75);
         var beak = Local(k, 0.76, 0.11, 75);
         var bark = Local(k, 0.38, 0.04, 45);
         var ink = Ink(feather);
         // The branch, reaching in from the tree at the frame edge.
-        using var branch = Blob(f, (-0.34, 0.02), (-0.2, 0.06), (0.2, 0.07), (2.0, 0.12), (2.0, -0.05), (0.2, -0.05), (-0.2, -0.04));
+        using var branch = Blob(f, (-0.34, 0.02), (-0.2, 0.06), (0.2, 0.07), (1.0, 0.1), (1.0, -0.05), (0.2, -0.05), (-0.2, -0.04));
         Coat(k, branch, bark, 0.8);
         using var leaf = Blob(f, (-0.34, 0.02), (-0.46, 0.1), (-0.58, 0.07), (-0.46, 0.0));
         Coat(k, leaf, Local(k, 0.55, 0.1, 140), 0.6);
@@ -457,7 +457,7 @@ internal static partial class PropPainter
     private static void Bear(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var fur = Local(k, 0.5, 0.075, 50);
+        var fur = Local(k, 0.58, 0.075, 52);
         var muzzle = Local(k, 0.78, 0.05, 70);
         var ink = Ink(fur);
         Contact(k, 0.4);
@@ -562,7 +562,7 @@ internal static partial class PropPainter
     private static void Hedgehog(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var spine = Local(k, 0.48, 0.06, 55);
+        var spine = Local(k, 0.54, 0.06, 55);
         var face = Local(k, 0.82, 0.05, 72);
         var ink = Ink(spine);
         Contact(k, 0.42);
@@ -578,8 +578,9 @@ internal static partial class PropPainter
             var a = Math.PI * (0.98 - i * 0.62 / 12);
             var cu = -0.06 + Math.Cos(a) * 0.42;
             var cv = 0.34 + Math.Sin(a) * 0.36;
-            using var tuft = Oval(f, cu, cv, 0.075, 0.045, a * 180 / Math.PI - 90);
-            Coat(k, tuft, spine.Lighter(i % 2 == 0 ? 0.05 : -0.03), 0.35, 0.5);
+            var (dx, dy) = (Math.Cos(a), Math.Sin(a));
+            using var tuft = Blob(f, (cu - dy * 0.06, cv + dx * 0.06), (cu + dx * 0.13, cv + dy * 0.13), (cu + dy * 0.06, cv - dx * 0.06), (cu - dx * 0.02, cv - dy * 0.02));
+            Coat(k, tuft, spine.Lighter(i % 2 == 0 ? 0.06 : -0.02), 0.35, 0.5);
         }
         using var head = Blob(f, (0.0, 0.08), (0.02, 0.4), (0.2, 0.54), (0.38, 0.44), (0.62, 0.24), (0.58, 0.15), (0.32, 0.05));
         Coat(k, head, face);
@@ -594,8 +595,8 @@ internal static partial class PropPainter
     private static void Otter(K k)
     {
         var f = new Frame(k.X, k.Y, k.S);
-        var fur = Local(k, 0.52, 0.07, 50);
-        var cream = Local(k, 0.8, 0.045, 72);
+        var fur = Local(k, 0.6, 0.07, 52);
+        var cream = Local(k, 0.82, 0.045, 72);
         var rockCol = Oklab.Mix(k.Colors.WaterDeep.ToOklab(), new Oklch(0.3, 0.02, 60).ToOklab(), 0.5).ToOklch();
         var ink = Ink(fur);
         using var rock = Blob(f, (-0.42, 0.0), (-0.36, 0.12), (-0.1, 0.18), (0.2, 0.17), (0.4, 0.1), (0.46, 0.0));
@@ -776,15 +777,15 @@ internal static partial class PropPainter
             using var knee = Oval(f, lu, 0.05, 0.09, 0.05);
             Coat(k, knee, coat.Lighter(-0.05), 0.7);
         }
-        using var body = Blob(f, (-0.5, 0.06), (-0.52, 0.3), (-0.3, 0.6), (-0.08, 0.68), (0.12, 0.52), (0.3, 0.36), (0.32, 0.08));
+        using var body = Blob(f, (-0.5, 0.06), (-0.54, 0.3), (-0.42, 0.52), (-0.22, 0.74), (-0.04, 0.6), (0.12, 0.5), (0.3, 0.36), (0.32, 0.08));
         Coat(k, body, coat);
-        using var blanket = Blob(f, (-0.26, 0.6), (-0.08, 0.66), (0.06, 0.56), (0.02, 0.42), (-0.26, 0.44));
+        using var blanket = Blob(f, (0.0, 0.54), (0.12, 0.5), (0.2, 0.36), (0.12, 0.28), (-0.04, 0.36));
         Coat(k, blanket, k.Colors.Grade(k.Colors.Accent2), 0.7);
         using var stripes = new SKPath();
-        for (var i = 0; i < 2; i++) stripes.AddRect(new SKRect(f.U(-0.3), f.V(0.54 - i * 0.05), f.U(0.1), f.V(0.525 - i * 0.05)));
+        for (var i = 0; i < 2; i++) stripes.AddRect(new SKRect(f.U(-0.05), f.V(0.46 - i * 0.06), f.U(0.24), f.V(0.445 - i * 0.06)));
         Mark(k, blanket, stripes, cream, 0.7, 0.01);
         using var tassel = Paint.Fill(Paint.Sk(cream, 0.9));
-        for (var i = 0; i < 3; i++) k.C.DrawCircle(f.U(-0.22 + i * 0.11), f.V(0.43), Math.Max(0.6f, f.L(0.018)), tassel);
+        for (var i = 0; i < 3; i++) k.C.DrawCircle(f.U(0.0 + i * 0.07), f.V(0.3), Math.Max(0.6f, f.L(0.016)), tassel);
         using var neck = Blob(f, (0.12, 0.3), (0.22, 0.48), (0.36, 0.74), (0.5, 0.8), (0.56, 0.66), (0.46, 0.4), (0.34, 0.2));
         Coat(k, neck, coat);
         using var ear = Oval(f, 0.48, 0.92, 0.035, 0.05, 20);
@@ -856,6 +857,8 @@ internal static partial class PropPainter
             bird.QuadTo(bx - w * 0.5f, by - w * up, bx, by);
             bird.QuadTo(bx + w * 0.5f, by - w * up, bx + w, by - w * up * 0.2f);
             k.C.DrawPath(bird, p);
+            using var bodyP = Paint.Fill(Paint.Sk(col, 0.95));
+            k.C.DrawOval(bx, by + w * 0.06f, w * 0.16f, w * 0.1f, bodyP);
         }
     }
 }
