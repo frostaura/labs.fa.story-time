@@ -78,10 +78,15 @@ internal static class Paint
         if (simple is not null) path = simple;   // one outline: no seams where parts overlap
         var b = path.Bounds;
         if (b.IsEmpty) return;
+        // Hand-cut edges: a whisper of deterministic wobble (≈0.35 px at phone scale), so no
+        // outline is mathematically clean — the difference between paper and vector.
+        var size = Math.Max(b.Width, b.Height);
+        using var wobble = size > 24 ? SKPathEffect.CreateDiscrete(Math.Max(4f, size / 28f), Math.Max(0.3f, size / 420f), (uint)(b.Left * 7 + b.Top * 13)) : null;
         using var p = new SKPaint
         {
             IsAntialias = true,
             IsDither = true,
+            PathEffect = wobble,
             Shader = SKShader.CreateLinearGradient(new SKPoint(0, b.Top), new SKPoint(0, b.Bottom),
                 [Sk(body.Lighter(topLift)), Sk(body), Sk(body.Lighter(-baseDrop))], [0f, 0.45f, 1f], SKShaderTileMode.Clamp),
         };

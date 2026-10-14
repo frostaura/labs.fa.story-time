@@ -632,8 +632,9 @@ public static class ScenePlanner
                 }
                 // A featured structure outranks scenery: clear default trees it would hide behind.
                 if (PosterSpecRules.IsStructure(f) && _props.LastOrDefault(p => p.Feature == f) is { } placed)
-                    _props.RemoveAll(p => p.Feature is null && p.Depth == placed.Depth
-                                          && p.Prop is Prop.RoundTree or Prop.Pine && Math.Abs(p.X - placed.X) < 0.16);
+                    _props.RemoveAll(p => p.Feature is null && p.Depth >= placed.Depth && p.Depth <= placed.Depth + 1
+                                          && p.Prop is Prop.RoundTree or Prop.Pine && p.Size > 0.1
+                                          && Math.Abs(p.X - placed.X) < 0.18);
                 if (asFocal && f is not (PosterFeature.Lighthouse or PosterFeature.Village or PosterFeature.Castle
                         or PosterFeature.Train or PosterFeature.Birds or PosterFeature.Flowers or PosterFeature.Mushrooms
                         or PosterFeature.Fireflies or PosterFeature.Snowfall))

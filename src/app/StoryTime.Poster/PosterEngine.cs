@@ -114,7 +114,7 @@ public static class PosterEngine
                         plan.Bands.Where(b => b.Depth == depth && b.Profile.Kind != TerrainKind.Flat).ToList());
                 foreach (var p in plan.Placements.Where(p => p.Depth == depth))
                     PropPainter.Paint_(canvas, plan, p, vp);
-                Paint.Grain(canvas, vp.Width, vp.Height, 0.036 - depth * 0.005, depth * 977 + plan.Spec.Seed);
+                Paint.Grain(canvas, vp.Width, vp.Height, 0.042 - depth * 0.005, depth * 977 + plan.Spec.Seed);
             }
             if (bakeAmbient && plan.Ambient.Any(a => a.Depth == depth))
             {
@@ -225,7 +225,22 @@ public static class PosterEngine
                 [new SKColor(0x20, 0x18, 0x13, 0), new SKColor(0x20, 0x18, 0x13, 70)], SKShaderTileMode.Clamp),
         };
         c.DrawRect(0, h * 0.91f, w, h * 0.09f, foot);
+        // Paper tooth fixed to the frame (it never slides with the layers).
+        PaperTooth(c, w, h);
         return surface.Snapshot();
+    }
+
+    private static void PaperTooth(SKCanvas c, int w, int h)
+    {
+        // A faint, warm, low-frequency mottle over the whole frame (~2%): the "paper".
+        using var noise = SKShader.CreatePerlinNoiseFractalNoise(0.012f, 0.012f, 3, 7);
+        using var p = new SKPaint
+        {
+            Shader = noise,
+            BlendMode = SKBlendMode.Overlay,
+            Color = SKColors.Black.WithAlpha(14),
+        };
+        c.DrawRect(0, 0, w, h, p);
     }
 
     /// <summary>Encodes an image as PNG (fast zlib level: layer caches favour speed).</summary>
