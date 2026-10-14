@@ -8,7 +8,7 @@ using StoryTime.Core.Engines;
 
 namespace StoryTime.Core.Pipeline;
 
-/// <summary>Orchestrates the four weave stages (Outline → Scenes·stitch·polish → Poster →
+/// <summary>Orchestrates the four making stages (Outline → Scenes·stitch·polish → Poster →
 /// Narration) with per-scene checkpointing to the story store, bounded safety repair,
 /// teaser-first narration, and gentle failure. Two scheduling strategies (see architecture §6):
 /// <list type="bullet">
@@ -28,7 +28,7 @@ public sealed class StoryPipeline
 
     /// <summary>Cumulative percent at which each stage completes (Outline 5, Scenes 45,
     /// Poster 50, Narration 100) — the same 5/40/5/50 weights the Report calls below use.
-    /// Additive hook for the weave sheet's progress-bar tick marks; under the overlapped
+    /// Additive hook for the making sheet's progress-bar tick marks; under the overlapped
     /// strategy percent is a combined weighted sum of all four stages, so these remain the
     /// stages' weight boundaries rather than strict time boundaries.</summary>
     public static readonly IReadOnlyList<int> StageBoundaryPercents = [5, 45, 50, 100];
@@ -74,7 +74,7 @@ public sealed class StoryPipeline
     private int _lastPercent;
 
     /// <summary>Optional measurement sink (measurement runs, tests); null in the app.</summary>
-    public WeaveTelemetry? Telemetry { get; set; }
+    public MakingTelemetry? Telemetry { get; set; }
 
     public StoryPipeline(
         IStoryEngine engine, ITtsEngine tts, IPosterComposer composer, IPosterRasterizer rasterizer,
@@ -96,22 +96,22 @@ public sealed class StoryPipeline
         _capabilities = capabilities ?? new DefaultDeviceCapabilities();
     }
 
-    /// <summary>The strategy a fresh weave would run with on this device right now.</summary>
-    public WeaveStrategy PickStrategy() =>
-        _options.ForcedWeaveStrategy
+    /// <summary>The strategy a fresh story run would run with on this device right now.</summary>
+    public MakingStrategy PickStrategy() =>
+        _options.ForcedMakingStrategy
         ?? (_capabilities.IsLowMemoryDevice
             || _capabilities.PhysicalMemoryBytes < OverlapMinPhysicalMemoryBytes
             || _capabilities.ProcessorCount < OverlapMinProcessorCount
-            ? WeaveStrategy.Sequential
-            : WeaveStrategy.Overlapped);
+            ? MakingStrategy.Sequential
+            : MakingStrategy.Overlapped);
 
-    /// <summary>Resumes a checkpointed weave, or returns null when none is pending.</summary>
-    public async Task<StoryRecord?> ResumeAsync(ChildProfile profile, IProgress<WeaveProgress>? progress, CancellationToken ct)
+    /// <summary>Resumes a checkpointed story run, or returns null when none is pending.</summary>
+    public async Task<StoryRecord?> ResumeAsync(ChildProfile profile, IProgress<MakingProgress>? progress, CancellationToken ct)
     {
         var checkpoint = await _store.GetCheckpointAsync();
         if (checkpoint is null) return null;
         var story = await _store.GetStoryAsync(checkpoint.StoryId);
-        if (story is null || story.State != StoryState.Weaving)
+        if (story is null || story.State != StoryState.Making)
         {
             await _store.SaveCheckpointAsync(null);
             return null;
@@ -119,7 +119,7 @@ public sealed class StoryPipeline
         return await RunAsync(profile, story, checkpoint, progress, ct);
     }
 
-    public async Task<StoryRecord> WeaveAsync(ChildProfile profile, IProgress<WeaveProgress>? progress, CancellationToken ct)
+    public async Task<StoryRecord> MakeStoryAsync(ChildProfile profile, IProgress<MakingProgress>? progress, CancellationToken ct)
     {
         var bible = profile.Mode == StoryMode.Series ? await _store.GetBibleAsync(profile.Id) : null;
         var story = new StoryRecord
@@ -127,7 +127,7 @@ public sealed class StoryPipeline
             ProfileId = profile.Id,
             Mode = profile.Mode,
             Voice = profile.Voice,
-            State = StoryState.Weaving,
+            State = StoryState.Making,
             EpisodeNumber = profile.Mode == StoryMode.Series ? (bible?.EpisodeCount ?? 0) + 1 : 0,
             RecapLine = profile.Mode == StoryMode.Series && bible is { EpisodeCount: > 0 }
                 ? $"Previously: {bible.LastEpisodeRecap}"
@@ -136,30 +136,30 @@ public sealed class StoryPipeline
         };
         await _store.SaveStoryAsync(story);
 
-        // The strategy is decided ONCE per weave and stamped into the checkpoint — a resume
+        // The strategy is decided ONCE per story run and stamped into the checkpoint — a resume
         // (possibly after a settings/device change) always continues the same schedule.
-        var checkpoint = new WeaveCheckpoint
+        var checkpoint = new MakingCheckpoint
         {
             StoryId = story.Id,
-            Stage = WeaveStage.Outline,
-            Strategy = PickStrategy() == WeaveStrategy.Overlapped ? OverlappedName : SequentialName,
+            Stage = MakingStage.Outline,
+            Strategy = PickStrategy() == MakingStrategy.Overlapped ? OverlappedName : SequentialName,
         };
         await _store.SaveCheckpointAsync(checkpoint);
 
         return await RunAsync(profile, story, checkpoint, progress, ct);
     }
 
-    private async Task<StoryRecord> RunAsync(ChildProfile profile, StoryRecord story, WeaveCheckpoint checkpoint,
-        IProgress<WeaveProgress>? progress, CancellationToken ct)
+    private async Task<StoryRecord> RunAsync(ChildProfile profile, StoryRecord story, MakingCheckpoint checkpoint,
+        IProgress<MakingProgress>? progress, CancellationToken ct)
     {
         // Thread the content filter level to the engines through the profile seam (both
-        // weave and resume funnel through here). The level only widens the allowed-theme
+        // make and resume funnel through here). The level only widens the allowed-theme
         // palette; the SafetyFilter below runs identically at every level.
         profile.ContentFilter = _settings.ContentFilter;
 
         // Thread the child's recent titles through the same seam (title-variety negatives,
         // additive 2026-07-31): the outline stage steers new titles away from the words and
-        // shapes already on this child's shelf. Failed weaves and untitled rows are noise.
+        // shapes already on this child's shelf. Failed runs and untitled rows are noise.
         var recentStories = await _store.GetStoriesAsync(profile.Id);
         profile.RecentTitles = recentStories
             .Where(s => s.Id != story.Id && s.State != StoryState.Failed && !string.IsNullOrWhiteSpace(s.Title))
@@ -181,13 +181,13 @@ public sealed class StoryPipeline
             var stageStart = swTotal.Elapsed;
             StoryOutline outline;
             var bible = profile.Mode == StoryMode.Series ? await _store.GetBibleAsync(profile.Id) : null;
-            if (checkpoint.Stage == WeaveStage.Outline || string.IsNullOrEmpty(checkpoint.OutlineJson))
+            if (checkpoint.Stage == MakingStage.Outline || string.IsNullOrEmpty(checkpoint.OutlineJson))
             {
-                Report(progress, WeaveStage.Outline, 0, 0);
+                Report(progress, MakingStage.Outline, 0, 0);
                 outline = await _engine.GenerateOutlineAsync(profile, bible, TemplateStoryEngine.SceneCount(profile.Length), ct);
                 story.Title = outline.Title;
                 await _store.SaveStoryAsync(story);
-                checkpoint.Stage = WeaveStage.Scenes;
+                checkpoint.Stage = MakingStage.Scenes;
                 checkpoint.SceneIndex = 0;
                 checkpoint.OutlineJson = JsonSerializer.Serialize(outline, JsonOpts);
                 checkpoint.CompletedScenesJson = "[]";
@@ -199,7 +199,7 @@ public sealed class StoryPipeline
                           ?? throw new InvalidOperationException("Corrupt outline checkpoint.");
                 story.Title = outline.Title;
             }
-            Report(progress, WeaveStage.Outline, 5, 1);
+            Report(progress, MakingStage.Outline, 5, 1);
             if (Telemetry is not null) Telemetry.OutlineSeconds = (swTotal.Elapsed - stageStart).TotalSeconds;
 
             if (overlapped)
@@ -217,7 +217,7 @@ public sealed class StoryPipeline
             await _store.SaveCheckpointAsync(null);
             _cooldown.Start();
             if (Telemetry is not null) Telemetry.TotalSeconds = swTotal.Elapsed.TotalSeconds;
-            Report(progress, WeaveStage.Done, 100, 1);
+            Report(progress, MakingStage.Done, 100, 1);
 
             if (_settings.StoryReadyNotifications)
                 await _notifications.ShowStoryReadyAsync(profile.Name, story.Title);
@@ -226,7 +226,7 @@ public sealed class StoryPipeline
         }
         catch (OperationCanceledException)
         {
-            // Checkpoint already persisted along the way; the weave resumes on next start.
+            // Checkpoint already persisted along the way; the story run resumes on next start.
             throw;
         }
         catch (SafetyException)
@@ -245,13 +245,13 @@ public sealed class StoryPipeline
     // Sequential strategy — the classic stage order (low-memory path)
     // ================================================================
 
-    private async Task RunSequentialStagesAsync(ChildProfile profile, StoryRecord story, WeaveCheckpoint checkpoint,
-        StoryOutline outline, IProgress<WeaveProgress>? progress, Stopwatch swTotal, CancellationToken ct)
+    private async Task RunSequentialStagesAsync(ChildProfile profile, StoryRecord story, MakingCheckpoint checkpoint,
+        StoryOutline outline, IProgress<MakingProgress>? progress, Stopwatch swTotal, CancellationToken ct)
     {
         // ---- Stage 2 · Scenes, stitch, polish (weight 40) ----
         var stageStart = swTotal.Elapsed;
         string polished;
-        if (checkpoint.Stage == WeaveStage.Scenes)
+        if (checkpoint.Stage == MakingStage.Scenes)
         {
             var scenes = JsonSerializer.Deserialize<List<string>>(
                 string.IsNullOrEmpty(checkpoint.CompletedScenesJson) ? "[]" : checkpoint.CompletedScenesJson, JsonOpts) ?? [];
@@ -267,7 +267,7 @@ public sealed class StoryPipeline
                 await _store.SaveCheckpointAsync(checkpoint);
 
                 var fraction = (i + 1) / (double)outline.Scenes.Count;
-                Report(progress, WeaveStage.Scenes, 5 + (int)(fraction * 38), fraction);
+                Report(progress, MakingStage.Scenes, 5 + (int)(fraction * 38), fraction);
             }
 
             var stitched = string.Join("\n\n", scenes);
@@ -276,26 +276,26 @@ public sealed class StoryPipeline
 
             story.FullText = polished;
             await _store.SaveStoryAsync(story);
-            checkpoint.Stage = WeaveStage.Poster;
+            checkpoint.Stage = MakingStage.Poster;
             await _store.SaveCheckpointAsync(checkpoint);
         }
         else
         {
             polished = story.FullText;
         }
-        Report(progress, WeaveStage.Scenes, 45, 1);
+        Report(progress, MakingStage.Scenes, 45, 1);
         if (Telemetry is not null) Telemetry.ScenesSeconds = (swTotal.Elapsed - stageStart).TotalSeconds;
 
         // ---- Stage 3 · Poster (weight 5) ----
         stageStart = swTotal.Elapsed;
-        if (checkpoint.Stage == WeaveStage.Poster)
+        if (checkpoint.Stage == MakingStage.Poster)
         {
             await RenderPosterAsync(story, outline, ct);
-            checkpoint.Stage = WeaveStage.Narration;
+            checkpoint.Stage = MakingStage.Narration;
             checkpoint.SentenceIndex = 0;
             await _store.SaveCheckpointAsync(checkpoint);
         }
-        Report(progress, WeaveStage.Poster, 50, 1);
+        Report(progress, MakingStage.Poster, 50, 1);
         if (Telemetry is not null) Telemetry.PosterSeconds = (swTotal.Elapsed - stageStart).TotalSeconds;
 
         // ---- Stage 4 · Narration, teaser first (weight 50) ----
@@ -305,13 +305,13 @@ public sealed class StoryPipeline
 
         var teaserPath = Path.Combine(_options.MediaDirectory, $"story-{story.Id}-teaser.wav");
         var teaser = await _tts.SynthesizeAsync(script.Take(3), profile.Voice, teaserPath,
-            new DelegateProgress(f => Report(progress, WeaveStage.Narration, 50 + (int)(f * 5), f * 0.1)), ct);
+            new DelegateProgress(f => Report(progress, MakingStage.Narration, 50 + (int)(f * 5), f * 0.1)), ct);
         story.TeaserPath = teaser.AudioPath;
         await _store.SaveStoryAsync(story);
 
         var audioPath = Path.Combine(_options.MediaDirectory, $"story-{story.Id}.wav");
         var manifest = await _tts.SynthesizeAsync(script, profile.Voice, audioPath,
-            new DelegateProgress(f => Report(progress, WeaveStage.Narration, 55 + (int)(f * 44), 0.1 + f * 0.9)), ct);
+            new DelegateProgress(f => Report(progress, MakingStage.Narration, 55 + (int)(f * 44), 0.1 + f * 0.9)), ct);
 
         story.AudioPath = manifest.AudioPath;
         story.DurationSeconds = manifest.DurationSeconds;
@@ -344,15 +344,15 @@ public sealed class StoryPipeline
         public int SceneUnitsDone;
         public bool PosterDone;
         public double Narration01;
-        public WeaveStage Furthest = WeaveStage.Scenes;
+        public MakingStage Furthest = MakingStage.Scenes;
     }
 
     /// <summary>Combined-completion progress for the overlapped path. Percent is the
     /// weighted sum of all four stages' fractions (monotone — every term only grows);
-    /// Stage is the furthest stage that has STARTED (monotone), so the weave sheet's
-    /// row derivation (before → done, current → weaving, after → waiting) stays sensible:
-    /// the Narration row flips to "weaving…" the moment its first window starts.</summary>
-    private void ReportOverlap(IProgress<WeaveProgress>? progress, OverlapState s, WeaveStage stage)
+    /// Stage is the furthest stage that has STARTED (monotone), so the making sheet's
+    /// row derivation (before → done, current → making, after → waiting) stays sensible:
+    /// the Narration row flips to "making…" the moment its first window starts.</summary>
+    private void ReportOverlap(IProgress<MakingProgress>? progress, OverlapState s, MakingStage stage)
     {
         lock (s)
         {
@@ -364,17 +364,17 @@ public sealed class StoryPipeline
                 + (int)(50 * Math.Min(1.0, s.Narration01));
             var stageFraction = s.Furthest switch
             {
-                WeaveStage.Scenes => scenes01,
-                WeaveStage.Poster => s.PosterDone ? 1 : 0,
-                WeaveStage.Narration => Math.Min(1.0, s.Narration01),
+                MakingStage.Scenes => scenes01,
+                MakingStage.Poster => s.PosterDone ? 1 : 0,
+                MakingStage.Narration => Math.Min(1.0, s.Narration01),
                 _ => 1,
             };
             Report(progress, s.Furthest, percent, stageFraction);
         }
     }
 
-    private async Task RunOverlappedStagesAsync(ChildProfile profile, StoryRecord story, WeaveCheckpoint checkpoint,
-        StoryOutline outline, IProgress<WeaveProgress>? progress, Stopwatch swTotal, CancellationToken ct)
+    private async Task RunOverlappedStagesAsync(ChildProfile profile, StoryRecord story, MakingCheckpoint checkpoint,
+        StoryOutline outline, IProgress<MakingProgress>? progress, Stopwatch swTotal, CancellationToken ct)
     {
         var windows = WindowPlan(outline.Scenes.Count);
         var state = new OverlapState
@@ -383,7 +383,7 @@ public sealed class StoryPipeline
             WindowCount = windows.Count,
         };
 
-        // ---- resume bookkeeping (all fields additive on WeaveCheckpoint) ----
+        // ---- resume bookkeeping (all fields additive on MakingCheckpoint) ----
         var scenes = Deserialize<List<string>>(checkpoint.CompletedScenesJson) ?? [];
         var polishedWindows = Deserialize<List<string>>(checkpoint.PolishedWindowsJson) ?? [];
         var parts = Deserialize<List<NarrationPart>>(checkpoint.NarrationPartsJson) ?? [];
@@ -426,7 +426,7 @@ public sealed class StoryPipeline
             catch (Exception ex)
             {
                 // The consumer parks on the channel — a dying producer MUST fail the
-                // channel or the weave would hang instead of failing gently.
+                // channel or the story run would hang instead of failing gently.
                 channel.Writer.TryComplete(ex);
                 throw;
             }
@@ -452,7 +452,7 @@ public sealed class StoryPipeline
                         await _store.SaveCheckpointAsync(checkpoint);
                     });
                     Interlocked.Increment(ref state.SceneUnitsDone);
-                    ReportOverlap(progress, state, WeaveStage.Scenes);
+                    ReportOverlap(progress, state, MakingStage.Scenes);
                 }
 
                 innerCt.ThrowIfCancellationRequested();
@@ -466,12 +466,12 @@ public sealed class StoryPipeline
                     story.FullText = string.Join("\n\n", polishedWindows);
                     await _store.SaveStoryAsync(story);
                     checkpoint.PolishedWindowsJson = JsonSerializer.Serialize(polishedWindows, JsonOpts);
-                    if (w == windows.Count - 1) checkpoint.Stage = WeaveStage.Narration;
+                    if (w == windows.Count - 1) checkpoint.Stage = MakingStage.Narration;
                     await _store.SaveCheckpointAsync(checkpoint);
                 });
                 channel.Writer.TryWrite((w, polishedWindow));
                 Interlocked.Increment(ref state.SceneUnitsDone);
-                ReportOverlap(progress, state, WeaveStage.Scenes);
+                ReportOverlap(progress, state, MakingStage.Scenes);
             }
             scenesSpanEnd = swTotal.Elapsed;
             if (Telemetry is not null) Telemetry.ScenesSeconds = (scenesSpanEnd - scenesStart).TotalSeconds;
@@ -491,7 +491,7 @@ public sealed class StoryPipeline
                 });
                 posterSpan = swTotal.Elapsed - posterStart;
                 lock (state) state.PosterDone = true;
-                ReportOverlap(progress, state, WeaveStage.Poster);
+                ReportOverlap(progress, state, MakingStage.Poster);
             }
             else
             {
@@ -518,13 +518,13 @@ public sealed class StoryPipeline
                 void ReportWindow(double inner)
                 {
                     lock (state) state.Narration01 = (w + Math.Clamp(inner, 0, 1)) / windows.Count;
-                    ReportOverlap(progress, state, WeaveStage.Narration);
+                    ReportOverlap(progress, state, MakingStage.Narration);
                 }
 
                 if (w == 0 && !checkpoint.TeaserDone)
                 {
                     // Teaser = the first ~3 sentences of window 1, rendered FIRST as its own
-                    // file so approval can start while the rest of the story still weaves.
+                    // file so approval can start while the rest of the story is still being made.
                     var teaserPath = Path.Combine(_options.MediaDirectory, $"story-{story.Id}-teaser.wav");
                     var teaser = await _tts.SynthesizeAsync(script.Take(3), profile.Voice, teaserPath,
                         new DelegateProgress(f => ReportWindow(0.15 * f)), innerCt);
@@ -737,7 +737,7 @@ public sealed class StoryPipeline
         await _store.SaveBibleAsync(profile.Id, bible);
     }
 
-    private void Report(IProgress<WeaveProgress>? progress, WeaveStage stage, int percent, double stageFraction)
+    private void Report(IProgress<MakingProgress>? progress, MakingStage stage, int percent, double stageFraction)
     {
         lock (_progressGate)
         {
@@ -745,7 +745,7 @@ public sealed class StoryPipeline
             // funnels every report through here, so cross-thread reports stay ordered).
             if (percent < _lastPercent) percent = _lastPercent;
             _lastPercent = percent;
-            progress?.Report(new WeaveProgress
+            progress?.Report(new MakingProgress
             {
                 Stage = stage,
                 Percent = Math.Clamp(percent, 0, 100),

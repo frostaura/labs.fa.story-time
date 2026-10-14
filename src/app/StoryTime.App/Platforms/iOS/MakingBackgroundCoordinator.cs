@@ -5,19 +5,19 @@ using UIKit;
 
 namespace StoryTime.App.Platforms.iOS;
 
-/// <summary>iOS implementation of <see cref="IWeaveBackgroundAnchor"/> — the honest maximum
-/// iOS allows for a ~10-minute on-device weave (background-generation pass, 2026-07-31).
+/// <summary>iOS implementation of <see cref="IMakingBackgroundAnchor"/> — the honest maximum
+/// iOS allows for a ~10-minute on-device story run (background-generation pass, 2026-07-31).
 ///
 /// <para>iOS has no long-running foreground-service primitive. What it has, in descending
 /// order of reliability, is what this class stacks:</para>
 /// <list type="number">
-/// <item><b>An active audio session.</b> While the loom hum is genuinely playing through a
+/// <item><b>An active audio session.</b> While the soft hum is genuinely playing through a
 /// <c>Playback</c>-category session and the app declares <c>UIBackgroundModes: audio</c>, the
 /// app simply keeps running in the background — the pipeline Task never pauses. This is the
 /// primary path, and it is not a trick: the hum is an audible feature the parent can hear and
-/// switch off (see LoomHumService / LoomHum.MinAudibleVolume). If the parent silences it, or
+/// switch off (see SoftHumService / SoftHum.MinAudibleVolume). If the parent silences it, or
 /// the system takes the session (call, Siri), the app falls back to 2 and 3.</item>
-/// <item><b>A <c>BeginBackgroundTask</c> grace window.</b> On backgrounding mid-weave we take
+/// <item><b>A <c>BeginBackgroundTask</c> grace window.</b> On backgrounding mid-story we take
 /// a background task assertion and keep generating until iOS calls the expiration handler.
 /// The granted budget is the system's to decide (historically ~30 s, occasionally more); we
 /// LOG what was actually granted rather than assuming, then cancel cleanly — which leaves the
@@ -26,19 +26,19 @@ namespace StoryTime.App.Platforms.iOS;
 /// <item><b>An opportunistic <c>BGProcessingTaskRequest</c>.</b> Submitted at the same moment,
 /// it asks iOS to hand the app CPU again later (typically while charging and idle, often
 /// overnight). Its handler resumes the checkpoint through the ordinary
-/// <c>IWeaveHost.TryResumeAsync</c> path, so a completion there posts the same "story is
+/// <c>IStoryMakingHost.TryResumeAsync</c> path, so a completion there posts the same "story is
 /// ready" notification the foreground path posts. iOS promises nothing about when — or
 /// whether — it runs, so <b>no product copy may promise it</b>. It is a bonus, not a
 /// feature.</item>
 /// </list>
 /// <para>Ordering matters: 1 makes 2 and 3 unnecessary most of the time; 2 makes 3 unnecessary
-/// for short weaves; 3 is the last, unpromised chance. Anything left after all three is
-/// exactly the pre-existing behaviour — the weave resumes when the parent reopens the
+/// for short stories; 3 is the last, unpromised chance. Anything left after all three is
+/// exactly the pre-existing behaviour — the story run resumes when the parent reopens the
 /// app.</para></summary>
-public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
+public sealed class MakingBackgroundCoordinator : IMakingBackgroundAnchor
 {
     /// <summary>Must match Info.plist's <c>BGTaskSchedulerPermittedIdentifiers</c>.</summary>
-    public const string ResumeTaskId = "net.frostaura.storytime.weave-resume";
+    public const string ResumeTaskId = "net.frostaura.storytime.story-resume";
 
     private const string Tag = "TWBg";
 
@@ -47,27 +47,27 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
     private NSObject? _didEnterBackground;
     private NSObject? _willEnterForeground;
     private CancellationTokenSource? _sampler;
-    private bool _weaving;
+    private bool _making;
 
-    // ---------------- IWeaveBackgroundAnchor ----------------
+    // ---------------- IMakingBackgroundAnchor ----------------
 
-    public void WeaveStarted(string childName)
+    public void MakingStarted(string childName)
     {
         lock (_gate)
         {
-            _weaving = true;
+            _making = true;
             if (_didEnterBackground is not null) return;
         }
 
-        // Subscribed once, for the app's lifetime — the handlers no-op when not weaving.
+        // Subscribed once, for the app's lifetime — the handlers no-op when not making.
         _didEnterBackground = UIApplication.Notifications.ObserveDidEnterBackground((_, _) => OnBackgrounded());
         _willEnterForeground = UIApplication.Notifications.ObserveWillEnterForeground((_, _) => EndAssertion("foregrounded"));
     }
 
-    public void WeaveEnded()
+    public void MakingEnded()
     {
-        lock (_gate) _weaving = false;
-        EndAssertion("weave ended");
+        lock (_gate) _making = false;
+        EndAssertion("story ended");
     }
 
     // ---------------- grace window ----------------
@@ -76,16 +76,16 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
     {
         lock (_gate)
         {
-            if (!_weaving || _assertion != UIApplication.BackgroundTaskInvalid) return;
+            if (!_making || _assertion != UIApplication.BackgroundTaskInvalid) return;
         }
 
         var app = UIApplication.SharedApplication;
         var started = DateTime.UtcNow;
         nint assertion = UIApplication.BackgroundTaskInvalid;
-        assertion = app.BeginBackgroundTask("storytime.weave", () =>
+        assertion = app.BeginBackgroundTask("storytime.story-making", () =>
         {
             // iOS is about to reclaim the app. Cancelling the host stops the pipeline at its
-            // next token boundary and LEAVES THE CHECKPOINT — the weave resumes on the next
+            // next token boundary and LEAVES THE CHECKPOINT — the story run resumes on the next
             // launch (or on the BGProcessingTask below, if iOS grants one).
             var granted = (DateTime.UtcNow - started).TotalSeconds;
             Log($"grace EXPIRED after {granted:F1}s — checkpointing");
@@ -102,7 +102,7 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
             return;
         }
 
-        Log($"backgrounded mid-weave; assertion={assertion}; iOS says {Remaining(app)} remain");
+        Log($"backgrounded mid-story; assertion={assertion}; iOS says {Remaining(app)} remain");
         StartSampler(started);
         SubmitResumeRequest();
     }
@@ -142,7 +142,7 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
     {
         var seconds = app.BackgroundTimeRemaining;
         // Foreground (and audio-backgrounded) apps report DBL_MAX — i.e. "no limit while the
-        // audio session keeps me alive". That IS the loom-hum path succeeding.
+        // audio session keeps me alive". That IS the soft hum path succeeding.
         return double.IsInfinity(seconds) || seconds > 1e6
             ? "unlimited (audio session alive)"
             : $"{seconds:F1}s";
@@ -174,8 +174,8 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
     {
         try
         {
-            var host = IPlatformApplication.Current?.Services?.GetService<IWeaveHost>();
-            // CancelAsync (NOT CancelAndDiscardAsync): the half-woven story and its checkpoint
+            var host = IPlatformApplication.Current?.Services?.GetService<IStoryMakingHost>();
+            // CancelAsync (NOT CancelAndDiscardAsync): the unfinished story and its checkpoint
             // must survive — this is a suspend, not a user cancel.
             _ = host?.CancelAsync();
         }
@@ -200,7 +200,7 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
 
     private static void HandleResume(BGTask task)
     {
-        Log("BGProcessingTask fired — resuming checkpointed weave");
+        Log("BGProcessingTask fired — resuming checkpointed story run");
         var done = false;
 
         task.ExpirationHandler = () =>
@@ -218,17 +218,17 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
             var completed = false;
             try
             {
-                var host = IPlatformApplication.Current?.Services?.GetService<IWeaveHost>();
+                var host = IPlatformApplication.Current?.Services?.GetService<IStoryMakingHost>();
                 if (host is not null)
                 {
                     await host.TryResumeAsync();
                     // TryResumeAsync returns as soon as the run task is spawned; wait for the
                     // pipeline to actually settle so SetTaskCompleted is honest.
-                    while (host.IsWeaving) await Task.Delay(1000);
+                    while (host.IsMaking) await Task.Delay(1000);
                     completed = host.LastCompleted is not null;
                     // A completion here posts the ordinary "story is ready" notification from
                     // inside StoryPipeline — no separate path, no duplicate ping.
-                    Log(completed ? "BGProcessingTask completed the weave" : "BGProcessingTask ran; weave still pending");
+                    Log(completed ? "BGProcessingTask completed the story run" : "BGProcessingTask ran; story still pending");
                 }
             }
             catch (Exception ex)
@@ -255,7 +255,7 @@ public sealed class WeaveBackgroundCoordinator : IWeaveBackgroundAnchor
         {
             var request = new BGProcessingTaskRequest(ResumeTaskId)
             {
-                // Offline-only invariant: the weave needs no network, ever.
+                // Offline-only invariant: the story run needs no network, ever.
                 RequiresNetworkConnectivity = false,
                 // Do NOT require the charger — a phone on a nightstand off power is the
                 // common case, and requiring external power would mean "usually never".

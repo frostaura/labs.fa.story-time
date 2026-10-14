@@ -29,7 +29,7 @@ public static class StoryPrompts
     /// block ONLY widens the allowed-theme palette — SharedRules (the hard exclusions) are
     /// appended unchanged at every level, so no safety layer weakens with the level.</summary>
     private const string BraveishThemes =
-        "Because this family chose the Brave-ish level, you may ALSO weave slightly more adventurous themes: " +
+        "Because this family chose the Brave-ish level, you may ALSO use slightly more adventurous themes: " +
         "a small brave journey, a puzzle to solve, a storm watched safely from indoors, a lost thing found. " +
         "These are tiny thrills on gentle quests — every wobble is small, nobody is ever in danger, " +
         "and each thrill resolves warmly within a few sentences, well before the story winds down. ";
@@ -83,7 +83,7 @@ public static class StoryPrompts
     /// <summary>Title shape menu for the outline stage. A small on-device model anchors on
     /// literal example titles (it copies them verbatim — observed 2026-07-31: four different
     /// seeds all produced the example title), so the shapes are described abstractly and ONE
-    /// is picked per weave by the engine (seeded), which is what actually rotates the shelf
+    /// is picked per story run by the engine (seeded), which is what actually rotates the shelf
     /// through different shapes night after night.</summary>
     public static readonly string[] TitleShapeHints =
     [
@@ -113,7 +113,7 @@ public static class StoryPrompts
         sb.Append($"\"scenes\":[{{\"id\":1,\"summary\":...,\"beats\":[...]}}]}} with {sceneCount} scenes, ids 1..{sceneCount}. ");
         // Title craft (2026-07-31): a small model anchors hard on "The <Adjective> <Noun>"
         // unless steered, and it copies literal example titles verbatim — so the shape is a
-        // per-weave seeded hint (TitleShapeHints, no examples) and the child's recent
+        // per-story seeded hint (TitleShapeHints, no examples) and the child's recent
         // titles are injected as negatives (threaded via ChildProfile.RecentTitles).
         sb.Append("The title is inviting and calm, and it is built only from this story's own characters, places, and things — never a generic phrase. ");
         sb.Append("Vary the title's shape. ");

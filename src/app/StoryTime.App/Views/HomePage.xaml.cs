@@ -37,7 +37,7 @@ public partial class HomePage : ContentPage
         });
         InitializeComponent();
         LengthTrack.LengthRequested += (_, length) => _vm.SelectLengthCommand.Execute(length);
-        // Any carousel refresh (appearing, weave-complete) resets the offset — de-prime
+        // Any carousel refresh (appearing, story-complete) resets the offset — de-prime
         // the snap index so the settling scroll can never fire a phantom tick.
         _vm.Stories.CollectionChanged += (_, _) => _carouselIndex = -1;
         // A new story is inserted at index 0, but the native carousel anchors on the item
@@ -54,10 +54,10 @@ public partial class HomePage : ContentPage
     /// <summary>Long-press context menu — share · favorite · delete (design whisper copy).</summary>
     public ICommand LongPressCommand { get; }
 
-    /// <summary>Action breadcrumb for the weave CTA so QA can prove the press-down Medium
-    /// precedes the weave starting (the button's own press haptic comes from the style's
+    /// <summary>Action breadcrumb for the Make CTA so QA can prove the press-down Medium
+    /// precedes the story run starting (the button's own press haptic comes from the style's
     /// PressHaptics.OnPressed="Medium" at pointer-down; Clicked is release-time).</summary>
-    private void OnWeaveClicked(object? sender, EventArgs e) => UxTrace.Action("Weave start");
+    private void OnMakeClicked(object? sender, EventArgs e) => UxTrace.Action("Story start");
 
     /// <summary>Press-down Light for every touch site on this page (cards, avatar door,
     /// summary row, premium hint) — fires at pointer-down, before commands/menus/nav.</summary>
@@ -139,18 +139,18 @@ public partial class HomePage : ContentPage
         while (_breathing)
         {
             var startedMs = Environment.TickCount64;
-            if (WeaveButton.IsEnabled)
+            if (MakeButton.IsEnabled)
             {
-                WeaveButton.Shadow = new Shadow { Brush = new SolidColorBrush(accent), Radius = 24, Opacity = 0.30f, Offset = new Point(0, 0) };
-                await WeaveButton.ScaleToAsync(1.015, 1900, Easing.SinInOut);
+                MakeButton.Shadow = new Shadow { Brush = new SolidColorBrush(accent), Radius = 24, Opacity = 0.30f, Offset = new Point(0, 0) };
+                await MakeButton.ScaleToAsync(1.015, 1900, Easing.SinInOut);
                 if (!_breathing) break;
-                WeaveButton.Shadow = new Shadow { Brush = new SolidColorBrush(accent), Radius = 16, Opacity = 0.16f, Offset = new Point(0, 0) };
-                await WeaveButton.ScaleToAsync(1.0, 1900, Easing.SinInOut);
+                MakeButton.Shadow = new Shadow { Brush = new SolidColorBrush(accent), Radius = 16, Opacity = 0.16f, Offset = new Point(0, 0) };
+                await MakeButton.ScaleToAsync(1.0, 1900, Easing.SinInOut);
             }
             else
             {
-                WeaveButton.Scale = 1.0;
-                WeaveButton.Shadow = new Shadow { Brush = Brush.Transparent, Radius = 0, Opacity = 0 };
+                MakeButton.Scale = 1.0;
+                MakeButton.Shadow = new Shadow { Brush = Brush.Transparent, Radius = 0, Opacity = 0 };
             }
             // ScaleTo completes SYNCHRONOUSLY when the platform view is detached (e.g. Home
             // resuming right after onboarding pops) or when system animations are off. Without

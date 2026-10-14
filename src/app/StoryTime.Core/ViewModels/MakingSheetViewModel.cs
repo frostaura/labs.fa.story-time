@@ -8,22 +8,22 @@ using StoryTime.Core.Services;
 
 namespace StoryTime.Core.ViewModels;
 
-public enum StageRowState { Waiting, Weaving, Done }
+public enum StageRowState { Waiting, Making, Done }
 
-/// <summary>The weave sheet's presentation state. Hidden = no chrome at all; Collapsed =
+/// <summary>The making sheet's presentation state. Hidden = no chrome at all; Collapsed =
 /// docked mini-bar at the bottom of every host page; Expanded = near-full-height sheet.</summary>
-public enum WeaveSheetState { Hidden, Collapsed, Expanded }
+public enum MakingSheetState { Hidden, Collapsed, Expanded }
 
 public sealed partial class StageRow : ObservableObject
 {
-    public StageRow(WeaveStage stage, string name, string shortName)
+    public StageRow(MakingStage stage, string name, string shortName)
     {
         Stage = stage;
         Name = name;
         ShortName = shortName;
     }
 
-    public WeaveStage Stage { get; }
+    public MakingStage Stage { get; }
     public string Name { get; }
     /// <summary>Terse label for the mini-bar detail line ("Narration · 62%").</summary>
     public string ShortName { get; }
@@ -35,19 +35,19 @@ public sealed partial class StageRow : ObservableObject
     public string StateLabel => State switch
     {
         StageRowState.Waiting => "waiting",
-        StageRowState.Weaving => "making…",
+        StageRowState.Making => "making…",
         _ => "done",
     };
 }
 
-/// <summary>Singleton state behind the weave sheet + mini-bar (founder decision 2026-07-30:
-/// the Generating page became a slide-up sheet so a weave runs behind the whole app).
-/// One instance lives for the app lifetime; every page's WeaveSheetHost binds to it, which
-/// is exactly why expand/collapse survives navigation. Weave-host events are subscribed once
+/// <summary>Singleton state behind the making sheet + mini-bar (founder decision 2026-07-30:
+/// the Generating page became a slide-up sheet so a story run is in flight behind the whole app).
+/// One instance lives for the app lifetime; every page's MakingSheetHost binds to it, which
+/// is exactly why expand/collapse survives navigation. Make-host events are subscribed once
 /// in the constructor (the host marshals them to the UI thread).</summary>
-public sealed partial class WeaveSheetViewModel : ObservableObject
+public sealed partial class MakingSheetViewModel : ObservableObject
 {
-    private readonly IWeaveHost _weaveHost;
+    private readonly IStoryMakingHost _makingHost;
     private readonly IStoryStore _store;
     private readonly CooldownService _cooldown;
     private readonly INavigator _navigator;
@@ -59,13 +59,13 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
 
     private string _childName = "your little one";
     private int _readyStoryId;
-    private WeaveStage? _lastTickedStage;
+    private MakingStage? _lastTickedStage;
 
-    public WeaveSheetViewModel(IWeaveHost weaveHost, IStoryStore store, CooldownService cooldown,
+    public MakingSheetViewModel(IStoryMakingHost makingHost, IStoryStore store, CooldownService cooldown,
         INavigator navigator, PlayerLaunchContext playerContext, ISettingsStore settings, IHaptics haptics,
         IEntitlements entitlements, KidModeService kidMode)
     {
-        _weaveHost = weaveHost;
+        _makingHost = makingHost;
         _store = store;
         _cooldown = cooldown;
         _navigator = navigator;
@@ -77,21 +77,21 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
 
         Stages =
         [
-            new StageRow(WeaveStage.Outline, "Planning the story", "Planning"),
-            new StageRow(WeaveStage.Scenes, "Writing", "Writing"),
-            new StageRow(WeaveStage.Poster, "Drawing the picture", "Picture"),
-            new StageRow(WeaveStage.Narration, "Recording the voice — teaser first", "Voice"),
+            new StageRow(MakingStage.Outline, "Planning the story", "Planning"),
+            new StageRow(MakingStage.Scenes, "Writing", "Writing"),
+            new StageRow(MakingStage.Poster, "Drawing the picture", "Picture"),
+            new StageRow(MakingStage.Narration, "Recording the voice — teaser first", "Voice"),
         ];
 
         // Singleton lifetime — subscribe once, never unsubscribe.
-        _weaveHost.ProgressChanged += (_, p) => OnProgress(p);
-        _weaveHost.WeaveCompleted += (_, s) => OnCompleted(s);
-        _weaveHost.WeaveFailed += (_, m) => OnFailed(m);
-        _weaveHost.WeaveCancelled += (_, _) => OnCancelled();
+        _makingHost.ProgressChanged += (_, p) => OnProgress(p);
+        _makingHost.MakingCompleted += (_, s) => OnCompleted(s);
+        _makingHost.MakingFailed += (_, m) => OnFailed(m);
+        _makingHost.MakingCancelled += (_, _) => OnCancelled();
     }
 
     /// <summary>Two-tap stop: first tap arms a confirm (auto-reverts after 4 s), second
-    /// cancels and discards. Hidden in Kid Mode and once the weave has finished.</summary>
+    /// cancels and discards. Hidden in Kid Mode and once the story run has finished.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StopLabel))]
     private bool _isConfirmingStop;
@@ -103,7 +103,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     public bool ShowStopRow => IsVisible && !IsDone && !IsFailed && !_kidMode.IsKidMode;
 
     [RelayCommand]
-    private async Task StopWeaveAsync()
+    private async Task StopMakingAsync()
     {
         if (!IsConfirmingStop)
         {
@@ -117,7 +117,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         _stopConfirmGeneration++;
         IsConfirmingStop = false;
         _haptics.Light();
-        await _weaveHost.CancelAndDiscardAsync();
+        await _makingHost.CancelAndDiscardAsync();
     }
 
     private void OnCancelled()
@@ -125,16 +125,16 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         IsConfirmingStop = false;
         IsDone = false;
         IsFailed = false;
-        State = WeaveSheetState.Hidden;
+        State = MakingSheetState.Hidden;
         MiniTitle = string.Empty;
         MiniDetail = string.Empty;
         Dismissed?.Invoke(this, EventArgs.Empty);   // hosts refresh: CTA returns, lists drop the row
     }
 
-    /// <summary>Foreground gate, pushed by the App layer (WeaveSheetHost mirrors the
-    /// controller's window Resumed/Stopped state). Weave-driven haptics — the stage-change
-    /// loom-click and the story-ready Celebrate — only fire while true: a phone in a
-    /// pocket must never buzz because a background weave advanced.</summary>
+    /// <summary>Foreground gate, pushed by the App layer (MakingSheetHost mirrors the
+    /// controller's window Resumed/Stopped state). Story-driven haptics — the stage-change
+    /// stage click and the story-ready Celebrate — only fire while true: a phone in a
+    /// pocket must never buzz because a background story run advanced.</summary>
     public bool IsForegrounded { get; set; } = true;
 
     public ObservableCollection<StageRow> Stages { get; }
@@ -145,7 +145,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         StoryPipeline.StageBoundaryPercents.Select(p => p / 100.0).ToArray();
 
     /// <summary>Raised when a finished (done or failed) sheet is dismissed; hosts/pages use
-    /// it to refresh what the weave produced.</summary>
+    /// it to refresh what the story run produced.</summary>
     public event EventHandler? Dismissed;
 
     [ObservableProperty]
@@ -154,11 +154,11 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsCollapsed))]
     [NotifyPropertyChangedFor(nameof(ShowTeaserCta))]
     [NotifyPropertyChangedFor(nameof(ShowStopRow))]
-    private WeaveSheetState _state = WeaveSheetState.Hidden;
+    private MakingSheetState _state = MakingSheetState.Hidden;
 
-    public bool IsVisible => State != WeaveSheetState.Hidden;
-    public bool IsExpanded => State == WeaveSheetState.Expanded;
-    public bool IsCollapsed => State == WeaveSheetState.Collapsed;
+    public bool IsVisible => State != MakingSheetState.Hidden;
+    public bool IsExpanded => State == MakingSheetState.Expanded;
+    public bool IsCollapsed => State == MakingSheetState.Collapsed;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressFraction))]
@@ -192,8 +192,8 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowStopRow))]
     private bool _isFailed;
 
-    /// <summary>Ghost-button copy: reassures mid-weave (per the mockup-spec
-    /// reinterpretation), plain close once the weave has finished.</summary>
+    /// <summary>Ghost-button copy: reassures mid-story (per the mockup-spec
+    /// reinterpretation), plain close once the story run has finished.</summary>
     public string CloseLabel => IsDone || IsFailed ? "↓ close" : "Close — your story keeps going";
 
     [ObservableProperty]
@@ -212,27 +212,27 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
 
     public const string MiniTitleReady = "Story ready — tap for the teaser ▶︎";
 
-    /// <summary>iOS keeps generating in the background only while the loom hum is audible
+    /// <summary>iOS keeps generating in the background only while the soft hum is audible
     /// (verified 2026-07-31: 39 min backgrounded, unlimited assertion while the audio session
     /// lives). Conditional by design — the hum is a parent-switchable feature, and if it is
-    /// off the weave suspends and resumes on return, so this must never promise a ping.</summary>
+    /// off the story run suspends and resumes on return, so this must never promise a ping.</summary>
     public static string BackgroundHint => "A soft hum plays while your story is made. Leave it on and the story keeps going, even if you leave the app.";
 
-    /// <summary>Home calls this right after starting a weave: reset to a fresh weaving
+    /// <summary>Home calls this right after starting a story run: reset to a fresh making
     /// state and open the sheet expanded. No page navigation happens any more.</summary>
-    public async Task ShowForWeaveAsync()
+    public async Task ShowForMakingAsync()
     {
         await EnsureChildNameAsync();
-        ResetToWeaving();
-        State = WeaveSheetState.Expanded;
+        ResetToMaking();
+        State = MakingSheetState.Expanded;
     }
 
-    /// <summary>Opens the sheet expanded in the weave's ACTUAL current state (no reset) —
-    /// used when tapping a still-weaving story in the Library.</summary>
+    /// <summary>Opens the sheet expanded in the story run's ACTUAL current state (no reset) —
+    /// used when tapping a still-making story in the Library.</summary>
     public Task ExpandCurrentAsync() => ExpandForQaAsync();
 
-    /// <summary>QA-route hook ("weaving" cold-start route): opens the sheet expanded over
-    /// Home in whatever state the weave host is actually in (idle shows 0% / waiting rows).</summary>
+    /// <summary>QA-route hook ("making" cold-start route): opens the sheet expanded over
+    /// Home in whatever state the story run host is actually in (idle shows 0% / waiting rows).</summary>
     public async Task ExpandForQaAsync()
     {
         await EnsureChildNameAsync();
@@ -244,17 +244,17 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
             if (string.IsNullOrEmpty(MiniDetail)) MiniDetail = $"Planning · {DisplayFloorPercent}%";
             if (Percent < DisplayFloorPercent) Percent = DisplayFloorPercent;
         }
-        if (_weaveHost.CurrentProgress is { } current) Apply(current);
-        else if (_weaveHost.LastCompleted is { } done) MarkDone(done);
+        if (_makingHost.CurrentProgress is { } current) Apply(current);
+        else if (_makingHost.LastCompleted is { } done) MarkDone(done);
         RefreshCooldownLine();
-        State = WeaveSheetState.Expanded;
+        State = MakingSheetState.Expanded;
     }
 
     public void RefreshCooldownLine()
     {
         // Honest minutes: 30, or 15 when premium (dev unlock included).
         var minutes = _entitlements.CooldownMinutes;
-        var next = _cooldown.NextWeaveAtLocal;
+        var next = _cooldown.NextStoryAtLocal;
         CooldownLine = next is not null
             ? $"{minutes} minutes between stories — next story at {next:HH:mm}."
             : $"{minutes} minutes between stories.";
@@ -263,29 +263,29 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     [RelayCommand]
     private void Expand()
     {
-        if (State == WeaveSheetState.Expanded) return;
+        if (State == MakingSheetState.Expanded) return;
         _haptics.Light();
         RefreshCooldownLine();
-        State = WeaveSheetState.Expanded;
+        State = MakingSheetState.Expanded;
     }
 
-    /// <summary>Drag-down / handle-tap / scrim-tap on the expanded sheet. Mid-weave it
+    /// <summary>Drag-down / handle-tap / scrim-tap on the expanded sheet. Mid-story it
     /// collapses to the mini-bar; once finished (done or failed) it dismisses entirely.</summary>
     [RelayCommand]
     private void Collapse()
     {
-        if (State != WeaveSheetState.Expanded) return;
+        if (State != MakingSheetState.Expanded) return;
         _haptics.Light();   // collapse commit — the mirror of the expand Light
         if (IsDone || IsFailed) Dismiss();
-        else State = WeaveSheetState.Collapsed;
+        else State = MakingSheetState.Collapsed;
     }
 
-    /// <summary>Swipe-down on the mini-bar: inert while weaving (the bar is already
-    /// minimal), dismisses once the story is done or the weave failed.</summary>
+    /// <summary>Swipe-down on the mini-bar: inert while making (the bar is already
+    /// minimal), dismisses once the story is done or the story run failed.</summary>
     [RelayCommand]
     private void DismissFromMiniBar()
     {
-        if (State != WeaveSheetState.Collapsed) return;
+        if (State != MakingSheetState.Collapsed) return;
         if (IsDone || IsFailed)
         {
             _haptics.Light();   // dismiss commit
@@ -295,7 +295,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
 
     private void Dismiss()
     {
-        State = WeaveSheetState.Hidden;
+        State = MakingSheetState.Hidden;
         Dismissed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -310,28 +310,28 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         await _navigator.GoToAsync(Routes.Player);
     }
 
-    private void OnProgress(WeaveProgress progress)
+    private void OnProgress(MakingProgress progress)
     {
-        // A weave resumed at app-start (or noticed late) auto-surfaces the mini-bar.
-        if (State == WeaveSheetState.Hidden)
+        // A story run resumed at app-start (or noticed late) auto-surfaces the mini-bar.
+        if (State == MakingSheetState.Hidden)
         {
-            ResetToWeaving();
+            ResetToMaking();
             _ = RefreshNameLateAsync();   // resume path: name loads after the bar appears
-            State = WeaveSheetState.Collapsed;
+            State = MakingSheetState.Collapsed;
         }
-        if (IsDone || IsFailed) ResetToWeaving();   // a fresh weave after a finished one
+        if (IsDone || IsFailed) ResetToMaking();   // a fresh story run after a finished one
         Apply(progress);
     }
 
     private void OnCompleted(StoryRecord story)
     {
-        if (State == WeaveSheetState.Hidden) State = WeaveSheetState.Collapsed;
+        if (State == MakingSheetState.Hidden) State = MakingSheetState.Collapsed;
         MarkDone(story);
     }
 
     private void OnFailed(string message)
     {
-        if (State == WeaveSheetState.Hidden) State = WeaveSheetState.Collapsed;
+        if (State == MakingSheetState.Hidden) State = MakingSheetState.Collapsed;
         MarkFailed(message);
     }
 
@@ -340,7 +340,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     /// the pipeline's real percent catches up and passes it within the Outline stage.</summary>
     public const int DisplayFloorPercent = 5;
 
-    private void ResetToWeaving()
+    private void ResetToMaking()
     {
         IsConfirmingStop = false;
         _stopConfirmGeneration++;
@@ -358,13 +358,13 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         RefreshCooldownLine();
     }
 
-    private void Apply(WeaveProgress progress)
+    private void Apply(MakingProgress progress)
     {
-        // The quiet "loom-click": one Tick per stage transition (Outline→Scenes→Poster→
+        // The quiet "stage click": one Tick per stage transition (Outline→Scenes→Poster→
         // Narration), foreground only, even while collapsed. The FIRST stage seen never
-        // ticks — weave start already answered with Medium, and a resume mid-pipeline is
+        // ticks — story start already answered with Medium, and a resume mid-pipeline is
         // not a user gesture. Done celebrates in MarkDone instead.
-        if (progress.Stage != WeaveStage.Done)
+        if (progress.Stage != MakingStage.Done)
         {
             if (_lastTickedStage is { } previous && progress.Stage > previous && IsForegrounded)
                 _haptics.Tick();
@@ -374,21 +374,21 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         foreach (var row in Stages)
         {
             row.State = row.Stage < progress.Stage ? StageRowState.Done
-                : row.Stage == progress.Stage ? StageRowState.Weaving
+                : row.Stage == progress.Stage ? StageRowState.Making
                 : StageRowState.Waiting;
         }
-        if (progress.Stage == WeaveStage.Done)
+        if (progress.Stage == MakingStage.Done)
         {
             foreach (var row in Stages) row.State = StageRowState.Done;
         }
-        var current = Stages.FirstOrDefault(r => r.State == StageRowState.Weaving);
+        var current = Stages.FirstOrDefault(r => r.State == StageRowState.Making);
         MiniDetail = $"{current?.ShortName ?? "Making"} · {Percent}%";
         RefreshCooldownLine();
     }
 
     private void MarkDone(StoryRecord story)
     {
-        if (!IsDone && IsForegrounded) _haptics.Celebrate();   // weave complete / story ready (once, gentle two-beat, foreground only)
+        if (!IsDone && IsForegrounded) _haptics.Celebrate();   // story complete / story ready (once, gentle two-beat, foreground only)
         Percent = 100;
         foreach (var row in Stages) row.State = StageRowState.Done;
         IsDone = true;

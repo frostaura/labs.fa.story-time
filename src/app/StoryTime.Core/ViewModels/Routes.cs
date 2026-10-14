@@ -8,10 +8,10 @@ public static class Routes
     public const string OnboardingProfile = "onboarding-profile";
     public const string OnboardingVoice = "onboarding-voice";
     public const string OnboardingRules = "onboarding-rules";
-    /// <summary>QA-only pseudo-route: no page behind it any more (the Weaving page became
-    /// the weave sheet, 2026-07-30). App.OnShellReadyAsync intercepts it and opens Home
+    /// <summary>QA-only pseudo-route: no page behind it any more (the Making page became
+    /// the making sheet, 2026-07-30). App.OnShellReadyAsync intercepts it and opens Home
     /// with the sheet expanded instead of navigating.</summary>
-    public const string Weaving = "weaving";
+    public const string Making = "making";
     public const string Player = "player";
     public const string Shelf = "shelf";
     public const string Settings = "settings";

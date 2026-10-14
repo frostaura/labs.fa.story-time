@@ -2,7 +2,7 @@ namespace StoryTime.Core.Services;
 
 /// <summary>Coalesces haptic calls so one gesture can never double-thump. Two entry points:
 ///
-/// <para><see cref="TryPass"/> — command-level haptics (nav Light, VM Selection, weave-start
+/// <para><see cref="TryPass"/> — command-level haptics (nav Light, VM Selection, story-start
 /// Medium…). A call only passes when the currently-armed window has elapsed since the last
 /// call that passed. The default window is <see cref="MinIntervalMs"/>.</para>
 ///
@@ -29,7 +29,7 @@ public sealed class HapticTickLimiter
     public const long LightWindowMs = 90;
 
     /// <summary>Medium window — same job as the Light window for actions of weight
-    /// (press-down Medium on the weave CTA vs. the VM's weave-start Medium).</summary>
+    /// (press-down Medium on the Make CTA vs. the VM's story-start Medium).</summary>
     public const long MediumWindowMs = 90;
 
     /// <summary>Selection window — picker rows fire press-down Selection and then the

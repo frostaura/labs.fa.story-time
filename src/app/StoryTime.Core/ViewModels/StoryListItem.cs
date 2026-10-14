@@ -51,7 +51,7 @@ public sealed partial class StoryListItem : ObservableObject
             {
                 StoryState.Failed => "didn't finish",
                 StoryState.AwaitingApproval => "waiting for you",
-                StoryState.Weaving => "making…",
+                StoryState.Making => "making…",
                 _ => Record.Mode == StoryMode.Series && Record.EpisodeNumber > 0
                     ? $"Series · Episode {Record.EpisodeNumber}"
                     : "One-shot",
@@ -64,7 +64,7 @@ public sealed partial class StoryListItem : ObservableObject
     partial void OnIsFavoriteChanged(bool value) => OnPropertyChanged(nameof(MetaLine));
 
     /// <summary>Re-point this row at a freshly-read record (same story id) and re-render.
-    /// Used by <see cref="SyncInto"/> so a live list can absorb a state change — weaving →
+    /// Used by <see cref="SyncInto"/> so a live list can absorb a state change — making →
     /// awaiting approval → ready, a new title, a poster that has just been rasterized —
     /// without discarding and rebuilding the row.</summary>
     public void Refresh(StoryRecord record)
@@ -83,9 +83,9 @@ public sealed partial class StoryListItem : ObservableObject
     /// keyed on story id: existing rows are refreshed and moved, new ones inserted, gone
     /// ones trimmed.
     ///
-    /// Why not Clear() + re-add: every story write during a weave notifies every list
+    /// Why not Clear() + re-add: every story write during a story run notifies every list
     /// (IStoryCatalog), and a full rebuild would reset the Home carousel's scroll offset
-    /// six times per weave — and de-prime its snap-tick heuristic each time. In-place
+    /// six times per story run — and de-prime its snap-tick heuristic each time. In-place
     /// reconciliation keeps the finger's position and only animates real differences.</summary>
     public static void SyncInto(ObservableCollection<StoryListItem> target, IReadOnlyList<StoryRecord> source)
     {

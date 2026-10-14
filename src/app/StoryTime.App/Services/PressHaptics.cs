@@ -10,7 +10,7 @@ public enum PressHapticKind
     None,
     /// <summary>Default for buttons, pills, rows, tiles — anything that opens or navigates.</summary>
     Light,
-    /// <summary>The big actions: the weave CTA, the final onboarding CTA.</summary>
+    /// <summary>The big actions: the Make CTA, the final onboarding CTA.</summary>
     Medium,
     /// <summary>Pickers and toggles — chips, radio rows, switches.</summary>
     Selection,

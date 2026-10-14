@@ -9,14 +9,14 @@ namespace StoryTime.Core.ViewModels;
 
 /// <summary>State behind the "Tonight's recipe" shelf on Home (founder request 2026-07-30:
 /// edit interests / narrator / series mode from the generation page, elegantly — a compact
-/// slide-up shelf in the weave-sheet visual language, entry point the summary line).
+/// slide-up shelf in the making sheet visual language, entry point the summary line).
 ///
 /// Live-persistence covenant: every change writes through to the active profile via
 /// <see cref="IStoryStore.SaveProfileAsync"/> IMMEDIATELY — no Save button, no dirty state.
 /// The shelf edits the SAME ChildProfile instance Home holds (passed into OpenAsync), so
 /// Home's summary line recomputes from shared state on <see cref="ProfileChanged"/>.
-/// During an active weave the running pipeline holds its own snapshot (HomeViewModel clones
-/// the profile at weave start), so edits here affect the NEXT weave only — the eyebrow
+/// During an active story run the running pipeline holds its own snapshot (HomeViewModel clones
+/// the profile at story start), so edits here affect the NEXT story run only — the eyebrow
 /// gains a "for the next story" whisper instead of a warning.</summary>
 public sealed partial class RecipeShelfViewModel : ObservableObject
 {
@@ -26,7 +26,7 @@ public sealed partial class RecipeShelfViewModel : ObservableObject
     private readonly IStoryStore _store;
     private readonly ITtsEngine _tts;
     private readonly IHaptics _haptics;
-    private readonly IWeaveHost _weaveHost;
+    private readonly IStoryMakingHost _makingHost;
 
     private ChildProfile? _profile;
 
@@ -34,13 +34,13 @@ public sealed partial class RecipeShelfViewModel : ObservableObject
     private readonly VoicePreviewRunner _preview;
     private readonly VoiceSampleWarmer _warmer;
 
-    public RecipeShelfViewModel(IStoryStore store, ITtsEngine tts, IHaptics haptics, IWeaveHost weaveHost,
+    public RecipeShelfViewModel(IStoryStore store, ITtsEngine tts, IHaptics haptics, IStoryMakingHost makingHost,
         IVoiceSamplePlayer samplePlayer)
     {
         _store = store;
         _tts = tts;
         _haptics = haptics;
-        _weaveHost = weaveHost;
+        _makingHost = makingHost;
         _samplePlayer = samplePlayer;
         _preview = new VoicePreviewRunner(tts, samplePlayer);
         _warmer = new VoiceSampleWarmer(tts);
@@ -63,10 +63,10 @@ public sealed partial class RecipeShelfViewModel : ObservableObject
     [ObservableProperty]
     private bool _isOpen;
 
-    /// <summary>True while a weave runs — the eyebrow whispers "for the next story"
-    /// (the running weave already snapshotted its recipe; no warning needed).</summary>
+    /// <summary>True while a story run is in flight — the eyebrow whispers "for the next story"
+    /// (the running story already snapshotted its recipe; no warning needed).</summary>
     [ObservableProperty]
-    private bool _isWeaving;
+    private bool _isMaking;
 
     public ObservableCollection<InterestOption> Interests { get; }
 
@@ -86,7 +86,7 @@ public sealed partial class RecipeShelfViewModel : ObservableObject
         foreach (var option in Interests) option.IsSelected = profile.Interests.Contains(option.Name);
         foreach (var voice in Voices) voice.IsSelected = voice.Voice == profile.Voice;
         IsSeries = profile.Mode == StoryMode.Series;
-        IsWeaving = _weaveHost.IsWeaving;
+        IsMaking = _makingHost.IsMaking;
         // Cold sample renders read as a dead button — warm the samples the moment the
         // picker is visible so the first ▶ tap plays instantly.
         _warmer.Warm(profile.Voice);

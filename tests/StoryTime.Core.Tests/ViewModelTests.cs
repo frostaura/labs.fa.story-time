@@ -14,9 +14,9 @@ public class HomeViewModelTests : IAsyncLifetime
     private FakeClock _clock = null!;
     private InMemorySettingsStore _settings = null!;
     private CooldownService _cooldown = null!;
-    private FakeWeaveHost _host = null!;
+    private FakeStoryMakingHost _host = null!;
     private FakeNavigator _navigator = null!;
-    private WeaveSheetViewModel _sheet = null!;
+    private MakingSheetViewModel _sheet = null!;
     private RecipeShelfViewModel _recipe = null!;
     private FakeHaptics _haptics = null!;
     private HomeViewModel _vm = null!;
@@ -28,10 +28,10 @@ public class HomeViewModelTests : IAsyncLifetime
         _settings = new InMemorySettingsStore();
         var entitlements = new StoreEntitlements(_settings, _clock);
         _cooldown = new CooldownService(_settings, _clock, entitlements);
-        _host = new FakeWeaveHost();
+        _host = new FakeStoryMakingHost();
         _navigator = new FakeNavigator();
         _haptics = new FakeHaptics();
-        _sheet = new WeaveSheetViewModel(_host, _env.Store, _cooldown, _navigator, new PlayerLaunchContext(),
+        _sheet = new MakingSheetViewModel(_host, _env.Store, _cooldown, _navigator, new PlayerLaunchContext(),
             _settings, new NullHaptics(), entitlements, new KidModeService());
         _recipe = new RecipeShelfViewModel(_env.Store, new FakeTtsEngine(), _haptics, _host, new NullVoiceSamplePlayer());
         _vm = new HomeViewModel(_env.Store, _host, _cooldown, entitlements, _navigator,
@@ -55,46 +55,46 @@ public class HomeViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task WeaveButton_DisabledDuringCooldown_WithNextWeaveLabel()
+    public async Task MakeButton_DisabledDuringCooldown_WithNextStoryLabel()
     {
         _cooldown.Start();
         await _vm.ActivateAsync();
-        Assert.False(_vm.CanWeave);
-        Assert.StartsWith("Next story at ", _vm.WeaveButtonText);
-        Assert.False(_vm.WeaveCommand.CanExecute(null));
+        Assert.False(_vm.CanMake);
+        Assert.StartsWith("Next story at ", _vm.MakeButtonText);
+        Assert.False(_vm.MakeStoryCommand.CanExecute(null));
     }
 
     [Fact]
-    public async Task WeaveButton_EnabledWhenIdle()
+    public async Task MakeButton_EnabledWhenIdle()
     {
         await _vm.ActivateAsync();
-        Assert.True(_vm.CanWeave);
-        Assert.Equal("Make tonight's story", _vm.WeaveButtonText);
+        Assert.True(_vm.CanMake);
+        Assert.Equal("Make tonight's story", _vm.MakeButtonText);
     }
 
     [Fact]
-    public async Task WeaveButton_ShowsWeavingWhileHostRuns()
+    public async Task MakeButton_ShowsMakingWhileHostRuns()
     {
-        _host.IsWeaving = true;
+        _host.IsMaking = true;
         await _vm.ActivateAsync();
-        Assert.False(_vm.CanWeave);
-        Assert.Equal("Making tonight's story…", _vm.WeaveButtonText);
+        Assert.False(_vm.CanMake);
+        Assert.Equal("Making tonight's story…", _vm.MakeButtonText);
     }
 
     [Fact]
-    public async Task Weave_StartsHostAndOpensSheetExpanded_NoNavigation()
+    public async Task Make_StartsHostAndOpensSheetExpanded_NoNavigation()
     {
         await _vm.ActivateAsync();
-        await _vm.WeaveCommand.ExecuteAsync(null);
+        await _vm.MakeStoryCommand.ExecuteAsync(null);
         Assert.NotNull(_host.StartedWith);
-        // The Weaving page is gone: the sheet opens expanded over Home instead.
-        Assert.DoesNotContain(Routes.Weaving, _navigator.Routes);
-        Assert.Equal(WeaveSheetState.Expanded, _sheet.State);
+        // The Making page is gone: the sheet opens expanded over Home instead.
+        Assert.DoesNotContain(Routes.Making, _navigator.Routes);
+        Assert.Equal(MakingSheetState.Expanded, _sheet.State);
         Assert.Equal("Making Aria's story…", _sheet.Headline);
     }
 
     [Fact]
-    public async Task WeaveCompletion_RefreshesCarouselWhileSittingOnHome()
+    public async Task MakingCompletion_RefreshesCarouselWhileSittingOnHome()
     {
         await _vm.ActivateAsync();
         Assert.Empty(_vm.Stories);
@@ -104,7 +104,7 @@ public class HomeViewModelTests : IAsyncLifetime
         await _env.Store.SaveStoryAsync(story);
 
         _host.RaiseCompleted(story);
-        await _vm.WeaveCompletedRefresh!;
+        await _vm.MakingCompletedRefresh!;
         Assert.Single(_vm.Stories);
     }
 
@@ -125,7 +125,7 @@ public class HomeViewModelTests : IAsyncLifetime
     public async Task SelectLength_WritesThroughToProfileImmediately()
     {
         // Root cause of "my selection isn't remembered": the old handler kept the pick in
-        // a local property (persisted only at weave time) while ActivateAsync re-read the
+        // a local property (persisted only at story time) while ActivateAsync re-read the
         // stored profile on every appearing, overwriting it. Now the pick saves on commit.
         await _vm.ActivateAsync();
         Assert.Equal(StoryLength.Five, _vm.SelectedLength);   // stored profile default
@@ -156,17 +156,17 @@ public class HomeViewModelTests : IAsyncLifetime
         await _vm.ActivateAsync();
         await _vm.AdjustRecipeCommand.ExecuteAsync(null);
         Assert.True(_recipe.IsOpen);
-        Assert.False(_recipe.IsWeaving);
+        Assert.False(_recipe.IsMaking);
         Assert.True(_recipe.Interests.First(i => i.Name == "Foxes").IsSelected);
         Assert.True(_recipe.Voices.First(v => v.Voice == NarratorVoice.Ember).IsSelected);
         Assert.True(_recipe.IsSeries);
     }
 
     [Fact]
-    public async Task AdjustRecipe_BlockedWhileWeaveSheetExpanded()
+    public async Task AdjustRecipe_BlockedWhileMakingSheetExpanded()
     {
         await _vm.ActivateAsync();
-        await _sheet.ShowForWeaveAsync();   // sheet expanded — its scrim owns the screen
+        await _sheet.ShowForMakingAsync();   // sheet expanded — its scrim owns the screen
         await _vm.AdjustRecipeCommand.ExecuteAsync(null);
         Assert.False(_recipe.IsOpen);
     }
@@ -184,19 +184,19 @@ public class HomeViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RecipeEditDuringWeave_AffectsNextWeaveOnly()
+    public async Task RecipeEditDuringMaking_AffectsNextStoryOnly()
     {
         await _vm.ActivateAsync();
-        await _vm.WeaveCommand.ExecuteAsync(null);   // host snapshots the recipe at start
+        await _vm.MakeStoryCommand.ExecuteAsync(null);   // host snapshots the recipe at start
         Assert.Equal(NarratorVoice.Ember, _host.StartedWith!.Voice);
 
-        _sheet.State = WeaveSheetState.Collapsed;    // mini-bar docked; shelf may open
+        _sheet.State = MakingSheetState.Collapsed;    // mini-bar docked; shelf may open
         await _vm.AdjustRecipeCommand.ExecuteAsync(null);
         Assert.True(_recipe.IsOpen);
-        Assert.True(_recipe.IsWeaving);              // eyebrow whispers "for the next story"
+        Assert.True(_recipe.IsMaking);              // eyebrow whispers "for the next story"
 
         await _recipe.SelectVoiceCommand.ExecuteAsync(_recipe.Voices.First(v => v.Voice == NarratorVoice.Sage));
-        // The running weave keeps its snapshot; the store carries the next weave's recipe.
+        // The running story run keeps its snapshot; the store carries the next story run's recipe.
         Assert.Equal(NarratorVoice.Ember, _host.StartedWith!.Voice);
         Assert.Equal(NarratorVoice.Sage, (await _env.Store.GetActiveProfileAsync())!.Voice);
     }
@@ -235,25 +235,25 @@ public class HomeViewModelTests : IAsyncLifetime
     }
 }
 
-public class WeaveSheetViewModelTests : IAsyncLifetime
+public class MakingSheetViewModelTests : IAsyncLifetime
 {
     private TestEnv _env = null!;
-    private FakeWeaveHost _host = null!;
+    private FakeStoryMakingHost _host = null!;
     private FakeNavigator _navigator = null!;
     private InMemorySettingsStore _settings = null!;
     private KidModeService _kidMode = null!;
-    private WeaveSheetViewModel _vm = null!;
+    private MakingSheetViewModel _vm = null!;
 
     public async Task InitializeAsync()
     {
         _env = await TestEnv.CreateAsync();
-        _host = new FakeWeaveHost();
+        _host = new FakeStoryMakingHost();
         _navigator = new FakeNavigator();
         _settings = new InMemorySettingsStore();
         _kidMode = new KidModeService();
         var clock = new FakeClock();
         var cooldown = new CooldownService(_settings, clock, new StoreEntitlements(_settings, clock));
-        _vm = new WeaveSheetViewModel(_host, _env.Store, cooldown, _navigator, new PlayerLaunchContext(), _settings,
+        _vm = new MakingSheetViewModel(_host, _env.Store, cooldown, _navigator, new PlayerLaunchContext(), _settings,
             new NullHaptics(), new StoreEntitlements(_settings, clock), _kidMode);
         await _env.Store.SaveProfileAsync(TestEnv.Profile());
     }
@@ -261,26 +261,26 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
     public async Task DisposeAsync() => await _env.DisposeAsync();
 
     [Fact]
-    public async Task ShowForWeave_OpensExpandedWithFreshState()
+    public async Task ShowForMaking_OpensExpandedWithFreshState()
     {
-        await _vm.ShowForWeaveAsync();
-        Assert.Equal(WeaveSheetState.Expanded, _vm.State);
+        await _vm.ShowForMakingAsync();
+        Assert.Equal(MakingSheetState.Expanded, _vm.State);
         Assert.True(_vm.IsVisible);
-        Assert.Equal(WeaveSheetViewModel.DisplayFloorPercent, _vm.Percent);
+        Assert.Equal(MakingSheetViewModel.DisplayFloorPercent, _vm.Percent);
         Assert.All(_vm.Stages, s => Assert.Equal(StageRowState.Waiting, s.State));
         Assert.Equal("Making Aria's story…", _vm.Headline);
         Assert.Equal("Making Aria's story…", _vm.MiniTitle);
-        Assert.Equal($"MAKING · {WeaveSheetViewModel.DisplayFloorPercent}%", _vm.EyebrowText);
+        Assert.Equal($"MAKING · {MakingSheetViewModel.DisplayFloorPercent}%", _vm.EyebrowText);
         Assert.Equal("Close — your story keeps going", _vm.CloseLabel);
     }
 
     [Fact]
     public async Task StageRows_TrackProgress_AndMiniDetailFollows()
     {
-        await _vm.ShowForWeaveAsync();
-        _host.RaiseProgress(new WeaveProgress { Stage = WeaveStage.Scenes, Percent = 20, StageFraction = 0.4 });
+        await _vm.ShowForMakingAsync();
+        _host.RaiseProgress(new MakingProgress { Stage = MakingStage.Scenes, Percent = 20, StageFraction = 0.4 });
         Assert.Equal(StageRowState.Done, _vm.Stages[0].State);
-        Assert.Equal(StageRowState.Weaving, _vm.Stages[1].State);
+        Assert.Equal(StageRowState.Making, _vm.Stages[1].State);
         Assert.Equal(StageRowState.Waiting, _vm.Stages[2].State);
         Assert.Equal(20, _vm.Percent);
         Assert.Equal(0.2, _vm.ProgressFraction, precision: 5);
@@ -292,70 +292,70 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
     [Fact]
     public async Task CollapsePersistsAcrossNavigation_SingletonState()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _vm.CollapseCommand.Execute(null);
-        Assert.Equal(WeaveSheetState.Collapsed, _vm.State);
+        Assert.Equal(MakingSheetState.Collapsed, _vm.State);
         Assert.True(_vm.IsCollapsed);
 
         // Progress keeps flowing while collapsed (nothing re-expands uninvited),
         // which is exactly what every page's host observes after navigation.
-        _host.RaiseProgress(new WeaveProgress { Stage = WeaveStage.Narration, Percent = 62, StageFraction = 0.3 });
-        Assert.Equal(WeaveSheetState.Collapsed, _vm.State);
+        _host.RaiseProgress(new MakingProgress { Stage = MakingStage.Narration, Percent = 62, StageFraction = 0.3 });
+        Assert.Equal(MakingSheetState.Collapsed, _vm.State);
         Assert.Equal("Voice · 62%", _vm.MiniDetail);
 
         _vm.ExpandCommand.Execute(null);
-        Assert.Equal(WeaveSheetState.Expanded, _vm.State);
+        Assert.Equal(MakingSheetState.Expanded, _vm.State);
     }
 
     [Fact]
-    public async Task MiniBarSwipeDown_InertWhileWeaving()
+    public async Task MiniBarSwipeDown_InertWhileMaking()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _vm.CollapseCommand.Execute(null);
         _vm.DismissFromMiniBarCommand.Execute(null);
-        Assert.Equal(WeaveSheetState.Collapsed, _vm.State);   // still weaving — bar stays
+        Assert.Equal(MakingSheetState.Collapsed, _vm.State);   // still making — bar stays
     }
 
     [Fact]
     public async Task Completion_WhileCollapsed_TurnsMiniBarIntoReadyState()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _vm.CollapseCommand.Execute(null);
         _host.RaiseCompleted(new StoryRecord { Id = 12, Title = "T", State = StoryState.AwaitingApproval });
 
-        Assert.Equal(WeaveSheetState.Collapsed, _vm.State);
+        Assert.Equal(MakingSheetState.Collapsed, _vm.State);
         Assert.True(_vm.IsDone);
-        Assert.Equal(WeaveSheetViewModel.MiniTitleReady, _vm.MiniTitle);
+        Assert.Equal(MakingSheetViewModel.MiniTitleReady, _vm.MiniTitle);
         Assert.Equal("STORY READY", _vm.EyebrowText);
         Assert.Equal("Aria's story is ready.", _vm.Headline);
         Assert.All(_vm.Stages, s => Assert.Equal(StageRowState.Done, s.State));
 
         // Tap opens the done sheet; drag-down then dismisses entirely.
         _vm.ExpandCommand.Execute(null);
-        Assert.Equal(WeaveSheetState.Expanded, _vm.State);
+        Assert.Equal(MakingSheetState.Expanded, _vm.State);
         var dismissed = false;
         _vm.Dismissed += (_, _) => dismissed = true;
         _vm.CollapseCommand.Execute(null);
-        Assert.Equal(WeaveSheetState.Hidden, _vm.State);
+        Assert.Equal(MakingSheetState.Hidden, _vm.State);
         Assert.True(dismissed);
     }
 
     [Fact]
     public async Task Completion_OffersTeaser_AndPlayingDismissesSheet()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _host.RaiseCompleted(new StoryRecord { Id = 12, Title = "T", State = StoryState.AwaitingApproval });
         Assert.True(_vm.ShowTeaserCta);
 
         await _vm.PlayTeaserCommand.ExecuteAsync(null);
         Assert.Contains(Routes.Player, _navigator.Routes);
-        Assert.Equal(WeaveSheetState.Hidden, _vm.State);
+        Assert.Equal(MakingSheetState.Hidden, _vm.State);
     }
 
     [Fact]
     public async Task KidMode_HidesTeaserCta_SheetStaysStagesAndCooldownOnly()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _host.RaiseCompleted(new StoryRecord { Id = 12, Title = "T", State = StoryState.AwaitingApproval });
         Assert.True(_vm.ShowTeaserCta);
 
@@ -375,51 +375,51 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
     public void ProgressWhileHidden_AutoSurfacesMiniBar()
     {
         // Resume-at-startup path: no page ever opened the sheet.
-        _host.RaiseProgress(new WeaveProgress { Stage = WeaveStage.Outline, Percent = 2, StageFraction = 0.4 });
-        Assert.Equal(WeaveSheetState.Collapsed, _vm.State);
-        Assert.Equal(WeaveSheetViewModel.DisplayFloorPercent, _vm.Percent); // 2% real, floored for display
+        _host.RaiseProgress(new MakingProgress { Stage = MakingStage.Outline, Percent = 2, StageFraction = 0.4 });
+        Assert.Equal(MakingSheetState.Collapsed, _vm.State);
+        Assert.Equal(MakingSheetViewModel.DisplayFloorPercent, _vm.Percent); // 2% real, floored for display
     }
 
     [Fact]
     public async Task Failure_ShowsGentleMessage_AndDismisses()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _host.RaiseFailed(StoryPipeline.GentleFailureMessage);
         Assert.True(_vm.IsFailed);
         Assert.Equal(StoryPipeline.GentleFailureMessage, _vm.FailureMessage);
         Assert.Equal("↓ close", _vm.CloseLabel);
 
         _vm.CollapseCommand.Execute(null);   // finished sheet dismisses rather than collapses
-        Assert.Equal(WeaveSheetState.Hidden, _vm.State);
+        Assert.Equal(MakingSheetState.Hidden, _vm.State);
     }
 
     [Fact]
     public async Task MakingCopy_UsesSoftHumWording()
     {
-        await _vm.ShowForWeaveAsync();
-        Assert.Equal(WeaveSheetViewModel.BackgroundHint, _vm.SubText);
+        await _vm.ShowForMakingAsync();
+        Assert.Equal(MakingSheetViewModel.BackgroundHint, _vm.SubText);
     }
 
     [Fact]
-    public async Task StopWeave_FirstTapArms_SecondTapDiscardsAndHides()
+    public async Task StopMaking_FirstTapArms_SecondTapDiscardsAndHides()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         Assert.True(_vm.ShowStopRow);
 
-        var first = _vm.StopWeaveCommand.ExecuteAsync(null);   // arms; auto-revert timer runs
+        var first = _vm.StopMakingCommand.ExecuteAsync(null);   // arms; auto-revert timer runs
         Assert.True(_vm.IsConfirmingStop);
         Assert.Contains("tap again", _vm.StopLabel);
 
-        await _vm.StopWeaveCommand.ExecuteAsync(null);         // confirms
+        await _vm.StopMakingCommand.ExecuteAsync(null);         // confirms
         Assert.True(_host.DiscardCalled);
-        Assert.Equal(WeaveSheetState.Hidden, _vm.State);
+        Assert.Equal(MakingSheetState.Hidden, _vm.State);
         Assert.False(_vm.IsConfirmingStop);
     }
 
     [Fact]
     public async Task StopRow_HiddenWhenDoneAndInKidMode()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _kidMode.Enter();
         Assert.False(_vm.ShowStopRow);
         _kidMode.Exit();
@@ -431,15 +431,15 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
     public async Task QaExpand_OpensExpandedOverIdleHost()
     {
         await _vm.ExpandForQaAsync();
-        Assert.Equal(WeaveSheetState.Expanded, _vm.State);
-        Assert.Equal(WeaveSheetViewModel.DisplayFloorPercent, _vm.Percent);
+        Assert.Equal(MakingSheetState.Expanded, _vm.State);
+        Assert.Equal(MakingSheetViewModel.DisplayFloorPercent, _vm.Percent);
         Assert.Equal("Making Aria's story…", _vm.Headline);
     }
 
     [Fact]
     public void StageTicks_MatchPipelineBoundaries()
     {
-        Assert.Equal([0.05, 0.45, 0.50, 1.0], WeaveSheetViewModel.StageTicks);
+        Assert.Equal([0.05, 0.45, 0.50, 1.0], MakingSheetViewModel.StageTicks);
     }
 }
 

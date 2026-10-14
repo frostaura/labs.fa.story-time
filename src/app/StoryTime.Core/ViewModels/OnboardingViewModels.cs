@@ -296,7 +296,7 @@ public sealed partial class OnboardingVoiceViewModel : ObservableObject
 }
 
 /// <summary>Onboarding 3 of 3 — "Three things, then bed." Completing it creates the profile
-/// and the pre-woven welcome story.</summary>
+/// and the ready-made welcome story.</summary>
 public sealed partial class OnboardingRulesViewModel : ObservableObject
 {
     private readonly OnboardingState _state;

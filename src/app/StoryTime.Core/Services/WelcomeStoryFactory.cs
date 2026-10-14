@@ -5,12 +5,12 @@ using StoryTime.Core.Engines;
 
 namespace StoryTime.Core.Services;
 
-/// <summary>Builds the single pre-woven welcome story ("The Lantern Bear") deterministically
+/// <summary>Builds the single ready-made welcome story ("The Lantern Bear") deterministically
 /// after onboarding completes, so the shelf and home are never empty on first open.
 /// State Ready, no audio file — the player uses live TTS mode.</summary>
 public sealed class WelcomeStoryFactory
 {
-    /// <summary>Fixed seed so every install weaves the identical welcome story.</summary>
+    /// <summary>Fixed seed so every install makes the identical welcome story.</summary>
     public const int WelcomeSeed = 20260730;
     public const string WelcomeTitle = "The Lantern Bear";
 

@@ -17,7 +17,7 @@
         <!-- Drag handle (tap, swipe down, or drag past the threshold to close; the drag
              pan + its arming Tick live in code-behind). Lives OUTSIDE the ScrollView —
              the scroll container swallows vertical pans (same lesson as the
-             weave sheet's GrabZone). The grid widens the touch target beyond the pill. -->
+             making sheet's GrabZone). The grid widens the touch target beyond the pill. -->
         <Grid x:Name="DragHandle" Grid.Row="0" HeightRequest="44" Margin="0,6,0,0"
               BackgroundColor="Transparent">
             <BoxView WidthRequest="52" HeightRequest="4" CornerRadius="2"

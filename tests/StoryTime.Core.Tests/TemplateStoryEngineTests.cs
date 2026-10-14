@@ -9,7 +9,7 @@ public class TemplateStoryEngineTests
 {
     private static TemplateStoryEngine Engine(int seed = 42) => new(() => seed);
 
-    private static async Task<string> WeaveFullTextAsync(TemplateStoryEngine engine, ChildProfile profile, StoryBible? bible = null)
+    private static async Task<string> MakeFullTextAsync(TemplateStoryEngine engine, ChildProfile profile, StoryBible? bible = null)
     {
         var outline = await engine.GenerateOutlineAsync(profile, bible, TemplateStoryEngine.SceneCount(profile.Length), CancellationToken.None);
         var scenes = new List<string>();
@@ -31,7 +31,7 @@ public class TemplateStoryEngineTests
     public async Task WordCounts_WithinQuarterOfTarget(StoryLength length, int target)
     {
         var profile = TestEnv.Profile(length: length);
-        var text = await WeaveFullTextAsync(Engine(), profile);
+        var text = await MakeFullTextAsync(Engine(), profile);
         var words = WordCount(text);
         Assert.InRange(words, (int)(target * 0.75), (int)(target * 1.25));
     }
@@ -52,8 +52,8 @@ public class TemplateStoryEngineTests
     {
         var young = TestEnv.Profile(age: 3);
         var older = TestEnv.Profile(age: 8);
-        var youngText = await WeaveFullTextAsync(Engine(7), young);
-        var olderText = await WeaveFullTextAsync(Engine(7), older);
+        var youngText = await MakeFullTextAsync(Engine(7), young);
+        var olderText = await MakeFullTextAsync(Engine(7), older);
 
         Assert.True(AvgSentenceLength(youngText) < AvgSentenceLength(olderText),
             $"3-4 avg {AvgSentenceLength(youngText):0.0} should be < 7-8 avg {AvgSentenceLength(olderText):0.0}");
@@ -69,8 +69,8 @@ public class TemplateStoryEngineTests
     public async Task SameSeed_ProducesIdenticalStory()
     {
         var profile = TestEnv.Profile();
-        var a = await WeaveFullTextAsync(Engine(123), profile);
-        var b = await WeaveFullTextAsync(Engine(123), profile);
+        var a = await MakeFullTextAsync(Engine(123), profile);
+        var b = await MakeFullTextAsync(Engine(123), profile);
         Assert.Equal(a, b);
     }
 
@@ -78,16 +78,16 @@ public class TemplateStoryEngineTests
     public async Task DifferentSeeds_ProduceDifferentStories()
     {
         var profile = TestEnv.Profile();
-        var a = await WeaveFullTextAsync(Engine(1), profile);
-        var b = await WeaveFullTextAsync(Engine(2), profile);
+        var a = await MakeFullTextAsync(Engine(1), profile);
+        var b = await MakeFullTextAsync(Engine(2), profile);
         Assert.NotEqual(a, b);
     }
 
     [Fact]
-    public async Task ChildName_IsWovenIn()
+    public async Task ChildName_IsWrittenIn()
     {
         var profile = TestEnv.Profile();
-        var text = await WeaveFullTextAsync(Engine(), profile);
+        var text = await MakeFullTextAsync(Engine(), profile);
         Assert.Contains(profile.Name, text);
     }
 
@@ -96,7 +96,7 @@ public class TemplateStoryEngineTests
     {
         for (var seed = 0; seed < 8; seed++)
         {
-            var text = await WeaveFullTextAsync(Engine(seed), TestEnv.Profile());
+            var text = await MakeFullTextAsync(Engine(seed), TestEnv.Profile());
             Assert.EndsWith("Goodnight.", text.TrimEnd());
         }
     }
@@ -115,7 +115,7 @@ public class TemplateStoryEngineTests
         var outline = await engine.GenerateOutlineAsync(profile, bible, 5, CancellationToken.None);
         Assert.Contains(outline.Characters, c => c.Name == "Marlow");
 
-        var text = await WeaveFullTextAsync(engine, profile, bible);
+        var text = await MakeFullTextAsync(engine, profile, bible);
         Assert.Contains("Marlow", text);
     }
 
@@ -129,7 +129,7 @@ public class TemplateStoryEngineTests
             {
                 var profile = TestEnv.Profile(age: age);
                 profile.Interests = [interest];
-                var text = await WeaveFullTextAsync(Engine(interest.GetHashCode() ^ age), profile);
+                var text = await MakeFullTextAsync(Engine(interest.GetHashCode() ^ age), profile);
                 var flags = filter.Check(text);
                 Assert.True(flags.Count == 0, $"Interest '{interest}' age {age} flagged: {string.Join(",", flags)}");
             }
@@ -145,7 +145,7 @@ public class TemplateStoryEngineTests
         var filter = new SafetyFilter();
         for (var seed = 0; seed < 12; seed++)
         {
-            var text = await WeaveFullTextAsync(Engine(seed), TestEnv.Profile());
+            var text = await MakeFullTextAsync(Engine(seed), TestEnv.Profile());
             Assert.True(filter.IsClean(text), $"Seed {seed} produced flagged text");
         }
     }
@@ -218,8 +218,8 @@ public class TemplateStoryEngineTests
             var gentle = TestEnv.Profile(age: 3);
             var brave = TestEnv.Profile(age: 3);
             brave.ContentFilter = ContentFilterLevel.Braveish;
-            var a = await WeaveFullTextAsync(Engine(seed), gentle);
-            var b = await WeaveFullTextAsync(Engine(seed), brave);
+            var a = await MakeFullTextAsync(Engine(seed), gentle);
+            var b = await MakeFullTextAsync(Engine(seed), brave);
             Assert.Equal(a, b);   // the youngest band tones Brave-ish down to Gentle exactly
         }
     }
@@ -232,7 +232,7 @@ public class TemplateStoryEngineTests
         {
             var profile = TestEnv.Profile(age: 7);
             profile.ContentFilter = ContentFilterLevel.Braveish;
-            var text = await WeaveFullTextAsync(Engine(seed), profile);
+            var text = await MakeFullTextAsync(Engine(seed), profile);
             Assert.True(filter.IsClean(text), $"Brave-ish seed {seed} flagged: {string.Join(",", filter.Check(text))}");
             Assert.EndsWith("Goodnight.", text.TrimEnd());
         }

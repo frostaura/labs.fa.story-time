@@ -20,9 +20,9 @@
 
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,8,0,18">
                 <Label Style="{StaticResource Eyebrow}" Text="TONIGHT'S RECIPE" VerticalOptions="Center" />
-                <!-- Whisper while a weave runs: the loom already has tonight's snapshot. -->
+                <!-- Whisper while a story is being made: it already has tonight's snapshot. -->
                 <Label Grid.Column="1" Style="{StaticResource Whisper}" Text="for the next story"
-                       VerticalOptions="Center" IsVisible="{Binding IsWeaving}" />
+                       VerticalOptions="Center" IsVisible="{Binding IsMaking}" />
             </Grid>
 
             <!-- Section 1 · interests -->

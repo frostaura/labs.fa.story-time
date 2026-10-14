@@ -16,7 +16,7 @@ namespace StoryTime.Core.Tests;
 ///
 /// The visibility contract under test (documented in docs/design/mockup-spec.md):
 ///   Home     — Ready + AwaitingApproval only, newest first, ≤8.
-///   Library  — everything, including Weaving and Failed ("Every story").
+///   Library  — everything, including Making and Failed ("Every story").
 ///   Shelf    — Ready ONLY; an unapproved story must not reach a child's hands.</summary>
 public class StoryPropagationTests : IAsyncLifetime
 {
@@ -25,7 +25,7 @@ public class StoryPropagationTests : IAsyncLifetime
     private HomeViewModel _home = null!;
     private LibraryViewModel _library = null!;
     private ShelfViewModel _shelf = null!;
-    private FakeWeaveHost _host = null!;
+    private FakeStoryMakingHost _host = null!;
 
     public async Task InitializeAsync()
     {
@@ -34,10 +34,10 @@ public class StoryPropagationTests : IAsyncLifetime
         var settings = new InMemorySettingsStore();
         var entitlements = new StoreEntitlements(settings, clock);
         var cooldown = new CooldownService(settings, clock, entitlements);
-        _host = new FakeWeaveHost();
+        _host = new FakeStoryMakingHost();
         var navigator = new FakeNavigator();
         var kidMode = new KidModeService();
-        var sheet = new WeaveSheetViewModel(_host, _env.Store, cooldown, navigator, new PlayerLaunchContext(),
+        var sheet = new MakingSheetViewModel(_host, _env.Store, cooldown, navigator, new PlayerLaunchContext(),
             settings, new NullHaptics(), entitlements, kidMode);
 
         _home = new HomeViewModel(_env.Store, _host, cooldown, entitlements, navigator,
@@ -132,15 +132,15 @@ public class StoryPropagationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task WeavingRow_IsLibraryOnly_AndBecomesVisibleEverywhereWhenItFinishes()
+    public async Task MakingRow_IsLibraryOnly_AndBecomesVisibleEverywhereWhenItFinishes()
     {
-        var story = Story(StoryState.Weaving);
+        var story = Story(StoryState.Making);
         await _env.Store.SaveStoryAsync(story);
         await SettleAsync();
 
         Assert.Single(_library.Stories);
         Assert.Contains("making…", _library.Stories[0].MetaLine);
-        Assert.Empty(_home.Stories);   // the weave belongs to the sheet, not the carousel
+        Assert.Empty(_home.Stories);   // the story run belongs to the sheet, not the carousel
         Assert.Empty(_shelf.Tiles);
 
         story.State = StoryState.Ready;
@@ -183,16 +183,16 @@ public class StoryPropagationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CancelledWeave_DiscardsTheHalfWovenRowFromTheLibrary()
+    public async Task CancelledMaking_DiscardsTheUnfinishedRowFromTheLibrary()
     {
-        await _env.Store.SaveStoryAsync(Story(StoryState.Weaving));
+        await _env.Store.SaveStoryAsync(Story(StoryState.Making));
         await SettleAsync();
         Assert.Single(_library.Stories);
 
-        // What WeaveHostService.CancelAndDiscardAsync does: delete the weaving row.
+        // What StoryMakingHost.CancelAndDiscardAsync does: delete the making row.
         foreach (var s in await _env.Store.GetStoriesAsync(_profile.Id))
         {
-            if (s.State == StoryState.Weaving) await _env.Store.DeleteStoryAsync(s.Id);
+            if (s.State == StoryState.Making) await _env.Store.DeleteStoryAsync(s.Id);
         }
         await SettleAsync();
 
@@ -265,7 +265,7 @@ public class StoryPropagationTests : IAsyncLifetime
     }
 
     /// <summary>Rows survive a reload so the bound list keeps its identity (and the Home
-    /// carousel keeps its scroll offset) — a weave writes its story six times.</summary>
+    /// carousel keeps its scroll offset) — a story run writes its story six times.</summary>
     [Fact]
     public async Task Reload_RefreshesRowsInPlaceInsteadOfRebuildingThem()
     {

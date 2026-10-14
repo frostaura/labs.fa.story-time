@@ -41,7 +41,7 @@ public sealed class ChildProfile
 
     public AgeBand Band => Age <= 4 ? AgeBand.Age3To4 : Age <= 6 ? AgeBand.Age5To6 : AgeBand.Age7To8;
 
-    /// <summary>App-level content filter, stamped onto the profile at weave time by
+    /// <summary>App-level content filter, stamped onto the profile at story time by
     /// StoryPipeline so engines receive it through the same seam as age/interests.
     /// Source of truth is the settings store, not this transient copy. Additive, 2026-07-30.</summary>
     public ContentFilterLevel ContentFilter { get; set; } = ContentFilterLevel.Gentle;
@@ -53,7 +53,7 @@ public sealed class ChildProfile
         Band == AgeBand.Age3To4 ? ContentFilterLevel.Gentle : ContentFilter;
 
     /// <summary>The child's most recent story titles (newest first, ≤8), stamped onto the
-    /// profile at weave time by StoryPipeline — same transient seam as ContentFilter — so
+    /// profile at story time by StoryPipeline — same transient seam as ContentFilter — so
     /// the outline stage can steer NEW titles away from words and shapes the shelf already
     /// has. Source of truth is the story store, not this copy. Additive, 2026-07-31.</summary>
     public List<string> RecentTitles { get; set; } = [];
@@ -83,7 +83,7 @@ public sealed class StoryOutline
     public List<CharacterCard> Characters { get; set; } = [];
     public List<SceneOutline> Scenes { get; set; } = [];
     /// <summary>Deterministic seed captured at outline time; scene/poster stages reuse it
-    /// so an identical outline always weaves into an identical story. (Additive, Phase B.)</summary>
+    /// so an identical outline always becomes an identical story. (Additive, Phase B.)</summary>
     public int Seed { get; set; }
 }
 
@@ -214,7 +214,7 @@ public sealed class NarrationManifest
 
 // ---------- Stored story ----------
 
-public enum StoryState { Weaving, AwaitingApproval, Ready, Failed }
+public enum StoryState { Making, AwaitingApproval, Ready, Failed }
 
 public sealed class StoryRecord
 {
@@ -237,21 +237,21 @@ public sealed class StoryRecord
     public DateTime CreatedUtc { get; set; }
 }
 
-// ---------- Weave progress ----------
+// ---------- Story progress ----------
 
-public enum WeaveStage { Outline, Scenes, Poster, Narration, Done }
+public enum MakingStage { Outline, Scenes, Poster, Narration, Done }
 
-public sealed class WeaveProgress
+public sealed class MakingProgress
 {
-    public WeaveStage Stage { get; set; }
-    /// <summary>0..100 across the whole weave.</summary>
+    public MakingStage Stage { get; set; }
+    /// <summary>0..100 across the whole story run.</summary>
     public int Percent { get; set; }
     /// <summary>0..1 within the current stage.</summary>
     public double StageFraction { get; set; }
 }
 
 /// <summary>One narrated window of the overlapped pipeline: a part WAV plus its
-/// window-local sentence timestamps. Persisted inside WeaveCheckpoint.NarrationPartsJson
+/// window-local sentence timestamps. Persisted inside MakingCheckpoint.NarrationPartsJson
 /// so resume can keep already-rendered audio; parts are concatenated (and their
 /// timestamps offset) into the final story WAV at completion. Additive, 2026-07-31.</summary>
 public sealed class NarrationPart
@@ -264,21 +264,21 @@ public sealed class NarrationPart
     public List<SentenceTimestamp> Timestamps { get; set; } = [];
 }
 
-/// <summary>Persisted checkpoint so a weave survives app restarts.
+/// <summary>Persisted checkpoint so a story run survives app restarts.
 /// Fields from Strategy down are additive (2026-07-31) for the overlapped pipeline:
 /// a checkpoint written by older builds deserializes with Strategy == "" and resumes
 /// on the sequential path exactly as before.</summary>
-public sealed class WeaveCheckpoint
+public sealed class MakingCheckpoint
 {
     public int StoryId { get; set; }
-    public WeaveStage Stage { get; set; }
+    public MakingStage Stage { get; set; }
     public int SceneIndex { get; set; }
     public int SentenceIndex { get; set; }
     public string OutlineJson { get; set; } = string.Empty;
     public string CompletedScenesJson { get; set; } = string.Empty;
 
     /// <summary>"" (legacy/sequential) or "overlapped". A resume always continues on the
-    /// strategy the weave started with — window bookkeeping only exists for overlapped.</summary>
+    /// strategy the story run started with — window bookkeeping only exists for overlapped.</summary>
     public string Strategy { get; set; } = string.Empty;
     /// <summary>JSON list of polished window texts (window = ~2 scenes), in order.</summary>
     public string PolishedWindowsJson { get; set; } = string.Empty;

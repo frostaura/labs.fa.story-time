@@ -4,29 +4,29 @@ using StoryTime.Contracts;
 
 namespace StoryTime.App.Services;
 
-/// <summary>Plays the loom hum — a gentle, audible ambient loop — for the duration of a
-/// weave ("the loom hums", founder decision 2026-07-31). Driven by WeaveHostService's
+/// <summary>Plays the soft hum — a gentle, audible ambient loop — for the duration of a
+/// story run ("the soft hum plays", founder decision 2026-07-31). Driven by StoryMakingHost's
 /// start/end calls, it renders (or cache-hits) the profile's palette-family loop, fades in
-/// ~2 s after weave start, and then supervises with a 2 s poll:
+/// ~2 s after story start, and then supervises with a 2 s poll:
 /// <list type="bullet">
 /// <item>ducks OUT while any narration player is playing (teaser/story playback takes over;
 /// the Premium story bed also shares the one IAmbientPlayer, which this service never
-/// steals while narration runs) and fades back in when playback ends mid-weave;</item>
+/// steals while narration runs) and fades back in when playback ends mid-story;</item>
 /// <item>tracks the parent's Music volume live; an (effectively) zero slider is an opt-out
-/// — no hum, and on iOS the backgrounded weave falls back to checkpoint/resume;</item>
+/// — no hum, and on iOS the backgrounded story run falls back to checkpoint/resume;</item>
 /// <item>on iOS, an audio-session interruption (call, Siri, another app's playback) while
-/// humming is treated as the user opting out for THIS weave: the hum stops and stays
+/// humming is treated as the user opting out for THIS story run: the hum stops and stays
 /// stopped, and backgrounding checkpoints gracefully exactly as before this feature.</item>
 /// </list>
 /// iOS honesty note: the hum is a real, audible feature — never an inaudible keep-alive
-/// (see LoomHum.MinAudibleVolume). That it also keeps the pipeline running with the screen
+/// (see SoftHum.MinAudibleVolume). That it also keeps the pipeline running with the screen
 /// off is the point, and the App Store 2.5.4 exposure is recorded in docs/known-gaps.md
 /// with the compliance gate owning the final call.</summary>
-public sealed class LoomHumService : IDisposable
+public sealed class SoftHumService : IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
-    private readonly LoomHumTrackProvider _tracks;
+    private readonly SoftHumTrackProvider _tracks;
     private readonly IAmbientPlayer _player;
     private readonly ISettingsStore _settings;
     private readonly MediaElementNarrationPlayer _filePlayer;
@@ -37,7 +37,7 @@ public sealed class LoomHumService : IDisposable
     private bool _optedOut;
     private bool _humAudible;
 
-    public LoomHumService(LoomHumTrackProvider tracks, IAmbientPlayer player, ISettingsStore settings,
+    public SoftHumService(SoftHumTrackProvider tracks, IAmbientPlayer player, ISettingsStore settings,
         MediaElementNarrationPlayer filePlayer, LiveTtsNarrationPlayer livePlayer)
     {
         _tracks = tracks;
@@ -48,7 +48,7 @@ public sealed class LoomHumService : IDisposable
         ObserveInterruptions();
     }
 
-    public void OnWeaveStarted(ChildProfile profile)
+    public void OnMakingStarted(ChildProfile profile)
     {
         lock (_gate)
         {
@@ -61,13 +61,13 @@ public sealed class LoomHumService : IDisposable
         }
     }
 
-    public void OnWeaveEnded()
+    public void OnMakingEnded()
     {
         lock (_gate)
         {
             _cts?.Cancel();
         }
-        // The ready ping is the endpoint — never hum past the weave (fade-out is ~1.5 s
+        // The ready ping is the endpoint — never hum past the story run (fade-out is ~1.5 s
         // inside the player; the loop task's finally also stops, this is belt-and-braces).
         StopHum();
     }
@@ -77,9 +77,9 @@ public sealed class LoomHumService : IDisposable
         try
         {
             // Compose (or cache-hit) while the fade-in delay runs — first render is
-            // sub-second-to-few-seconds off-thread, repeat weaves are instant.
+            // sub-second-to-few-seconds off-thread, repeat stories are instant.
             var renderTask = _tracks.GetOrRenderAsync(profile, ct);
-            await Task.Delay(LoomHum.FadeInDelay, ct);
+            await Task.Delay(SoftHum.FadeInDelay, ct);
             var path = await renderTask;
 
             EnsurePlaybackSession();
@@ -92,7 +92,7 @@ public sealed class LoomHumService : IDisposable
                 try
                 {
                     var narrating = _filePlayer.IsPlaying || _livePlayer.IsPlaying;
-                    var target = LoomHum.VolumeFor(_settings.MusicVolume);
+                    var target = SoftHum.VolumeFor(_settings.MusicVolume);
 
                     if (_optedOut || narrating || target <= 0)
                     {
@@ -115,7 +115,7 @@ public sealed class LoomHumService : IDisposable
         catch (OperationCanceledException) { }
         catch (Exception)
         {
-            // A hum that fails must never disturb the weave.
+            // A hum that fails must never disturb the story run.
         }
         finally
         {
@@ -131,7 +131,7 @@ public sealed class LoomHumService : IDisposable
     }
 
     /// <summary>iOS: make sure the shared session is the Playback category and active before
-    /// the hum starts — the first weave can precede the first narration playback, and only an
+    /// the hum starts — the first story run can precede the first narration playback, and only an
     /// active Playback session keeps the app running in the background.
     ///
     /// <para>Routed through the SAME configurator narration uses (Playback + SpokenAudio +
@@ -152,7 +152,7 @@ public sealed class LoomHumService : IDisposable
             {
                 if (_cts is null || _cts.IsCancellationRequested || !_humAudible) return;
                 // The system took our audio (call, Siri, another app): treat it as the
-                // user opting out of the hum for this weave. Backgrounding now checkpoints
+                // user opting out of the hum for this story run. Backgrounding now checkpoints
                 // gracefully via the coordinator's grace path, exactly as without the hum.
                 _optedOut = true;
             }

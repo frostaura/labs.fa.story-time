@@ -16,7 +16,7 @@ public class ProseAndTitleQualityTests
 {
     private static TemplateStoryEngine Engine(int seed) => new(() => seed);
 
-    private static async Task<string> WeaveFullTextAsync(TemplateStoryEngine engine, ChildProfile profile)
+    private static async Task<string> MakeFullTextAsync(TemplateStoryEngine engine, ChildProfile profile)
     {
         var outline = await engine.GenerateOutlineAsync(profile, null, TemplateStoryEngine.SceneCount(profile.Length), CancellationToken.None);
         var scenes = new List<string>();
@@ -106,7 +106,7 @@ public class ProseAndTitleQualityTests
     {
         for (var seed = 1; seed <= 5; seed++)
         {
-            var text = await WeaveFullTextAsync(Engine(seed * 31), TestEnv.Profile(age: age));
+            var text = await MakeFullTextAsync(Engine(seed * 31), TestEnv.Profile(age: age));
             var r = ProseMetrics.Analyze(text);
             Assert.True(r.AvgWords >= 20, $"Age {age} seed {seed}: avg {r.AvgWords:0.0} < 20 words — founder floor (raised 2026-07-31)");
             Assert.True(r.CV >= 0.3, $"Age {age} seed {seed}: CV {r.CV:0.00} < 0.3 — monotone rhythm");
@@ -118,7 +118,7 @@ public class ProseAndTitleQualityTests
     {
         for (var seed = 1; seed <= 5; seed++)
         {
-            var text = await WeaveFullTextAsync(Engine(seed * 31), TestEnv.Profile(age: 3));
+            var text = await MakeFullTextAsync(Engine(seed * 31), TestEnv.Profile(age: 3));
             var r = ProseMetrics.Analyze(text);
             Assert.True(r.AvgWords <= 9.5, $"Age 3 seed {seed}: avg {r.AvgWords:0.0} > 9.5 — too long for toddlers");
         }
@@ -194,7 +194,7 @@ public class ProseAndTitleQualityTests
             env.Store, settings, new CooldownService(settings, clock, new StoreEntitlements(settings, clock)),
             new SafetyFilter(), new FakeNotificationService(), env.Options, clock);
 
-        var story = await pipeline.WeaveAsync(profile, null, CancellationToken.None);
+        var story = await pipeline.MakeStoryAsync(profile, null, CancellationToken.None);
 
         Assert.NotEqual(StoryState.Failed, story.State);
         Assert.NotNull(engine.SeenRecentTitles);

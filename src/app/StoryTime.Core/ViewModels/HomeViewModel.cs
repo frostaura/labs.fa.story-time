@@ -11,7 +11,7 @@ namespace StoryTime.Core.ViewModels;
 public sealed partial class HomeViewModel : ObservableObject
 {
     private readonly IStoryStore _store;
-    private readonly IWeaveHost _weaveHost;
+    private readonly IStoryMakingHost _makingHost;
     private readonly CooldownService _cooldown;
     private readonly IEntitlements _entitlements;
     private readonly INavigator _navigator;
@@ -19,19 +19,19 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly KidModeService _kidMode;
     private readonly PosterArtRefresher _artRefresher;
     private readonly IHaptics _haptics;
-    private readonly WeaveSheetViewModel _weaveSheet;
+    private readonly MakingSheetViewModel _makingSheet;
     private readonly IStoryCatalog _catalog;
     private readonly CoalescingReloader _reloader;
 
     private ChildProfile? _profile;
 
-    public HomeViewModel(IStoryStore store, IWeaveHost weaveHost, CooldownService cooldown,
+    public HomeViewModel(IStoryStore store, IStoryMakingHost makingHost, CooldownService cooldown,
         IEntitlements entitlements, INavigator navigator, PlayerLaunchContext playerContext, KidModeService kidMode,
-        PosterArtRefresher artRefresher, IHaptics haptics, WeaveSheetViewModel weaveSheet,
+        PosterArtRefresher artRefresher, IHaptics haptics, MakingSheetViewModel makingSheet,
         RecipeShelfViewModel recipeShelf, IStoryCatalog catalog)
     {
         _store = store;
-        _weaveHost = weaveHost;
+        _makingHost = makingHost;
         _cooldown = cooldown;
         _entitlements = entitlements;
         _navigator = navigator;
@@ -39,20 +39,20 @@ public sealed partial class HomeViewModel : ObservableObject
         _kidMode = kidMode;
         _artRefresher = artRefresher;
         _haptics = haptics;
-        _weaveSheet = weaveSheet;
+        _makingSheet = makingSheet;
         _catalog = catalog;
         Recipe = recipeShelf;
         _reloader = new CoalescingReloader(RefreshStoriesAsync);
 
         // ANY story mutation, from anywhere, re-renders the carousel live — a finished
-        // weave, an approval unlock in the player, a favourite, a delete, a discarded
-        // cancel (IStoryCatalog). This replaced a WeaveCompleted-only subscription that
+        // story, an approval unlock in the player, a favourite, a delete, a discarded
+        // cancel (IStoryCatalog). This replaced a MakingCompleted-only subscription that
         // left every other page stale.
         _catalog.Changed += (_, _) => StoriesRefresh = _reloader.RequestAsync();
 
-        // The weave host still drives the CTA/cooldown copy (not a store mutation).
-        _weaveHost.WeaveCompleted += (_, _) => WeaveCompletedRefresh = HandleWeaveCompletedAsync();
-        _weaveHost.WeaveCancelled += (_, _) => RefreshCooldown();
+        // The story run host still drives the CTA/cooldown copy (not a store mutation).
+        _makingHost.MakingCompleted += (_, _) => MakingCompletedRefresh = HandleMakingCompletedAsync();
+        _makingHost.MakingCancelled += (_, _) => RefreshCooldown();
 
         // The recipe shelf mutates the SAME profile instance this VM holds and saves it
         // on every change — the summary line re-renders immediately from shared state.
@@ -67,12 +67,12 @@ public sealed partial class HomeViewModel : ObservableObject
     public RecipeShelfViewModel Recipe { get; }
 
     /// <summary>Last completion-triggered refresh (awaitable by tests).</summary>
-    public Task? WeaveCompletedRefresh { get; private set; }
+    public Task? MakingCompletedRefresh { get; private set; }
 
     /// <summary>Last catalog-triggered list reload (awaitable by tests).</summary>
     public Task? StoriesRefresh { get; private set; }
 
-    private async Task HandleWeaveCompletedAsync()
+    private async Task HandleMakingCompletedAsync()
     {
         RefreshCooldown();
         await _reloader.RequestAsync();
@@ -91,11 +91,11 @@ public sealed partial class HomeViewModel : ObservableObject
     private string _avatarInitial = "•";
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(WeaveCommand))]
-    private bool _canWeave = true;
+    [NotifyCanExecuteChangedFor(nameof(MakeStoryCommand))]
+    private bool _canMake = true;
 
     [ObservableProperty]
-    private string _weaveButtonText = "Make tonight's story";
+    private string _makeButtonText = "Make tonight's story";
 
     [ObservableProperty]
     private StoryLength _selectedLength = StoryLength.Ten;
@@ -123,7 +123,7 @@ public sealed partial class HomeViewModel : ObservableObject
         await _artRefresher.EnsureCurrentAsync(_profile.Id);
 
         // Through the reloader, never straight into RefreshStoriesAsync: a catalog-driven
-        // reload can be in flight (a weave is writing while Home appears), and two passes
+        // reload can be in flight (a story run is writing while Home appears), and two passes
         // mutating the same ObservableCollection corrupt it — the trailing trim throws
         // IndexOutOfRange. The reloader is the single writer.
         await _reloader.RequestAsync();
@@ -135,7 +135,7 @@ public sealed partial class HomeViewModel : ObservableObject
     /// Cheap, and safe to run on any story change.
     /// Visibility rule (documented in docs/design/mockup-spec.md): Home shows only what a
     /// parent can actually press play on — Ready and AwaitingApproval, newest first. A
-    /// weave in progress belongs to the weave sheet, and a failed weave belongs in the
+    /// story in progress belongs to the making sheet, and a failed story run belongs in the
     /// Library where it can be understood, not on the bedtime screen.</summary>
     private async Task RefreshStoriesAsync()
     {
@@ -152,11 +152,11 @@ public sealed partial class HomeViewModel : ObservableObject
         var previousHeadId = Stories.Count > 0 ? Stories[0].Id : 0;
 
         // Rebuild in place: replacing the whole collection resets the carousel offset on
-        // every single weave write, so the list is only touched where it actually differs.
+        // every single write of a story run, so the list is only touched where it actually differs.
         StoryListItem.SyncInto(Stories, visible);
         OnPropertyChanged(nameof(HasStories));
 
-        // A newly-woven story is inserted at index 0, and the native carousel anchors on
+        // A newly made story is inserted at index 0, and the native carousel anchors on
         // the item it was already showing — so it kept the OLD first card on screen and
         // tonight's story sat off to the left, unseen (observed 2026-07-31). The view
         // listens for this and snaps back to the head.
@@ -168,44 +168,44 @@ public sealed partial class HomeViewModel : ObservableObject
     /// gained a new first card. The view scrolls back to the head; nothing else listens.</summary>
     public event EventHandler? HeadStoryChanged;
 
-    /// <summary>Cheap tick — updates the weave CTA against the live cooldown.</summary>
+    /// <summary>Cheap tick — updates the Make CTA against the live cooldown.</summary>
     public void RefreshCooldown()
     {
-        if (_weaveHost.IsWeaving)
+        if (_makingHost.IsMaking)
         {
-            CanWeave = false;
-            WeaveButtonText = "Making tonight's story…";
+            CanMake = false;
+            MakeButtonText = "Making tonight's story…";
             return;
         }
-        var next = _cooldown.NextWeaveAtLocal;
+        var next = _cooldown.NextStoryAtLocal;
         if (next is null)
         {
-            CanWeave = true;
-            WeaveButtonText = "Make tonight's story";
+            CanMake = true;
+            MakeButtonText = "Make tonight's story";
         }
         else
         {
-            CanWeave = false;
-            WeaveButtonText = $"Next story at {next:HH:mm}";
+            CanMake = false;
+            MakeButtonText = $"Next story at {next:HH:mm}";
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanWeave))]
-    private async Task WeaveAsync()
+    [RelayCommand(CanExecute = nameof(CanMake))]
+    private async Task MakeStoryAsync()
     {
-        if (_profile is null || _cooldown.IsActive || _weaveHost.IsWeaving) return;
-        _haptics.Medium();   // weave start — the one action of weight on this screen
+        if (_profile is null || _cooldown.IsActive || _makingHost.IsMaking) return;
+        _haptics.Medium();   // story start — the one action of weight on this screen
         if (_profile.Length != SelectedLength)
         {
             _profile.Length = SelectedLength;
             await _store.SaveProfileAsync(_profile);
         }
-        // The pipeline gets a SNAPSHOT: recipe-shelf edits made while this weave runs
-        // must only affect the NEXT weave, never the one already on the loom.
-        await _weaveHost.StartAsync(Snapshot(_profile));
-        // No page navigation any more: the weave sheet slides up expanded over Home
+        // The pipeline gets a SNAPSHOT: recipe-shelf edits made while this story run is in flight
+        // must only affect the NEXT story run, never the one already being made.
+        await _makingHost.StartAsync(Snapshot(_profile));
+        // No page navigation any more: the making sheet slides up expanded over Home
         // (founder decision 2026-07-30 — generation runs behind the whole app).
-        await _weaveSheet.ShowForWeaveAsync();
+        await _makingSheet.ShowForMakingAsync();
         RefreshCooldown();
     }
 
@@ -221,7 +221,7 @@ public sealed partial class HomeViewModel : ObservableObject
         if (length != SelectedLength) _haptics.Selection();
         ShowPremiumHint = false;
         SelectedLength = length;
-        // Write-through: the pick persists the moment it lands, not at weave time.
+        // Write-through: the pick persists the moment it lands, not at story time.
         // (Root cause of the founder's "my selection isn't remembered": the old handler
         // only wrote a local property, and ActivateAsync re-read the stored profile on
         // every appearing — overwriting the choice on the next visit or cold start.)
@@ -234,12 +234,12 @@ public sealed partial class HomeViewModel : ObservableObject
     }
 
     /// <summary>The summary line under the headline — a whispered entry point into the
-    /// recipe shelf. Blocked while the weave sheet is expanded (its scrim owns the screen;
+    /// recipe shelf. Blocked while the making sheet is expanded (its scrim owns the screen;
     /// no entry point is visible then anyway).</summary>
     [RelayCommand]
     private async Task AdjustRecipeAsync()
     {
-        if (_weaveSheet.State == WeaveSheetState.Expanded) return;
+        if (_makingSheet.State == MakingSheetState.Expanded) return;
         _profile ??= await _store.GetActiveProfileAsync();
         if (_profile is null) return;
         _haptics.Light();

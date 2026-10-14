@@ -67,13 +67,13 @@
 
             <!-- Hero CTA (breathing halo idle animation in code-behind). Medium at
                  press-down — the biggest action in the app answers instantly; the VM's
-                 weave-start Medium coalesces away. -->
-            <Button x:Name="WeaveButton" HeightRequest="62" FontSize="17"
+                 story-start Medium coalesces away. -->
+            <Button x:Name="MakeButton" HeightRequest="62" FontSize="17"
                     services:PressHaptics.OnPressed="Medium"
-                    Text="{Binding WeaveButtonText}"
-                    Command="{Binding WeaveCommand}"
-                    Clicked="OnWeaveClicked"
-                    IsEnabled="{Binding CanWeave}" />
+                    Text="{Binding MakeButtonText}"
+                    Command="{Binding MakeStoryCommand}"
+                    Clicked="OnMakeClicked"
+                    IsEnabled="{Binding CanMake}" />
 
             <controls:LengthTrackView x:Name="LengthTrack" Margin="0,22,0,4"
                                       SelectedLength="{Binding SelectedLength}" />
@@ -156,12 +156,12 @@
         </VerticalStackLayout>
     </ScrollView>
 
-    <!-- Weave sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
-    <controls:WeaveSheetHost />
+    <!-- Making sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
+    <controls:MakingSheetHost />
 
-    <!-- "Tonight's recipe" shelf — ABOVE the weave layer, so an open shelf slides up
+    <!-- "Tonight's recipe" shelf — ABOVE the making sheet layer, so an open shelf slides up
          over the docked mini-bar (bar dims under the scrim, inert until dismiss). It can
-         never open while the weave sheet is expanded (VM guard; no entry point visible).
+         never open while the making sheet is expanded (VM guard; no entry point visible).
          Home-only by design: the Kid Shelf must not reach this. -->
     <controls:BottomShelfHost IsOpen="{Binding Recipe.IsOpen}" CloseCommand="{Binding Recipe.CloseCommand}">
         <controls:RecipeShelfView BindingContext="{Binding Recipe}" />

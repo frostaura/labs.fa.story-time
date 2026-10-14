@@ -10,7 +10,7 @@ namespace StoryTime.App.Views;
 public partial class PlayerPage : ContentPage
 {
     /// <summary>Drag-down distance on the handle that arms (Tick) and, on release, commits
-    /// the dismiss — mirrors the weave sheet's grab-zone pattern at modal scale.</summary>
+    /// the dismiss — mirrors the making sheet's grab-zone pattern at modal scale.</summary>
     private const double DismissDragThreshold = 70;
 
     private readonly PlayerViewModel _vm;

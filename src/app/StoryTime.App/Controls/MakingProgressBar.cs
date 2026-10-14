@@ -4,22 +4,22 @@ using SkiaSharp.Views.Maui.Controls;
 
 namespace StoryTime.App.Controls;
 
-/// <summary>The woven-thread progress bar inside the expanded weave sheet: a hairline
+/// <summary>The thread-style progress bar inside the expanded making sheet: a hairline
 /// track with faint stage tick marks, an amber fill with a soft glow head, and a slow
 /// low-contrast shimmer drifting along the FILLED portion only (a whisper, not a spinner).
 ///
 /// Battery care: one time-driven loop that always yields (Task.Delay every frame — the
 /// animation-loop ANR trap from memory/gotchas.md cannot occur), ~30 fps, and it runs only
-/// while <see cref="Animate"/> is true — the host gates that on sheet-expanded + weaving +
+/// while <see cref="Animate"/> is true — the host gates that on sheet-expanded + making +
 /// page visible + app foregrounded. When idle the bar is a single static draw.</summary>
-public sealed class WeaveProgressBar : SKCanvasView
+public sealed class MakingProgressBar : SKCanvasView
 {
     private const double ShimmerPeriodMs = 2800;   // slow drift, spec: 2.5–3 s
     private const float BarHeightDp = 26;
 
     public static readonly BindableProperty ProgressProperty = BindableProperty.Create(
-        nameof(Progress), typeof(double), typeof(WeaveProgressBar), 0.0,
-        propertyChanged: (b, _, _) => ((WeaveProgressBar)b).OnProgressChanged());
+        nameof(Progress), typeof(double), typeof(MakingProgressBar), 0.0,
+        propertyChanged: (b, _, _) => ((MakingProgressBar)b).OnProgressChanged());
 
     /// <summary>Target fill 0..1; the drawn fill eases toward it so stage jumps glide.</summary>
     public double Progress
@@ -33,7 +33,7 @@ public sealed class WeaveProgressBar : SKCanvasView
 
     private bool _animate;
     /// <summary>Gate for the shimmer/eased-fill loop. Set false whenever the bar is not
-    /// actually on screen weaving — the loop stops and the bar freezes at a static frame.</summary>
+    /// actually on screen making — the loop stops and the bar freezes at a static frame.</summary>
     public bool Animate
     {
         get => _animate;
@@ -49,7 +49,7 @@ public sealed class WeaveProgressBar : SKCanvasView
     private double _displayProgress;
     private bool _looping;
 
-    public WeaveProgressBar()
+    public MakingProgressBar()
     {
         HeightRequest = BarHeightDp;
         IgnorePixelScaling = false;

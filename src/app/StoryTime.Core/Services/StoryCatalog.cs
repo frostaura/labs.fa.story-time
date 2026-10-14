@@ -27,7 +27,7 @@ public sealed class StoryCatalog : IStoryCatalog
 }
 
 /// <summary>Collapses a burst of reload requests into at most one in-flight reload plus
-/// one queued follow-up. A single weave writes its story row six times (title, prose,
+/// one queued follow-up. A single story run writes its story row six times (title, prose,
 /// poster, teaser, completion…), and every list is subscribed — without this, each list
 /// would stack six overlapping sqlite reads and could apply them out of order.</summary>
 public sealed class CoalescingReloader(Func<Task> reload)

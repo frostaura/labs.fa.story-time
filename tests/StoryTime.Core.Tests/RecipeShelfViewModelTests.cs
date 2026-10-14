@@ -10,7 +10,7 @@ namespace StoryTime.Core.Tests;
 public class RecipeShelfViewModelTests : IAsyncLifetime
 {
     private TestEnv _env = null!;
-    private FakeWeaveHost _host = null!;
+    private FakeStoryMakingHost _host = null!;
     private FakeTtsEngine _tts = null!;
     private FakeHaptics _haptics = null!;
     private RecipeShelfViewModel _vm = null!;
@@ -19,7 +19,7 @@ public class RecipeShelfViewModelTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _env = await TestEnv.CreateAsync();
-        _host = new FakeWeaveHost();
+        _host = new FakeStoryMakingHost();
         _tts = new FakeTtsEngine();
         _haptics = new FakeHaptics();
         _vm = new RecipeShelfViewModel(_env.Store, _tts, _haptics, _host, new NullVoiceSamplePlayer());
@@ -101,11 +101,11 @@ public class RecipeShelfViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Open_WhileWeaving_ShowsNextStoryWhisper()
+    public async Task Open_WhileMaking_ShowsNextStoryWhisper()
     {
-        _host.IsWeaving = true;
+        _host.IsMaking = true;
         await _vm.OpenAsync(_profile);
-        Assert.True(_vm.IsWeaving);
+        Assert.True(_vm.IsMaking);
     }
 
     [Fact]

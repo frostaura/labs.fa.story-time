@@ -12,5 +12,5 @@ public sealed class StoryTimeOptions
     /// <summary>Force a pipeline strategy (tests, measurement runs). Null → the pipeline
     /// picks: Overlapped unless the device is low-memory (&lt; 6 GB or platform low-RAM flag),
     /// then Sequential. Additive 2026-07-31.</summary>
-    public Abstractions.WeaveStrategy? ForcedWeaveStrategy { get; set; }
+    public Abstractions.MakingStrategy? ForcedMakingStrategy { get; set; }
 }

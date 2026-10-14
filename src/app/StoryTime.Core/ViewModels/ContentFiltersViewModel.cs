@@ -7,7 +7,7 @@ namespace StoryTime.Core.ViewModels;
 
 /// <summary>Content filters page — pushed from Parent settings, so it lives INSIDE the
 /// biometric-gated flow (no extra gate here). Radio pattern like the narrator picker:
-/// two levels, selected row amber. The level only changes how adventurous NEW weaves
+/// two levels, selected row amber. The level only changes how adventurous NEW stories
 /// feel; every hard safety layer is identical at both levels, by construction.</summary>
 public sealed partial class ContentFiltersViewModel : ObservableObject
 {

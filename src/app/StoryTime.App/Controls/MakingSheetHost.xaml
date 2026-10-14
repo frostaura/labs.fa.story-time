@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Grid
-    x:Class="StoryTime.App.Controls.WeaveSheetHost"
+    x:Class="StoryTime.App.Controls.MakingSheetHost"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:vm="clr-namespace:StoryTime.Core.ViewModels;assembly=StoryTime.Core"
     xmlns:controls="clr-namespace:StoryTime.App.Controls"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
     x:Name="SheetHost"
-    x:DataType="vm:WeaveSheetViewModel"
+    x:DataType="vm:MakingSheetViewModel"
     InputTransparent="True"
     CascadeInputTransparent="False">
 
-    <!-- Overlay host for the weave sheet + mini-bar. Added as the TOP layer of every
-         non-modal page's root Grid; binds to the singleton WeaveSheetViewModel so
+    <!-- Overlay host for the making sheet + mini-bar. Added as the TOP layer of every
+         non-modal page's root Grid; binds to the singleton MakingSheetViewModel so
          expand/collapse survives navigation. The root grid is input-transparent — only
          the visible children (scrim / sheet / mini-bar) catch touches. -->
     <Grid.Resources>
@@ -25,7 +25,7 @@
         <BoxView.Behaviors>
             <!-- Light at POINTER-DOWN, before the collapse animation starts. -->
             <toolkit:TouchBehavior
-                Command="{Binding Source={x:Reference SheetHost}, Path=BindingContext.CollapseCommand, x:DataType=vm:WeaveSheetViewModel}"
+                Command="{Binding Source={x:Reference SheetHost}, Path=BindingContext.CollapseCommand, x:DataType=vm:MakingSheetViewModel}"
                 CurrentTouchStatusChanged="OnPressDownLight" />
         </BoxView.Behaviors>
     </BoxView>
@@ -59,8 +59,8 @@
                     <Label Style="{StaticResource DisplaySmall}" Text="{Binding Headline}" />
                     <Label Style="{StaticResource Body}" Text="{Binding SubText}" Margin="0,10,0,26" />
 
-                    <!-- The woven-thread progress bar (replaces the bland giant %). -->
-                    <controls:WeaveProgressBar x:Name="ProgressBar"
+                    <!-- The thread-style progress bar (replaces the bland giant %). -->
+                    <controls:MakingProgressBar x:Name="ProgressBar"
                                                Progress="{Binding ProgressFraction}"
                                                Margin="0,0,0,26" />
 
@@ -79,7 +79,7 @@
                                                 <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Waiting">
                                                     <Setter Property="TextColor" Value="{StaticResource Dim}" />
                                                 </DataTrigger>
-                                                <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Weaving">
+                                                <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Making">
                                                     <Setter Property="TextColor" Value="{StaticResource Accent}" />
                                                 </DataTrigger>
                                                 <DataTrigger TargetType="Label" Binding="{Binding State}" Value="Done">
@@ -108,10 +108,10 @@
                  (founder affordance pass 2026-07-31): the stop row stays neutral-hairline
                  so it never competes with the amber teaser CTA above it. -->
             <VerticalStackLayout Grid.Row="3" Spacing="10">
-                <!-- Founder cancel: two-tap stop (arm → confirm), discards the half-woven story. -->
+                <!-- Founder cancel: two-tap stop (arm → confirm), discards the unfinished story. -->
                 <Button Style="{StaticResource PillButtonCompact}" Text="{Binding StopLabel}"
                         HorizontalOptions="Center"
-                        Command="{Binding StopWeaveCommand}" IsVisible="{Binding ShowStopRow}" />
+                        Command="{Binding StopMakingCommand}" IsVisible="{Binding ShowStopRow}" />
                 <Button Style="{StaticResource PillButton}" Text="{Binding CloseLabel}"
                         HorizontalOptions="Center"
                         Command="{Binding CollapseCommand}" />

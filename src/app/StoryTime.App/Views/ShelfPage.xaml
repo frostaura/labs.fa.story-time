@@ -90,8 +90,8 @@
                Text="New stories and settings are locked here. A grown-up's fingerprint opens them." />
     </Grid>
 
-    <!-- Weave sheet + mini-bar overlay. Kid-safe by construction: the sheet shows only
+    <!-- Making sheet + mini-bar overlay. Kid-safe by construction: the sheet shows only
          stages + cooldown here — the teaser CTA hides in kid mode (ShowTeaserCta). -->
-    <controls:WeaveSheetHost />
+    <controls:MakingSheetHost />
     </Grid>
 </ContentPage>

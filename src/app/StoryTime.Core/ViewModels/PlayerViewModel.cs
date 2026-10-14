@@ -248,7 +248,7 @@ public sealed partial class PlayerViewModel : ObservableObject
     }
 
     /// <summary>Design-state stub (reported in known-gaps): shows the pressed state, then
-    /// returns to idle. Real coda weaving lands with the model engines.</summary>
+    /// returns to idle. Real coda making lands with the model engines.</summary>
     [RelayCommand]
     private async Task ContinueSeriesAsync()
     {

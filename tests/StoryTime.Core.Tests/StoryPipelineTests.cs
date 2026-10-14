@@ -21,10 +21,10 @@ public class StoryPipelineTests
         public IStoryEngine Engine = new TemplateStoryEngine(() => 42);
         public IDeviceCapabilities Capabilities = new DefaultDeviceCapabilities();
 
-        public static async Task<Harness> CreateAsync(WeaveStrategy? forced = null)
+        public static async Task<Harness> CreateAsync(MakingStrategy? forced = null)
         {
             var h = new Harness { Env = await TestEnv.CreateAsync() };
-            h.Env.Options.ForcedWeaveStrategy = forced;
+            h.Env.Options.ForcedMakingStrategy = forced;
             h.Cooldown = new CooldownService(h.Settings, h.Clock, new StoreEntitlements(h.Settings, h.Clock));
             return h;
         }
@@ -78,14 +78,14 @@ public class StoryPipelineTests
     }
 
     [Fact]
-    public async Task Weave_ThreadsContentFilterLevelFromSettingsToEngines()
+    public async Task Make_ThreadsContentFilterLevelFromSettingsToEngines()
     {
         await using var h = await Harness.CreateAsync();
         h.Settings.ContentFilter = ContentFilterLevel.Braveish;
         var profile = TestEnv.Profile();
-        Assert.Equal(ContentFilterLevel.Gentle, profile.ContentFilter);   // pre-weave default
+        Assert.Equal(ContentFilterLevel.Gentle, profile.ContentFilter);   // pre-story default
 
-        var story = await h.Pipeline().WeaveAsync(profile, null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(profile, null, CancellationToken.None);
 
         // The pipeline stamps the app-level setting onto the profile seam the engines read.
         Assert.Equal(ContentFilterLevel.Braveish, profile.ContentFilter);
@@ -94,32 +94,32 @@ public class StoryPipelineTests
     }
 
     [Fact]
-    public async Task Weave_AtBraveish_StillPassesTheSafetyFilter()
+    public async Task Make_AtBraveish_StillPassesTheSafetyFilter()
     {
         await using var h = await Harness.CreateAsync();
         h.Settings.ContentFilter = ContentFilterLevel.Braveish;
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(age: 7), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(age: 7), null, CancellationToken.None);
         Assert.True(new SafetyFilter().IsClean(story.FullText),
-            "Brave-ish weave produced text the (level-independent) safety filter flags");
+            "Brave-ish story run produced text the (level-independent) safety filter flags");
     }
 
     [Fact]
-    public async Task Weave_CompletesWithApprovalStateWhenApprovalOn()
+    public async Task Make_CompletesWithApprovalStateWhenApprovalOn()
     {
         await using var h = await Harness.CreateAsync();
         h.Settings.ApprovalStep = true;
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.Equal(StoryState.AwaitingApproval, story.State);
         Assert.False(string.IsNullOrWhiteSpace(story.FullText));
         Assert.False(string.IsNullOrWhiteSpace(story.Title));
     }
 
     [Fact]
-    public async Task Weave_CompletesReadyWhenApprovalOff()
+    public async Task Make_CompletesReadyWhenApprovalOff()
     {
         await using var h = await Harness.CreateAsync();
         h.Settings.ApprovalStep = false;
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.Equal(StoryState.Ready, story.State);
     }
 
@@ -127,8 +127,8 @@ public class StoryPipelineTests
     public async Task Progress_IsMonotonicAndStagesInOrder()
     {
         await using var h = await Harness.CreateAsync();
-        var reports = new List<WeaveProgress>();
-        await h.Pipeline().WeaveAsync(TestEnv.Profile(), new SyncProgress<WeaveProgress>(reports.Add), CancellationToken.None);
+        var reports = new List<MakingProgress>();
+        await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), new SyncProgress<MakingProgress>(reports.Add), CancellationToken.None);
 
         Assert.NotEmpty(reports);
         for (var i = 1; i < reports.Count; i++)
@@ -136,7 +136,7 @@ public class StoryPipelineTests
             Assert.True(reports[i].Percent >= reports[i - 1].Percent, "percent must never decrease");
             Assert.True(reports[i].Stage >= reports[i - 1].Stage, "stages must run in order");
         }
-        Assert.Equal(WeaveStage.Done, reports[^1].Stage);
+        Assert.Equal(MakingStage.Done, reports[^1].Stage);
         Assert.Equal(100, reports[^1].Percent);
     }
 
@@ -146,7 +146,7 @@ public class StoryPipelineTests
         // Overlapped (default on this dev machine): teaser renders FIRST, then the story
         // arrives as per-window parts whose sentence counts sum to the full split.
         await using var h = await Harness.CreateAsync();
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
 
         Assert.Equal(3, h.Tts.SynthesizeCallSentenceCounts[0]);                       // teaser: first ~3 sentences
         Assert.Contains("teaser", h.Tts.OutputPaths[0]);
@@ -159,8 +159,8 @@ public class StoryPipelineTests
     public async Task Narration_IsTeaserFirst_Sequential()
     {
         // The forced-sequential path keeps the classic two-call shape exactly.
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Sequential);
-        await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Sequential);
+        await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.Equal(2, h.Tts.SynthesizeCallSentenceCounts.Count);
         Assert.Equal(3, h.Tts.SynthesizeCallSentenceCounts[0]);
         Assert.True(h.Tts.SynthesizeCallSentenceCounts[1] > 3);
@@ -171,7 +171,7 @@ public class StoryPipelineTests
     public async Task Completion_StartsCooldown_ClearsCheckpoint_Notifies()
     {
         await using var h = await Harness.CreateAsync();
-        await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.True(h.Cooldown.IsActive);
         Assert.Null(await h.Env.Store.GetCheckpointAsync());
         Assert.Equal(1, h.Notifications.ShownCount);
@@ -182,7 +182,7 @@ public class StoryPipelineTests
     {
         await using var h = await Harness.CreateAsync();
         h.Settings.StoryReadyNotifications = false;
-        await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.Equal(0, h.Notifications.ShownCount);
     }
 
@@ -194,7 +194,7 @@ public class StoryPipelineTests
         profile.Id = 0;
         await h.Env.Store.SaveProfileAsync(profile);
 
-        var first = await h.Pipeline().WeaveAsync(profile, null, CancellationToken.None);
+        var first = await h.Pipeline().MakeStoryAsync(profile, null, CancellationToken.None);
         Assert.Equal(1, first.EpisodeNumber);
         Assert.Equal(string.Empty, first.RecapLine);
 
@@ -205,7 +205,7 @@ public class StoryPipelineTests
         Assert.True(bible.Characters.Count >= 2);
 
         h.Cooldown.Clear();
-        var second = await h.Pipeline().WeaveAsync(profile, null, CancellationToken.None);
+        var second = await h.Pipeline().MakeStoryAsync(profile, null, CancellationToken.None);
         Assert.Equal(2, second.EpisodeNumber);
         Assert.StartsWith("Previously: ", second.RecapLine);
 
@@ -219,7 +219,7 @@ public class StoryPipelineTests
         await using var h = await Harness.CreateAsync();
         var profile = TestEnv.Profile(StoryMode.OneShot);
         await h.Env.Store.SaveProfileAsync(profile);
-        var story = await h.Pipeline().WeaveAsync(profile, null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(profile, null, CancellationToken.None);
         Assert.Equal(0, story.EpisodeNumber);
         Assert.Null(await h.Env.Store.GetBibleAsync(profile.Id));
     }
@@ -236,15 +236,15 @@ public class StoryPipelineTests
         h.Engine = engine;
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            h.Pipeline().WeaveAsync(TestEnv.Profile(), null, cts.Token));
+            h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, cts.Token));
 
         var checkpoint = await h.Env.Store.GetCheckpointAsync();
         Assert.NotNull(checkpoint);
-        Assert.Equal(WeaveStage.Scenes, checkpoint.Stage);
+        Assert.Equal(MakingStage.Scenes, checkpoint.Stage);
         Assert.Equal(2, checkpoint.SceneIndex); // two scenes committed before the cancel
 
         var story = await h.Env.Store.GetStoryAsync(checkpoint.StoryId);
-        Assert.Equal(StoryState.Weaving, story!.State);
+        Assert.Equal(StoryState.Making, story!.State);
         Assert.False(h.Cooldown.IsActive);
     }
 
@@ -259,9 +259,9 @@ public class StoryPipelineTests
         };
         h.Engine = interceptor;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            h.Pipeline().WeaveAsync(TestEnv.Profile(), null, cts.Token));
+            h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, cts.Token));
 
-        // Fresh pipeline (app restart): resume must finish and only weave the remaining scenes.
+        // Fresh pipeline (app restart): resume must finish and only make the remaining scenes.
         var resumedEngine = new InterceptingEngine(new TemplateStoryEngine(() => 42));
         h.Engine = resumedEngine;
         var story = await h.Pipeline().ResumeAsync(TestEnv.Profile(), null, CancellationToken.None);
@@ -289,7 +289,7 @@ public class StoryPipelineTests
             RepairOverride = passage => passage, // repair never helps
         };
 
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.Equal(StoryState.Failed, story.State);
         Assert.Equal(StoryPipeline.GentleFailureMessage, story.FullText);
         Assert.False(h.Cooldown.IsActive);
@@ -313,7 +313,7 @@ public class StoryPipelineTests
             },
         };
 
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.NotEqual(StoryState.Failed, story.State);
         Assert.DoesNotContain("monster", story.FullText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("shadow puppet", story.FullText);
@@ -323,7 +323,7 @@ public class StoryPipelineTests
     public async Task PosterStage_PersistsValidatedSpec()
     {
         await using var h = await Harness.CreateAsync();
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.False(string.IsNullOrEmpty(story.PosterSpecJson));
         var spec = StoryTime.Poster.Spec.PosterSpecJson.Parse(story.PosterSpecJson);
         Assert.NotNull(spec);
@@ -336,7 +336,7 @@ public class StoryPipelineTests
     public async Task Narration_PersistsManifestData()
     {
         await using var h = await Harness.CreateAsync();
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.True(story.DurationSeconds > 0);
         Assert.False(string.IsNullOrEmpty(story.AudioPath));
         Assert.True(File.Exists(story.AudioPath));
@@ -356,7 +356,7 @@ public class StoryPipelineTests
     [Fact]
     public async Task Overlap_NarrationStartsBeforeLastSceneCompletes()
     {
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Overlapped);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Overlapped);
         var narrationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         h.Tts.OnSynthesizeStart = _ => narrationStarted.TrySetResult();
 
@@ -372,7 +372,7 @@ public class StoryPipelineTests
             },
         };
 
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.NotEqual(StoryState.Failed, story.State);
         Assert.True(startedBeforeLastScene, "narration must begin while later scenes are still generating");
     }
@@ -380,8 +380,8 @@ public class StoryPipelineTests
     [Fact]
     public async Task Overlap_FullTextSplit_MatchesAppendedTimestampsExactly()
     {
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Overlapped);
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Overlapped);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
 
         var sentences = StoryPipeline.SplitSentences(story.FullText);
         var timestamps = System.Text.Json.JsonSerializer.Deserialize<List<SentenceTimestamp>>(story.TimestampsJson)!;
@@ -407,8 +407,8 @@ public class StoryPipelineTests
     [Fact]
     public async Task Overlap_MiddleWindows_NeverEndTheStory()
     {
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Overlapped);
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Overlapped);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         // Exactly one gentle close, at the very end (the template polish appends it only
         // on the final window; a goodnight mid-story means a middle window closed it).
         var occurrences = story.FullText.Split("Goodnight.").Length - 1;
@@ -419,7 +419,7 @@ public class StoryPipelineTests
     [Fact]
     public async Task Overlap_CheckpointsWindowBoundary_AndResumesMidOverlap()
     {
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Overlapped);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Overlapped);
         var cts = new CancellationTokenSource();
         var tts = h.Tts;
         h.Engine = new InterceptingEngine(new TemplateStoryEngine(() => 42))
@@ -435,7 +435,7 @@ public class StoryPipelineTests
         };
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            h.Pipeline().WeaveAsync(TestEnv.Profile(), null, cts.Token));
+            h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, cts.Token));
 
         var checkpoint = await h.Env.Store.GetCheckpointAsync();
         Assert.NotNull(checkpoint);
@@ -473,7 +473,7 @@ public class StoryPipelineTests
     [Fact]
     public async Task Overlap_Progress_IsMonotonic_AndNarrationRowStartsEarly()
     {
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Overlapped);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Overlapped);
         var narrationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         h.Tts.OnSynthesizeStart = _ => narrationStarted.TrySetResult();
         h.Engine = new InterceptingEngine(new TemplateStoryEngine(() => 42))
@@ -482,19 +482,19 @@ public class StoryPipelineTests
             OnSceneCall = calls => { if (calls == 5) narrationStarted.Task.Wait(TimeSpan.FromSeconds(15)); },
         };
 
-        var reports = new List<WeaveProgress>();
-        await h.Pipeline().WeaveAsync(TestEnv.Profile(), new SyncProgress<WeaveProgress>(reports.Add), CancellationToken.None);
+        var reports = new List<MakingProgress>();
+        await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), new SyncProgress<MakingProgress>(reports.Add), CancellationToken.None);
 
         for (var i = 1; i < reports.Count; i++)
         {
             Assert.True(reports[i].Percent >= reports[i - 1].Percent, "percent must never decrease under overlap");
             Assert.True(reports[i].Stage >= reports[i - 1].Stage, "reported stage must stay monotone under overlap");
         }
-        Assert.Equal(WeaveStage.Done, reports[^1].Stage);
+        Assert.Equal(MakingStage.Done, reports[^1].Stage);
         Assert.Equal(100, reports[^1].Percent);
         // The Narration row goes "making…" while the Scenes stage is still short of its
         // 45% boundary — impossible on the sequential path, definitional for overlap.
-        Assert.Contains(reports, r => r.Stage == WeaveStage.Narration && r.Percent < 45);
+        Assert.Contains(reports, r => r.Stage == MakingStage.Narration && r.Percent < 45);
     }
 
     [Fact]
@@ -502,21 +502,21 @@ public class StoryPipelineTests
     {
         await using var h = await Harness.CreateAsync();               // no forced strategy
         h.Capabilities = new FakeCapabilities { PhysicalMemoryBytes = 4L * 1024 * 1024 * 1024 };
-        Assert.Equal(WeaveStrategy.Sequential, h.Pipeline().PickStrategy());
+        Assert.Equal(MakingStrategy.Sequential, h.Pipeline().PickStrategy());
 
         h.Capabilities = new FakeCapabilities { IsLowMemoryDevice = true };
-        Assert.Equal(WeaveStrategy.Sequential, h.Pipeline().PickStrategy());
+        Assert.Equal(MakingStrategy.Sequential, h.Pipeline().PickStrategy());
 
         // 4-core device: co-residency thrashes → sequential is faster.
         h.Capabilities = new FakeCapabilities { ProcessorCount = 4 };
-        Assert.Equal(WeaveStrategy.Sequential, h.Pipeline().PickStrategy());
+        Assert.Equal(MakingStrategy.Sequential, h.Pipeline().PickStrategy());
 
         h.Capabilities = new FakeCapabilities();                       // 8 GB, 8 cores, not low-RAM
-        Assert.Equal(WeaveStrategy.Overlapped, h.Pipeline().PickStrategy());
+        Assert.Equal(MakingStrategy.Overlapped, h.Pipeline().PickStrategy());
 
-        // And a low-memory weave actually runs the classic two-call narration shape.
+        // And a low-memory story run actually runs the classic two-call narration shape.
         h.Capabilities = new FakeCapabilities { PhysicalMemoryBytes = 4L * 1024 * 1024 * 1024 };
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None);
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None);
         Assert.NotEqual(StoryState.Failed, story.State);
         Assert.Equal(2, h.Tts.SynthesizeCallSentenceCounts.Count);
         Assert.DoesNotContain(h.Tts.OutputPaths, p => p.Contains("-part"));
@@ -525,14 +525,14 @@ public class StoryPipelineTests
     [Fact]
     public async Task LegacyCheckpoint_WithoutStrategy_ResumesSequentially()
     {
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Sequential);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Sequential);
         var cts = new CancellationTokenSource();
         h.Engine = new InterceptingEngine(new TemplateStoryEngine(() => 42))
         {
             OnSceneCall = calls => { if (calls == 3) cts.Cancel(); },
         };
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            h.Pipeline().WeaveAsync(TestEnv.Profile(), null, cts.Token));
+            h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, cts.Token));
 
         // Simulate a checkpoint written by a pre-overlap build: no strategy field.
         var checkpoint = await h.Env.Store.GetCheckpointAsync();
@@ -549,14 +549,14 @@ public class StoryPipelineTests
     [Fact]
     public async Task Overlap_ProducerFailure_FailsGently_WithoutHanging()
     {
-        await using var h = await Harness.CreateAsync(WeaveStrategy.Overlapped);
+        await using var h = await Harness.CreateAsync(MakingStrategy.Overlapped);
         h.Engine = new InterceptingEngine(new TemplateStoryEngine(() => 42))
         {
             SceneTransform = text => text + " Then a terrifying monster screamed.",
             RepairOverride = passage => passage, // repair never helps
         };
 
-        var story = await h.Pipeline().WeaveAsync(TestEnv.Profile(), null, CancellationToken.None)
+        var story = await h.Pipeline().MakeStoryAsync(TestEnv.Profile(), null, CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(30));                               // a hang here is the bug
         Assert.Equal(StoryState.Failed, story.State);
         Assert.Equal(StoryPipeline.GentleFailureMessage, story.FullText);

@@ -31,7 +31,7 @@ public sealed class MediaElementHost
 /// <item><b>Remote commands</b> (iOS) — lock screen, AirPods, and car-stereo transport are
 /// wired straight to this player's Play/Pause/Stop/Seek.</item>
 /// </list>
-/// <para>The loom hum and the Premium ambient bed deliberately do NONE of this: they mix under
+/// <para>The soft hum and the Premium ambient bed deliberately do NONE of this: they mix under
 /// narration on the same session but never write Now Playing, so an AirPlay receiver or lock
 /// screen always shows the story, never the hum.</para></summary>
 public sealed class MediaElementNarrationPlayer : INarrationPlayer
@@ -174,7 +174,7 @@ public sealed class MediaElementNarrationPlayer : INarrationPlayer
             seek: seconds => _ = SeekAsync(seconds),
             position: () => PositionSeconds,
             // Headphones out / AirPlay receiver gone: pause rather than switch to the phone
-            // speaker beside a sleeping child. The weave, if one is running, is untouched.
+            // speaker beside a sleeping child. The story run, if one is running, is untouched.
             onRouteLost: () => _ = PauseAsync());
         Platforms.iOS.NativeAudio.DumpNowPlaying();
     }

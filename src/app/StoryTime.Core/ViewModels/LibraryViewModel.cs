@@ -8,29 +8,29 @@ using StoryTime.Core.Services;
 namespace StoryTime.Core.ViewModels;
 
 /// <summary>Full story library (flat push route). "Every story" is literal — this is the only
-/// surface that shows weaving and failed rows; Home caps at the 8 newest playable ones.</summary>
+/// surface that shows making and failed rows; Home caps at the 8 newest playable ones.</summary>
 public sealed partial class LibraryViewModel : ObservableObject
 {
     private readonly IStoryStore _store;
     private readonly INavigator _navigator;
     private readonly PlayerLaunchContext _playerContext;
-    private readonly WeaveSheetViewModel _weaveSheet;
+    private readonly MakingSheetViewModel _makingSheet;
     private readonly IHaptics _haptics;
     private readonly IStoryCatalog _catalog;
     private readonly CoalescingReloader _reloader;
 
     public LibraryViewModel(IStoryStore store, INavigator navigator, PlayerLaunchContext playerContext,
-        WeaveSheetViewModel weaveSheet, IHaptics haptics, IStoryCatalog catalog)
+        MakingSheetViewModel makingSheet, IHaptics haptics, IStoryCatalog catalog)
     {
         _store = store;
         _navigator = navigator;
         _playerContext = playerContext;
-        _weaveSheet = weaveSheet;
+        _makingSheet = makingSheet;
         _haptics = haptics;
         _catalog = catalog;
         _reloader = new CoalescingReloader(RefreshStoriesAsync);
 
-        // Live: a weave that starts, advances or finishes while the Library is on screen
+        // Live: a story run that starts, advances or finishes while the Library is on screen
         // updates the list in place. Before this the page only reloaded in Appearing.
         _catalog.Changed += (_, _) => StoriesRefresh = _reloader.RequestAsync();
     }
@@ -45,9 +45,9 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public Task ActivateAsync() => _reloader.RequestAsync();
 
-    /// <summary>"Every story" means EVERY story — this is the one list that shows a weave
-    /// in progress and a weave that failed, because it is the only place a parent can make
-    /// sense of either (tapping a weaving row opens the sheet; a failed row explains
+    /// <summary>"Every story" means EVERY story — this is the one list that shows a story run
+    /// in progress and a story run that failed, because it is the only place a parent can make
+    /// sense of either (tapping a making row opens the sheet; a failed row explains
     /// itself in its meta line). Newest first, as the store returns them.
     ///
     /// Only ever invoked through <c>_reloader</c> — it is the single writer of
@@ -63,11 +63,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     private async Task OpenAsync(StoryListItem item)
     {
         if (item is null) return;
-        if (item.Record.State == StoryState.Weaving)
+        if (item.Record.State == StoryState.Making)
         {
-            // A still-weaving story opens the weave sheet — never a dead tap.
+            // A still-making story opens the making sheet — never a dead tap.
             _haptics.Light();
-            await _weaveSheet.ExpandCurrentAsync();
+            await _makingSheet.ExpandCurrentAsync();
             return;
         }
         if (item.Record.State == StoryState.Failed)

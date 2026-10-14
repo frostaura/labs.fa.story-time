@@ -187,63 +187,63 @@ public class HapticPressCoalescingTests
     }
 }
 
-/// <summary>The weave sheet's stage-transition "loom-click" and story-ready Celebrate,
-/// including the foreground gate: a background weave must never buzz the pocket.</summary>
-public class WeaveSheetHapticsTests : IAsyncLifetime
+/// <summary>The making sheet's stage-transition "stage click" and story-ready Celebrate,
+/// including the foreground gate: a background story run must never buzz the pocket.</summary>
+public class MakingSheetHapticsTests : IAsyncLifetime
 {
     private TestEnv _env = null!;
-    private FakeWeaveHost _host = null!;
+    private FakeStoryMakingHost _host = null!;
     private FakeHaptics _haptics = null!;
-    private WeaveSheetViewModel _vm = null!;
+    private MakingSheetViewModel _vm = null!;
 
     public async Task InitializeAsync()
     {
         _env = await TestEnv.CreateAsync();
-        _host = new FakeWeaveHost();
+        _host = new FakeStoryMakingHost();
         _haptics = new FakeHaptics();
         var settings = new InMemorySettingsStore();
         var clock = new FakeClock();
         var entitlements = new StoreEntitlements(settings, clock);
         var cooldown = new CooldownService(settings, clock, entitlements);
-        _vm = new WeaveSheetViewModel(_host, _env.Store, cooldown, new FakeNavigator(), new PlayerLaunchContext(),
+        _vm = new MakingSheetViewModel(_host, _env.Store, cooldown, new FakeNavigator(), new PlayerLaunchContext(),
             settings, _haptics, entitlements, new KidModeService());
         await _env.Store.SaveProfileAsync(TestEnv.Profile());
     }
 
     public async Task DisposeAsync() => await _env.DisposeAsync();
 
-    private void Raise(WeaveStage stage, int percent) =>
-        _host.RaiseProgress(new WeaveProgress { Stage = stage, Percent = percent, StageFraction = 0.5 });
+    private void Raise(MakingStage stage, int percent) =>
+        _host.RaiseProgress(new MakingProgress { Stage = stage, Percent = percent, StageFraction = 0.5 });
 
     [Fact]
     public async Task StageTransitions_TickOncePerStage_NeverOnFirstOrWithinStage()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
 
-        Raise(WeaveStage.Outline, 2);      // first stage seen — weave start already answered with Medium
+        Raise(MakingStage.Outline, 2);      // first stage seen — story start already answered with Medium
         Assert.Equal(0, _haptics.Count("Tick"));
 
-        Raise(WeaveStage.Outline, 4);      // progress within a stage is not a transition
+        Raise(MakingStage.Outline, 4);      // progress within a stage is not a transition
         Assert.Equal(0, _haptics.Count("Tick"));
 
-        Raise(WeaveStage.Scenes, 20);
+        Raise(MakingStage.Scenes, 20);
         Assert.Equal(1, _haptics.Count("Tick"));
 
-        Raise(WeaveStage.Scenes, 40);
+        Raise(MakingStage.Scenes, 40);
         Assert.Equal(1, _haptics.Count("Tick"));
 
-        Raise(WeaveStage.Poster, 47);
+        Raise(MakingStage.Poster, 47);
         Assert.Equal(2, _haptics.Count("Tick"));
 
-        Raise(WeaveStage.Narration, 60);
+        Raise(MakingStage.Narration, 60);
         Assert.Equal(3, _haptics.Count("Tick"));
     }
 
     [Fact]
-    public async Task WeaveComplete_CelebratesOnce_NotPlainSuccess()
+    public async Task MakingComplete_CelebratesOnce_NotPlainSuccess()
     {
-        await _vm.ShowForWeaveAsync();
-        Raise(WeaveStage.Narration, 90);
+        await _vm.ShowForMakingAsync();
+        Raise(MakingStage.Narration, 90);
 
         var story = new StoryRecord { Id = 7, Title = "The Lantern Fox", State = StoryState.Ready };
         _host.RaiseCompleted(story);
@@ -256,39 +256,39 @@ public class WeaveSheetHapticsTests : IAsyncLifetime
     [Fact]
     public async Task Backgrounded_StageTicksAndCelebrate_StaySilent()
     {
-        await _vm.ShowForWeaveAsync();
+        await _vm.ShowForMakingAsync();
         _vm.IsForegrounded = false;
 
-        Raise(WeaveStage.Outline, 2);
-        Raise(WeaveStage.Scenes, 20);
-        Raise(WeaveStage.Poster, 47);
+        Raise(MakingStage.Outline, 2);
+        Raise(MakingStage.Scenes, 20);
+        Raise(MakingStage.Poster, 47);
         _host.RaiseCompleted(new StoryRecord { Id = 8, Title = "Quiet", State = StoryState.Ready });
 
         Assert.Equal(0, _haptics.Count("Tick"));
         Assert.Equal(0, _haptics.Count("Celebrate"));
 
-        // Back in the foreground the loom-click resumes from where it left off.
+        // Back in the foreground the stage click resumes from where it left off.
         _vm.IsForegrounded = true;
     }
 
     [Fact]
-    public async Task ResumedWeave_FirstObservedStage_DoesNotTick()
+    public async Task ResumedMaking_FirstObservedStage_DoesNotTick()
     {
         // App relaunch mid-pipeline: the sheet auto-surfaces on the first progress event.
-        Raise(WeaveStage.Narration, 62);
+        Raise(MakingStage.Narration, 62);
         Assert.Equal(0, _haptics.Count("Tick"));
-        Assert.Equal(WeaveSheetState.Collapsed, _vm.State);
+        Assert.Equal(MakingSheetState.Collapsed, _vm.State);
         await Task.CompletedTask;
     }
 
     [Fact]
     public async Task ExpandAndCollapse_BothAnswerWithLight()
     {
-        await _vm.ShowForWeaveAsync();
-        Raise(WeaveStage.Outline, 2);
+        await _vm.ShowForMakingAsync();
+        Raise(MakingStage.Outline, 2);
         _haptics.Calls.Clear();
 
-        _vm.CollapseCommand.Execute(null);   // mid-weave: collapse commit
+        _vm.CollapseCommand.Execute(null);   // mid-story: collapse commit
         Assert.Equal(1, _haptics.Count("Light"));
 
         _vm.ExpandCommand.Execute(null);     // expand commit
@@ -298,19 +298,19 @@ public class WeaveSheetHapticsTests : IAsyncLifetime
     [Fact]
     public async Task MiniBarDismiss_LightsOnlyWhenFinished()
     {
-        await _vm.ShowForWeaveAsync();
-        Raise(WeaveStage.Outline, 2);
+        await _vm.ShowForMakingAsync();
+        Raise(MakingStage.Outline, 2);
         _vm.CollapseCommand.Execute(null);
         _haptics.Calls.Clear();
 
-        _vm.DismissFromMiniBarCommand.Execute(null);   // inert mid-weave
+        _vm.DismissFromMiniBarCommand.Execute(null);   // inert mid-story
         Assert.Empty(_haptics.Calls);
 
         _host.RaiseCompleted(new StoryRecord { Id = 9, Title = "Done", State = StoryState.Ready });
         _haptics.Calls.Clear();
         _vm.DismissFromMiniBarCommand.Execute(null);   // dismiss commit
         Assert.Equal(1, _haptics.Count("Light"));
-        Assert.Equal(WeaveSheetState.Hidden, _vm.State);
+        Assert.Equal(MakingSheetState.Hidden, _vm.State);
     }
 }
 

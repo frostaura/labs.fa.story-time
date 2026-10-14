@@ -31,7 +31,7 @@
 
         <!-- Unlocked settings -->
         <ScrollView IsVisible="{Binding IsUnlocked}">
-            <!-- Extra bottom padding keeps the back button clear of the docked weave mini-bar. -->
+            <!-- Extra bottom padding keeps the back button clear of the docked making mini-bar. -->
             <VerticalStackLayout Padding="32,24,32,100" Spacing="0">
 
                 <!-- Back: same pill, same top-left position as Library / Content filters
@@ -152,7 +152,7 @@
         <!-- The upgrade coming-soon sheet is gone: UPGRADE → now routes to the Premium
              page (founder-requested paygate; see docs/design/mockup-spec.md). -->
 
-        <!-- Weave sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
-        <controls:WeaveSheetHost />
+        <!-- Making sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
+        <controls:MakingSheetHost />
     </Grid>
 </ContentPage>

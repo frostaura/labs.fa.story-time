@@ -12,10 +12,10 @@ public class AppDelegate : MauiUIApplicationDelegate
 	public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
 	{
 		// BGTaskScheduler requires EVERY permitted identifier to be registered before the app
-		// finishes launching — registering later throws. This is the opportunistic weave
-		// resume path (see WeaveBackgroundCoordinator); registration is cheap and harmless
+		// finishes launching — registering later throws. This is the opportunistic story
+		// resume path (see MakingBackgroundCoordinator); registration is cheap and harmless
 		// when no checkpoint exists.
-		WeaveBackgroundCoordinator.RegisterResumeTask();
+		MakingBackgroundCoordinator.RegisterResumeTask();
 		return base.FinishedLaunching(application, launchOptions);
 	}
 }

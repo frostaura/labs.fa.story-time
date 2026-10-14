@@ -71,18 +71,18 @@ public static class MauiProgram
 		builder.Services.AddSingleton<MediaElementNarrationPlayer>();
 		builder.Services.AddSingleton<LiveTtsNarrationPlayer>();
 		builder.Services.AddSingleton<INarrationPlayerProvider, NarrationPlayerProvider>();
-		// ---- Background weave + loom hum (2026-07-31) ----
-		// The anchor is what keeps a weave alive when the app leaves the foreground; the hum
-		// is the audible ambient loop that plays while it weaves (and, on iOS, the active
+		// ---- Background story run + soft hum (2026-07-31) ----
+		// The anchor is what keeps a story run alive when the app leaves the foreground; the hum
+		// is the audible ambient loop that plays while the story is made (and, on iOS, the active
 		// playback session that legitimately keeps the pipeline scheduled in the background).
-		builder.Services.AddSingleton<IWeaveBackgroundAnchor, Platforms.iOS.WeaveBackgroundCoordinator>();
-		// One cached loop per palette family in AppData — repeat weaves start instantly.
-		builder.Services.AddSingleton<StoryTime.Core.Audio.LoomHumTrackProvider>();
-		builder.Services.AddSingleton<LoomHumService>();
-		builder.Services.AddSingleton<IWeaveHost, WeaveHostService>();
-		// Weave sheet coordinator (app-foreground animation gate; the sheet state itself
-		// is the singleton WeaveSheetViewModel registered by Core).
-		builder.Services.AddSingleton<WeaveSheetController>();
+		builder.Services.AddSingleton<IMakingBackgroundAnchor, Platforms.iOS.MakingBackgroundCoordinator>();
+		// One cached loop per palette family in AppData — repeat stories start instantly.
+		builder.Services.AddSingleton<StoryTime.Core.Audio.SoftHumTrackProvider>();
+		builder.Services.AddSingleton<SoftHumService>();
+		builder.Services.AddSingleton<IStoryMakingHost, StoryMakingHost>();
+		// Making sheet coordinator (app-foreground animation gate; the sheet state itself
+		// is the singleton MakingSheetViewModel registered by Core).
+		builder.Services.AddSingleton<MakingSheetController>();
 
 		// ---- Core services, engines, view-models ----
 		builder.Services.AddStoryTimeCore(new StoryTimeOptions

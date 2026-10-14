@@ -2,7 +2,7 @@ using StoryTime.Core.Abstractions;
 
 namespace StoryTime.Core.Pipeline;
 
-/// <summary>Between-stories cooldown ("the loom rests"). Anchored to a persisted monotonic
+/// <summary>Between-stories cooldown ("next story at {time}"). Anchored to a persisted monotonic
 /// timestamp so winding the wall clock forward does not skip it; wall-clock end time is the
 /// fallback across reboots (monotonic resets at boot).</summary>
 public sealed class CooldownService
@@ -37,7 +37,7 @@ public sealed class CooldownService
     {
         get
         {
-            // Testing mode (the Debug premium unlock) never waits on the loom — the cooldown
+            // Testing mode (the Debug premium unlock) never waits between stories — the cooldown
             // is a bedtime-calm feature, not something to fight while iterating. Note this
             // deliberately diverges from real premium timing (15 min); founder call 2026-07-30.
             if (_settings.DebugPremiumOverride) return null;
@@ -72,8 +72,8 @@ public sealed class CooldownService
         }
     }
 
-    /// <summary>Local wall-clock moment the next weave unlocks, or null when idle.</summary>
-    public DateTime? NextWeaveAtLocal
+    /// <summary>Local wall-clock moment the next story run unlocks, or null when idle.</summary>
+    public DateTime? NextStoryAtLocal
     {
         get
         {

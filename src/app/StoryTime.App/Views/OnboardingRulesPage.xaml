@@ -64,7 +64,7 @@
 
         <!-- Threshold action: onboarding's last step commits the profile and builds the
              welcome story, so it answers with MEDIUM at press-down (same weight as the
-             weave CTA) rather than the style's default Light. The VM's own start Medium
+             make CTA) rather than the style's default Light. The VM's own start Medium
              coalesces away. Disabled while busy ⇒ Pressed never raises ⇒ no haptic. -->
         <Button Grid.Row="1" Margin="0,16,0,8" Text="Start my 7 free nights"
                 services:PressHaptics.OnPressed="Medium"

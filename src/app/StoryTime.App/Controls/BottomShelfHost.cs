@@ -8,13 +8,13 @@ using StoryTime.Core.Abstractions;
 namespace StoryTime.App.Controls;
 
 /// <summary>Lightweight reusable slide-up shelf: scrim + drag handle + content-sized
-/// bottom sheet, in exactly the weave sheet's visual language (BgPhone panel, Hairline
+/// bottom sheet, in exactly the making sheet's visual language (BgPhone panel, Hairline
 /// stroke, 20-radius top corners, ~55% BgPhone scrim, ≤300 ms eased motion, drag-down ≥110dp
-/// or scrim/handle tap to dismiss — the WeaveSheetHost pattern, extracted for shelves that
+/// or scrim/handle tap to dismiss — the MakingSheetHost pattern, extracted for shelves that
 /// are content-sized rather than near-full-height and driven by a simple IsOpen flag).
 ///
-/// Layering: place this as the LAST child of a page's root Grid — above WeaveSheetHost —
-/// so an open shelf slides up OVER the docked weave mini-bar (the bar dims under the scrim
+/// Layering: place this as the LAST child of a page's root Grid — above MakingSheetHost —
+/// so an open shelf slides up OVER the docked making mini-bar (the bar dims under the scrim
 /// and is inert while the shelf is open; it is exactly where it was on dismiss).
 ///
 /// Dismissal goes through <see cref="CloseCommand"/> when one is bound (so the owning VM
@@ -22,7 +22,7 @@ namespace StoryTime.App.Controls;
 [ContentProperty(nameof(ShelfContent))]
 public sealed class BottomShelfHost : Grid
 {
-    private const double DismissDragThreshold = 110;   // dp of drag-down that commits a dismiss (weave-sheet value)
+    private const double DismissDragThreshold = 110;   // dp of drag-down that commits a dismiss (making sheet value)
 
     public static readonly BindableProperty IsOpenProperty = BindableProperty.Create(
         nameof(IsOpen), typeof(bool), typeof(BottomShelfHost), false, BindingMode.TwoWay,
@@ -82,7 +82,7 @@ public sealed class BottomShelfHost : Grid
         // Light at pointer-down, before the dismiss animation (anticipatory rule).
         _scrim.Behaviors.Add(PressHaptics.Touch(_scrim, PressHapticKind.Light, listenOnly: true));
 
-        // Grab zone: drag handle (weave-sheet/Player pattern) — tap or drag-down dismisses.
+        // Grab zone: drag handle (making sheet/Player pattern) — tap or drag-down dismisses.
         var grabZone = new Grid { HeightRequest = 34, BackgroundColor = Colors.Transparent };
         grabZone.Children.Add(new BoxView
         {
@@ -100,7 +100,7 @@ public sealed class BottomShelfHost : Grid
         pan.PanUpdated += OnGrabPan;
         grabZone.GestureRecognizers.Add(pan);
         // Grip at DRAG-START = first touch, not first movement: the pan's Started only
-        // arrives after the slop threshold (weave-sheet / LengthTrackView pattern).
+        // arrives after the slop threshold (making sheet / LengthTrackView pattern).
         var grip = new TouchBehavior();
         grip.CurrentTouchStatusChanged += (_, e) =>
         {
@@ -141,7 +141,7 @@ public sealed class BottomShelfHost : Grid
     }
 
     /// <summary>iOS pages bleed edge-to-edge; pad the sheet's content above the home
-    /// indicator (same treatment as the weave mini-bar).</summary>
+    /// indicator (same treatment as the making mini-bar).</summary>
     private void ApplySafeAreaPadding()
     {
         for (Element? p = Parent; p is not null; p = p.Parent)
@@ -177,7 +177,7 @@ public sealed class BottomShelfHost : Grid
             _scrim.IsVisible = true;
             _sheet.IsVisible = true;
             // First open: the sheet has never measured — give layout a beat, then slide
-            // from its own height (content-sized, unlike the near-full weave sheet).
+            // from its own height (content-sized, unlike the near-full making sheet).
             if (_sheet.Height <= 0)
             {
                 _sheet.TranslationY = OffscreenY;
@@ -210,7 +210,7 @@ public sealed class BottomShelfHost : Grid
             case GestureStatus.Running:
                 _lastDragY = Math.Max(0, e.TotalY);
                 _sheet.TranslationY = _lastDragY;
-                // Arming feedback, once per gesture (weave-sheet pattern).
+                // Arming feedback, once per gesture (making sheet pattern).
                 if (!_dragArmed && _lastDragY > DismissDragThreshold)
                 {
                     _dragArmed = true;

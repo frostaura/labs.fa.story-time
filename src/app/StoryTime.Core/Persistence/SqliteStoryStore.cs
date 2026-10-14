@@ -184,16 +184,16 @@ public sealed class SqliteStoryStore : IStoryStore, IAsyncDisposable
 
     // ---------- Checkpoint ----------
 
-    public async Task<WeaveCheckpoint?> GetCheckpointAsync()
+    public async Task<MakingCheckpoint?> GetCheckpointAsync()
     {
         var db = await DbAsync();
         var row = await db.Table<CheckpointRow>().FirstOrDefaultAsync();
         return row is null || string.IsNullOrEmpty(row.Json)
             ? null
-            : JsonSerializer.Deserialize<WeaveCheckpoint>(row.Json, JsonOpts);
+            : JsonSerializer.Deserialize<MakingCheckpoint>(row.Json, JsonOpts);
     }
 
-    public async Task SaveCheckpointAsync(WeaveCheckpoint? checkpoint)
+    public async Task SaveCheckpointAsync(MakingCheckpoint? checkpoint)
     {
         var db = await DbAsync();
         if (checkpoint is null)

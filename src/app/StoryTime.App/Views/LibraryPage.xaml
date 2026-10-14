@@ -13,7 +13,7 @@
 
     <Grid>
     <Grid RowDefinitions="Auto,*,Auto" Padding="32,24,32,24">
-        <!-- Back lives top-left of the header on EVERY screen that has one (the weave
+        <!-- Back lives top-left of the header on EVERY screen that has one (the making
              mini-bar docks over the bottom edge, so back can never live down there).
              Was a bare Faint "← back" ghost on the right; now the shared BackPill. -->
         <VerticalStackLayout Grid.Row="0" Spacing="0" Margin="0,12,0,18">
@@ -69,11 +69,11 @@
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Bottom spacer keeps the last list row clear of the docked weave mini-bar. -->
+        <!-- Bottom spacer keeps the last list row clear of the docked making mini-bar. -->
         <BoxView Grid.Row="2" HeightRequest="72" Color="Transparent" />
     </Grid>
 
-    <!-- Weave sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
-    <controls:WeaveSheetHost />
+    <!-- Making sheet + mini-bar overlay (top layer; input-transparent when hidden). -->
+    <controls:MakingSheetHost />
     </Grid>
 </ContentPage>

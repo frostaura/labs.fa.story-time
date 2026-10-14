@@ -9,18 +9,18 @@ namespace StoryTime.App.Controls;
 
 /// <summary>One instance sits as the top layer of every non-modal page's root Grid
 /// (Home, Library, Shelf, Settings). All instances bind to the singleton
-/// WeaveSheetViewModel, so whichever page the user navigates to shows the same sheet
-/// state — that is the whole "weave runs behind the app" illusion.
+/// MakingSheetViewModel, so whichever page the user navigates to shows the same sheet
+/// state — that is the whole "the story is made behind the app" illusion.
 ///
 /// Animation discipline (Hearth + gotchas): every transition is ≤300 ms eased, nothing
 /// bounces; both loops (ember pulse, progress shimmer) yield unconditionally and are
 /// gated on page-visible + app-foregrounded + the state that actually needs them.</summary>
-public partial class WeaveSheetHost : Grid
+public partial class MakingSheetHost : Grid
 {
     private const double CollapseDragThreshold = 110;   // dp of drag-down that commits a collapse
 
-    private readonly WeaveSheetViewModel _vm;
-    private readonly WeaveSheetController _controller;
+    private readonly MakingSheetViewModel _vm;
+    private readonly MakingSheetController _controller;
     private readonly IHaptics _haptics;
 
     private ContentPage? _page;
@@ -30,16 +30,16 @@ public partial class WeaveSheetHost : Grid
     private double _lastDragY;    // last Running pan position (Completed reports zeros — gotcha)
     private bool _dragArmed;      // dismiss-threshold arming Selection fired for this gesture
 
-    public WeaveSheetHost()
+    public MakingSheetHost()
     {
         var services = IPlatformApplication.Current!.Services;
-        _vm = services.GetRequiredService<WeaveSheetViewModel>();
-        _controller = services.GetRequiredService<WeaveSheetController>();
+        _vm = services.GetRequiredService<MakingSheetViewModel>();
+        _controller = services.GetRequiredService<MakingSheetController>();
         _haptics = services.GetRequiredService<IHaptics>();
 
         InitializeComponent();
         BindingContext = _vm;
-        ProgressBar.Ticks = WeaveSheetViewModel.StageTicks;
+        ProgressBar.Ticks = MakingSheetViewModel.StageTicks;
 
         // Drag-down on the grab zone collapses (commit uses the last Running position —
         // MAUI reports TotalY = 0 on Completed, the LengthTrackView lesson).
@@ -142,7 +142,7 @@ public partial class WeaveSheetHost : Grid
     private void OnAnimationGateChanged(object? sender, EventArgs e) =>
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Mirror the app-foreground gate into the VM so weave-driven haptics (stage
+            // Mirror the app-foreground gate into the VM so story-driven haptics (stage
             // ticks, story-ready Celebrate) stay silent while backgrounded. Every loaded
             // host writes the same value — idempotent by construction.
             _vm.IsForegrounded = _controller.IsAppForegrounded;
@@ -153,16 +153,16 @@ public partial class WeaveSheetHost : Grid
     {
         switch (e.PropertyName)
         {
-            case nameof(WeaveSheetViewModel.State):
+            case nameof(MakingSheetViewModel.State):
                 if (_pageVisible) _ = AnimateToStateAsync();
                 else SyncInstant();
                 ReevaluateAnimations();
                 break;
-            case nameof(WeaveSheetViewModel.Percent):
+            case nameof(MakingSheetViewModel.Percent):
                 UpdateMiniProgress();
                 break;
-            case nameof(WeaveSheetViewModel.IsDone):
-            case nameof(WeaveSheetViewModel.IsFailed):
+            case nameof(MakingSheetViewModel.IsDone):
+            case nameof(MakingSheetViewModel.IsFailed):
                 UpdateMiniProgress();
                 ReevaluateAnimations();
                 break;
@@ -172,13 +172,13 @@ public partial class WeaveSheetHost : Grid
     private void ReevaluateAnimations()
     {
         var alive = _pageVisible && _controller.IsAppForegrounded;
-        var weaving = !_vm.IsDone && !_vm.IsFailed;
+        var making = !_vm.IsDone && !_vm.IsFailed;
 
-        // Shimmer/eased fill: only inside the visible expanded sheet, mid-weave.
-        ProgressBar.Animate = alive && _vm.State == WeaveSheetState.Expanded && weaving;
+        // Shimmer/eased fill: only inside the visible expanded sheet, mid-story.
+        ProgressBar.Animate = alive && _vm.State == MakingSheetState.Expanded && making;
 
-        // Ember pulse: only on the visible mini-bar, mid-weave (done shows a calm dot).
-        if (alive && _vm.State == WeaveSheetState.Collapsed && weaving) _ = PulseEmberAsync();
+        // Ember pulse: only on the visible mini-bar, mid-story (done shows a calm dot).
+        if (alive && _vm.State == MakingSheetState.Collapsed && making) _ = PulseEmberAsync();
     }
 
     // ---- state presentation -------------------------------------------------------
@@ -193,14 +193,14 @@ public partial class WeaveSheetHost : Grid
         this.CancelAnimationsSafely(SheetPanel, Scrim, MiniBar);
         switch (_vm.State)
         {
-            case WeaveSheetState.Expanded:
+            case MakingSheetState.Expanded:
                 Scrim.IsVisible = true;
                 Scrim.Opacity = 0.55;
                 SheetPanel.IsVisible = true;
                 SheetPanel.TranslationY = 0;
                 MiniBar.IsVisible = false;
                 break;
-            case WeaveSheetState.Collapsed:
+            case MakingSheetState.Collapsed:
                 Scrim.IsVisible = false;
                 Scrim.Opacity = 0;
                 SheetPanel.IsVisible = false;
@@ -225,7 +225,7 @@ public partial class WeaveSheetHost : Grid
         this.CancelAnimationsSafely(SheetPanel, Scrim, MiniBar);
         switch (_vm.State)
         {
-            case WeaveSheetState.Expanded:
+            case MakingSheetState.Expanded:
             {
                 if (MiniBar.IsVisible)
                 {
@@ -241,7 +241,7 @@ public partial class WeaveSheetHost : Grid
                 await SheetPanel.TranslateToAsync(0, 0, 290, Easing.CubicOut);
                 break;
             }
-            case WeaveSheetState.Collapsed:
+            case MakingSheetState.Collapsed:
             {
                 if (SheetPanel.IsVisible)
                 {
@@ -334,7 +334,7 @@ public partial class WeaveSheetHost : Grid
         try
         {
             while (_pageVisible && _controller.IsAppForegrounded
-                   && _vm.State == WeaveSheetState.Collapsed && !_vm.IsDone && !_vm.IsFailed)
+                   && _vm.State == MakingSheetState.Collapsed && !_vm.IsDone && !_vm.IsFailed)
             {
                 var startedMs = Environment.TickCount64;
                 await EmberDot.FadeToAsync(0.35, 600, Easing.SinInOut);
@@ -350,7 +350,7 @@ public partial class WeaveSheetHost : Grid
     }
 }
 
-file static class WeaveSheetHostExtensions
+file static class MakingSheetHostExtensions
 {
     public static void CancelAnimationsSafely(this Grid _, params VisualElement[] elements)
     {

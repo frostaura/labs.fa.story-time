@@ -121,7 +121,7 @@ public sealed class TemplateStoryEngine : IStoryEngine
         ]),
         new("The Night Garden of {placeB}", "wonderful things grow while we rest",
         [
-            "{name} hears that a garden blooms only at bedtime",
+            "{name} hears that a garden flowers only at bedtime",
             "{friend} the {creature} knows the mossy way in",
             "moonflowers open one by one as they tiptoe past",
             "a {thing} waits in the middle of the garden like a promise",
@@ -135,7 +135,7 @@ public sealed class TemplateStoryEngine : IStoryEngine
             "{friend} the {creature} needs a warmer place to sleep",
             "{name} and {friend} gather soft things around {place}",
             "the {sound} points them to thistledown near {placeB}",
-            "they weave and tuck and pat everything into place",
+            "they fold and tuck and pat everything into place",
             "the nest is too small until they widen it laughing softly",
             "neighbors bring one feather each to say welcome",
             "{friend} tries the nest and sighs the happiest sigh",
@@ -574,7 +574,7 @@ public sealed class TemplateStoryEngine : IStoryEngine
 
     /// <summary>Curated one-word evocative titles — the subtitle-free shape.</summary>
     private static readonly string[] EvocativeTitles =
-        ["Thistledown", "Moonwash", "Lanternlight", "Starhush", "Dreamdrift", "Nightbloom",
+        ["Thistledown", "Moonwash", "Lanternlight", "Starhush", "Dreamdrift", "Nightpetal",
          "Willowsong", "Emberglow", "Feathermoon", "Hushabye"];
 
     private static readonly string[] TitleGentleVerbs = ["Hummed", "Whispered", "Twinkled", "Giggled", "Yawned"];

@@ -126,22 +126,22 @@ public sealed class FakeBiometricGate : IBiometricGate
     public Task<bool> AuthenticateAsync(string reason, CancellationToken ct) => Task.FromResult(Result);
 }
 
-public sealed class FakeWeaveHost : IWeaveHost
+public sealed class FakeStoryMakingHost : IStoryMakingHost
 {
-    public bool IsWeaving { get; set; }
-    public WeaveProgress? CurrentProgress { get; set; }
+    public bool IsMaking { get; set; }
+    public MakingProgress? CurrentProgress { get; set; }
     public StoryRecord? LastCompleted { get; set; }
     public string? LastFailureMessage { get; set; }
     public ChildProfile? StartedWith { get; private set; }
 
-    public event EventHandler<WeaveProgress>? ProgressChanged;
-    public event EventHandler<StoryRecord>? WeaveCompleted;
-    public event EventHandler<string>? WeaveFailed;
+    public event EventHandler<MakingProgress>? ProgressChanged;
+    public event EventHandler<StoryRecord>? MakingCompleted;
+    public event EventHandler<string>? MakingFailed;
 
     public Task StartAsync(ChildProfile profile)
     {
         StartedWith = profile;
-        IsWeaving = true;
+        IsMaking = true;
         return Task.CompletedTask;
     }
 
@@ -149,23 +149,23 @@ public sealed class FakeWeaveHost : IWeaveHost
 
     public Task CancelAsync()
     {
-        IsWeaving = false;
+        IsMaking = false;
         return Task.CompletedTask;
     }
 
-    public event EventHandler? WeaveCancelled;
+    public event EventHandler? MakingCancelled;
     public bool DiscardCalled { get; private set; }
 
     public Task CancelAndDiscardAsync()
     {
         DiscardCalled = true;
-        IsWeaving = false;
+        IsMaking = false;
         CurrentProgress = null;
-        WeaveCancelled?.Invoke(this, EventArgs.Empty);
+        MakingCancelled?.Invoke(this, EventArgs.Empty);
         return Task.CompletedTask;
     }
 
-    public void RaiseProgress(WeaveProgress p)
+    public void RaiseProgress(MakingProgress p)
     {
         CurrentProgress = p;
         ProgressChanged?.Invoke(this, p);
@@ -173,16 +173,16 @@ public sealed class FakeWeaveHost : IWeaveHost
 
     public void RaiseCompleted(StoryRecord story)
     {
-        IsWeaving = false;
+        IsMaking = false;
         LastCompleted = story;
-        WeaveCompleted?.Invoke(this, story);
+        MakingCompleted?.Invoke(this, story);
     }
 
     public void RaiseFailed(string message)
     {
-        IsWeaving = false;
+        IsMaking = false;
         LastFailureMessage = message;
-        WeaveFailed?.Invoke(this, message);
+        MakingFailed?.Invoke(this, message);
     }
 }
 

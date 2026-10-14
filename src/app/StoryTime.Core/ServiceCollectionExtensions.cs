@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
 
         // Core services
         services.TryAddSingleton<IClock, SystemClock>();
-        // Weave-strategy memory signal (overlapped vs sequential). TryAdd so the App head
+        // Make-strategy memory signal (overlapped vs sequential). TryAdd so the App head
         // may pre-register a richer signal without Core changes.
         services.TryAddSingleton<IDeviceCapabilities, DefaultDeviceCapabilities>();
         services.TryAddSingleton<ISettingsStore, InMemorySettingsStore>();
@@ -61,16 +61,16 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<PlayerLaunchContext>();
         services.TryAddSingleton<KidModeService>();
 
-        // ViewModels — transient except those that carry cross-page weave state.
+        // ViewModels — transient except those that carry cross-page story state.
         services.TryAddTransient<OnboardingProfileViewModel>();
         services.TryAddTransient<OnboardingVoiceViewModel>();
         services.TryAddTransient<OnboardingRulesViewModel>();
         services.TryAddTransient<HomeViewModel>();
         // Owned by HomeViewModel (one per Home instance): the "Tonight's recipe" shelf.
         services.TryAddTransient<RecipeShelfViewModel>();
-        // Singleton by design: the weave sheet's expand/collapse state must survive page
-        // navigation — every page's WeaveSheetHost binds to this one instance.
-        services.TryAddSingleton<WeaveSheetViewModel>();
+        // Singleton by design: the making sheet's expand/collapse state must survive page
+        // navigation — every page's MakingSheetHost binds to this one instance.
+        services.TryAddSingleton<MakingSheetViewModel>();
         services.TryAddTransient<PlayerViewModel>();
         services.TryAddSingleton<Abstractions.IVoiceSamplePlayer, Services.NullVoiceSamplePlayer>();
         services.TryAddTransient<ShelfViewModel>();

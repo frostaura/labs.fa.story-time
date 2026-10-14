@@ -50,7 +50,7 @@ public sealed class BibleRow
 [Table("checkpoints")]
 public sealed class CheckpointRow
 {
-    /// <summary>Single-row table (Id = 1) — at most one weave is in flight.</summary>
+    /// <summary>Single-row table (Id = 1) — at most one story run is in flight.</summary>
     [PrimaryKey] public int Id { get; set; } = 1;
     public string Json { get; set; } = string.Empty;
 }

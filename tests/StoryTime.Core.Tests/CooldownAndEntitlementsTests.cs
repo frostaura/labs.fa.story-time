@@ -20,7 +20,7 @@ public class CooldownServiceTests
     {
         var (cooldown, _, _) = Make();
         Assert.Null(cooldown.Remaining);
-        Assert.Null(cooldown.NextWeaveAtLocal);
+        Assert.Null(cooldown.NextStoryAtLocal);
         Assert.False(cooldown.IsActive);
     }
 
@@ -95,11 +95,11 @@ public class CooldownServiceTests
     }
 
     [Fact]
-    public void NextWeaveAtLocal_MatchesRemaining()
+    public void NextStoryAtLocal_MatchesRemaining()
     {
         var (cooldown, _, _) = Make();
         cooldown.Start();
-        var next = cooldown.NextWeaveAtLocal;
+        var next = cooldown.NextStoryAtLocal;
         Assert.NotNull(next);
         var expected = DateTime.Now + cooldown.Remaining!.Value;
         Assert.True(Math.Abs((next.Value - expected).TotalSeconds) < 5);

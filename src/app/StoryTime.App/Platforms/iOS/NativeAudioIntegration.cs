@@ -27,7 +27,7 @@ namespace StoryTime.App.Platforms.iOS;
 /// </list>
 ///
 /// <para><b>The hum must never own this surface.</b> Only narration writes Now Playing; the
-/// loom hum and the Premium ambient bed play through <c>AVAudioPlayer</c> on the same session
+/// soft hum and the Premium ambient bed play through <c>AVAudioPlayer</c> on the same session
 /// and touch none of these APIs, so the lock screen always shows the STORY.</para></summary>
 internal static class NativeAudio
 {
@@ -242,7 +242,7 @@ internal static class NativeAudio
 
     /// <summary>Headphones out / AirPlay receiver gone: iOS convention (and every audiobook
     /// app) is to PAUSE rather than blast the story out of the phone speaker at a sleeping
-    /// child. A weave in flight is untouched — the loom keeps humming.</summary>
+    /// child. A story run in flight is untouched — the soft hum keeps playing.</summary>
     private static void ObserveRouteChanges()
     {
         if (_routeObserver is not null) return;

@@ -30,7 +30,7 @@ public sealed partial class ShelfViewModel : ObservableObject
         _catalog = catalog;
         _reloader = new CoalescingReloader(RefreshTilesAsync);
 
-        // Live: a story approved in the player (or a weave finishing with the approval
+        // Live: a story approved in the player (or a story run finishing with the approval
         // step off) lands on the shelf without leaving and re-entering it.
         _catalog.Changed += (_, _) => TilesRefresh = _reloader.RequestAsync();
     }

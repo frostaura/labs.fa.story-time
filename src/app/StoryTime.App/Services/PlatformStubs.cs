@@ -34,7 +34,7 @@ public sealed class LocalNotificationService : StoryTime.Core.Abstractions.INoti
         }
         catch (Exception)
         {
-            // A missed ping must never break the weave.
+            // A missed ping must never break the story run.
         }
     }
 }

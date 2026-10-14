@@ -110,14 +110,14 @@ public interface IHaptics
     void Light();
     /// <summary>Picker/selection tick — ages, interests, voices, toggles, slider detents.</summary>
     void Selection();
-    /// <summary>A committed action of weight — weave start.</summary>
+    /// <summary>A committed action of weight — story start.</summary>
     void Medium();
     /// <summary>Something finished well — story ready, approval, shelf unlock.</summary>
     void Success();
     /// <summary>Gentle bump — gate fail, premium-gated attempt.</summary>
     void Warning();
     /// <summary>The lightest possible tap, for continuous interactions: carousel snap
-    /// changes, scrub steps, mix-slider quarter steps, weave stage transitions, hold
+    /// changes, scrub steps, mix-slider quarter steps, making-stage transitions, hold
     /// progress. Platform impls coalesce calls to ≥60 ms apart so scrubbing can't buzz;
     /// only ever fire it from an actual user gesture or a foreground-gated event.</summary>
     void Tick();
@@ -128,7 +128,7 @@ public interface IHaptics
 }
 
 /// <summary>How the pipeline schedules its stages (additive 2026-07-31).</summary>
-public enum WeaveStrategy
+public enum MakingStrategy
 {
     /// <summary>Classic order: all scenes → whole-story polish → poster → narration.
     /// Text and speech engines are never co-resident — the memory-safe path for low-RAM devices.</summary>
@@ -189,8 +189,8 @@ public interface IStoryStore
     Task DeleteStoryAsync(int storyId);                 // also removes audio + art files
     Task<StoryBible?> GetBibleAsync(int profileId);
     Task SaveBibleAsync(int profileId, StoryBible bible);
-    Task<WeaveCheckpoint?> GetCheckpointAsync();
-    Task SaveCheckpointAsync(WeaveCheckpoint? checkpoint); // null clears
+    Task<MakingCheckpoint?> GetCheckpointAsync();
+    Task SaveCheckpointAsync(MakingCheckpoint? checkpoint); // null clears
     Task<long> GetStoredBytesAsync();
 }
 
@@ -215,7 +215,7 @@ public interface ISettingsStore
     /// Default 0.3 — the bed is meant to sit far under the voice. (Additive, 2026-07-30.)</summary>
     double MusicVolume { get; set; }
     /// <summary>Content filter level (Settings → Content filters). Default Gentle. Only
-    /// widens the allowed-theme palette for NEW weaves; every hard safety layer is
+    /// widens the allowed-theme palette for NEW stories; every hard safety layer is
     /// level-independent by construction. (Additive, 2026-07-30.)</summary>
     ContentFilterLevel ContentFilter { get; set; }
 }
