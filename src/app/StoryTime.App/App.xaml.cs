@@ -55,6 +55,8 @@ public partial class App : Application
 				if (qaProfile is not null) await weaveHost.StartAsync(qaProfile);
 			}
 
+			await Platforms.iOS.Narration.NarrationQaProbe.RunIfRequestedAsync(_services);   // QA-only (env var)
+
 			var settings = _services.GetRequiredService<ISettingsStore>();
 			if (!settings.OnboardingComplete)
 			{

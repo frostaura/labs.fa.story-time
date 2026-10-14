@@ -86,6 +86,17 @@ public class VoiceSelectionTests
     }
 
     [Fact]
+    public void SuperCompact_RanksBelowCompact()
+    {
+        var ranked = VoiceRanker.Rank(
+        [
+            V("com.apple.voice.super-compact.en-ZA.Tessa", "Tessa", "en-ZA", VoiceQualityTier.Default),
+            V("com.apple.voice.compact.en-US.Samantha", "Samantha", "en-US", VoiceQualityTier.Default),
+        ]);
+        Assert.Equal("Samantha", ranked[0].BaseName);
+    }
+
+    [Fact]
     public void NothingEligible_IsNull()
         => Assert.Null(VoiceRanker.Choose(OutOfTheBox.Where(v => !VoiceRanker.IsEligible(v, VoiceLanguagePolicy.English))));
 

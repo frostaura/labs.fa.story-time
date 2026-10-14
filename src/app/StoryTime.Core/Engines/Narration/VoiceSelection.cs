@@ -87,6 +87,7 @@ public static class VoiceRanker
     public const int SiriDerivedBonus = 30;
     public const int RegionBonus = 20;
     public const int RequirementBonus = 1000;
+    public const int SuperCompactPenalty = 40;
 
     public static bool IsEligible(InstalledVoice v, VoiceLanguagePolicy policy)
     {
@@ -110,6 +111,8 @@ public static class VoiceRanker
         };
         score += Warmth.GetValueOrDefault(v.BaseName);
         if (v.Quality == VoiceQualityTier.Default && v.IsSiriDerived) score += SiriDerivedBonus;
+        // "super-compact" voices are an even smaller build than compact: rank them below it.
+        if (v.Identifier.Contains("super-compact", StringComparison.OrdinalIgnoreCase)) score -= SuperCompactPenalty;
         if (policy.PreferredRegion is { Length: > 0 } region
             && v.Language.EndsWith(region, StringComparison.OrdinalIgnoreCase)) score += RegionBonus;
         if (requirement is not null && requirement.IsMetBy(v))
