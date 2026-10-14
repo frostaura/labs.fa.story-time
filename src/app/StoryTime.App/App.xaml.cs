@@ -55,10 +55,22 @@ public partial class App : Application
 				if (qaProfile is not null) await makingHost.StartAsync(qaProfile);
 			}
 
+			await Platforms.iOS.Narration.NarrationQaProbe.RunIfRequestedAsync(_services);   // QA-only (env var)
+
 			var settings = _services.GetRequiredService<ISettingsStore>();
 			if (!settings.OnboardingComplete)
 			{
 				await Shell.Current.GoToAsync(StoryTime.Core.ViewModels.Routes.OnboardingProfile);
+				return;
+			}
+
+			// Founder rule (2026-10-14): no stories without the storyteller voice. If Serena
+			// (Premium) was removed in Settings, route back to the step — unless a QA cold-start
+			// route was asked for, which always wins.
+			var qaRouteRequested = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("STORYTIME_QA_ROUTE"));
+			if (!qaRouteRequested && _services.GetService<IStorytellerVoices>() is { HasStorytellerVoice: false })
+			{
+				await Shell.Current.GoToAsync($"{StoryTime.Core.ViewModels.Routes.StorytellerVoice}?purpose=repair");
 				return;
 			}
 

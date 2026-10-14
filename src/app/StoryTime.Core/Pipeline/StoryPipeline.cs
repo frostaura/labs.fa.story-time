@@ -51,9 +51,10 @@ public sealed class StoryPipeline
 
     private const int MaxRepairAttempts = 2;
 
-    /// <summary>Fixed scene-beat pause carried at the head of every narration window ≥ 1
-    /// (the inter-window paragraph beat; windows are always paragraph boundaries).</summary>
-    private const double InterWindowGapSeconds = Engines.Narration.ProsodyDirector.ParagraphBaseSeconds;
+    /// <summary>Scene-change pause at every narration-window seam (windows are scene pairs,
+    /// so a seam is always a scene change). Narration engines split it between the tail of
+    /// the window before and the head of the window after.</summary>
+    private const double InterWindowGapSeconds = Engines.Narration.PauseMap.SceneSeconds;
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = false };
 
@@ -511,8 +512,12 @@ public sealed class StoryPipeline
                 {
                     SentenceList = script.SentenceList,
                     ParagraphStartSet = script.ParagraphStartSet,
+                    SceneStartSet = script.SceneStartSet,
                     LeadingSilenceSeconds = w > 0 ? InterWindowGapSeconds : 0,
                     AppendFinalTail = isLast,
+                    // Windows narrate in order, so the parts already rendered are exactly the
+                    // story timeline before this one (time-continuous layers join seamlessly).
+                    TimelineOffsetSeconds = parts.Sum(p => p.DurationSeconds),
                 };
 
                 void ReportWindow(double inner)

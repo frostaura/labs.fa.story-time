@@ -147,15 +147,20 @@ public static class MauiProgram
 		});
 	}
 
-	/// <summary>Narration-engine swap point. Today: PlatformTtsEngine (MAUI TextToSpeech, live
-	/// playback, no rendered file). The narration lane replaces this body with
-	/// <c>AppleSpeechTtsEngine</c> (AVSpeechSynthesizer.WriteUtterance → PCM → Core
-	/// Engines/Narration: ProsodyDirector gaps + AudioShaper cozy mastering → WAV), keeping
-	/// PlatformTtsEngine registered as its fallback — LiveTtsNarrationPlayer resolves the
-	/// concrete PlatformTtsEngine for live-mode playback.</summary>
+	/// <summary>Narration-engine swap point: <c>AppleSpeechTtsEngine</c> — SoothingNarrator
+	/// (AVSpeechSynthesizer.WriteUtterance per utterance → PCM → Core Engines/Narration: measured
+	/// pause map, mastering, −18 LUFS, pad → 48 kHz WAV). PlatformTtsEngine stays registered as
+	/// its fallback and for LiveTtsNarrationPlayer, which resolves it concretely.</summary>
 	static void RegisterTtsEngine(IServiceCollection services)
 	{
 		services.AddSingleton<PlatformTtsEngine>();
-		services.AddSingleton<ITtsEngine>(sp => sp.GetRequiredService<PlatformTtsEngine>());
+		services.AddSingleton<Platforms.iOS.Narration.AvSpeechUtteranceRenderer>();
+		services.AddSingleton<IStorytellerVoices, Platforms.iOS.Narration.AppleStorytellerVoices>();
+		services.AddSingleton<INetworkStatus, Platforms.iOS.Narration.NetworkPathStatus>();
+		services.AddSingleton<AppleSpeechTtsEngine>();
+		services.AddSingleton<ITtsEngine>(sp => sp.GetRequiredService<AppleSpeechTtsEngine>());
+		// The mandatory storyteller-voice step (Serena Premium) that onboarding and launch route to.
+		services.AddTransient<StorytellerVoicePage>();
+		Routing.RegisterRoute(StoryTime.Core.ViewModels.Routes.StorytellerVoice, typeof(StorytellerVoicePage));
 	}
 }

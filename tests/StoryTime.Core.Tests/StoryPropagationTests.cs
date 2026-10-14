@@ -43,7 +43,7 @@ public class StoryPropagationTests : IAsyncLifetime
         _home = new HomeViewModel(_env.Store, _host, cooldown, entitlements, navigator,
             new PlayerLaunchContext(), kidMode,
             new PosterArtRefresher(_env.Store, new NullPosterRasterizer(), _env.Options), new NullHaptics(),
-            sheet, new RecipeShelfViewModel(_env.Store, new FakeTtsEngine(), new NullHaptics(), _host, new NullVoiceSamplePlayer()), _env.Catalog);
+            sheet, new RecipeShelfViewModel(_env.Store, new NullHaptics(), _host), _env.Catalog);
         _library = new LibraryViewModel(_env.Store, navigator, new PlayerLaunchContext(), sheet,
             new NullHaptics(), _env.Catalog);
         _shelf = new ShelfViewModel(_env.Store, navigator, new PlayerLaunchContext(), kidMode,

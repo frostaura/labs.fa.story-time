@@ -6,7 +6,7 @@ namespace StoryTime.Core.Engines.Narration;
 /// Splits story prose into narration sentences for per-sentence TTS synthesis.
 /// Deliberately simple and deterministic: terminators . ! ? … (with closing quotes attached),
 /// an em-dash acts as a soft terminator when what follows starts a new sentence
-/// (capital letter or opening quote — ProsodyDirector renders it as a tiny held breath),
+/// (capital letter or opening quote),
 /// abbreviation-safe for the tiny set that plausibly appears in bedtime prose,
 /// and short-fragment merging so the TTS never receives a 1-2 word "sentence".
 /// </summary>
@@ -25,18 +25,48 @@ public static class SentenceSplitter
     {
         var sentences = new List<string>();
         var paragraphStarts = new HashSet<int>();
+        var sceneStarts = new HashSet<int>();
         if (string.IsNullOrWhiteSpace(text))
-            return new Abstractions.NarrationScript { SentenceList = sentences, ParagraphStartSet = paragraphStarts };
+            return new Abstractions.NarrationScript { SentenceList = sentences, ParagraphStartSet = paragraphStarts, SceneStartSet = sceneStarts };
 
         var normalized = text.Replace("\r\n", "\n").Replace('’', '\'');
+        var pendingScene = false;
+        var blankRun = 0;
         foreach (var block in normalized.Split('\n'))
         {
+            if (string.IsNullOrWhiteSpace(block))
+            {
+                // Two or more blank lines between paragraphs mark a scene change.
+                if (++blankRun >= 2) pendingScene = true;
+                continue;
+            }
+            blankRun = 0;
+            if (IsSceneMarker(block))
+            {
+                pendingScene = true;               // "***" / "⁂" / "~": never spoken
+                continue;
+            }
             var paragraph = SplitParagraph(block);
             if (paragraph.Count == 0) continue;
-            if (sentences.Count > 0) paragraphStarts.Add(sentences.Count);
+            if (sentences.Count > 0)
+            {
+                paragraphStarts.Add(sentences.Count);
+                if (pendingScene) sceneStarts.Add(sentences.Count);
+            }
+            pendingScene = false;
             sentences.AddRange(paragraph);
         }
-        return new Abstractions.NarrationScript { SentenceList = sentences, ParagraphStartSet = paragraphStarts };
+        return new Abstractions.NarrationScript { SentenceList = sentences, ParagraphStartSet = paragraphStarts, SceneStartSet = sceneStarts };
+    }
+
+    /// <summary>A line made only of break glyphs (*, ⁂, ~, #, •, ·) and spaces.</summary>
+    public static bool IsSceneMarker(string line)
+    {
+        var t = line.Trim();
+        if (t.Length == 0) return false;
+        foreach (var c in t)
+            if (c is not ('*' or '⁂' or '~' or '#' or '•' or '·' or ' ')) return false;
+        return true;
     }
 
     private static List<string> SplitParagraph(string normalized)
