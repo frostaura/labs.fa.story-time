@@ -7,9 +7,9 @@ marked unverified.**
 
 ## Hard facts
 
-- **Binding gap.** `Microsoft.iOS` 26.5 has no FoundationModels namespace. All calls go through a
-  Swift `@objc` shim, built with Xcode 27 for an iOS 26.0 deployment target. Gate iOS 27 APIs with
-  `if #available(iOS 27, *)`.
+- **Binding gap.** `Microsoft.iOS` (26.5, and still 27.0.10722) has no FoundationModels namespace.
+  All calls go through a Swift `@objc` shim, built with Xcode 27 for an iOS 27.0 deployment target
+  (the app's minimum), so iOS 27 APIs need no `#available` gate.
 - **Availability.** `SystemLanguageModel.default.availability` is `.available` or
   `.unavailable(.deviceNotEligible | .appleIntelligenceNotEnabled | .modelNotReady)`.
   - `supportsLocale(_:)` exists.

@@ -262,8 +262,9 @@ public sealed class MakingBackgroundCoordinator : IMakingBackgroundAnchor
                 RequiresExternalPower = false,
                 EarliestBeginDate = null,
             };
-            BGTaskScheduler.Shared.Submit(request, out var error);
-            Log(error is null ? "BGProcessingTask submitted" : $"BGProcessingTask submit refused: {error.LocalizedDescription}");
+            // iOS 27: the completion-handler overload reports every refusal (the out-error one is obsoleted).
+            BGTaskScheduler.Shared.Submit(request, error =>
+                Log(error is null ? "BGProcessingTask submitted" : $"BGProcessingTask submit refused: {error.LocalizedDescription}"));
         }
         catch (Exception ex)
         {

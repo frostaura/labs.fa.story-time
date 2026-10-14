@@ -15,17 +15,15 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
-    <!-- iOS 26 is the floor: Apple Foundation Models (on-device text generation) ships there. -->
-    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
+    <!-- iOS 27 is the floor: the native shim builds against the iOS 27 FoundationModels SDK
+         (deployment target 27.0), and the app ships on the Microsoft.iOS 27.0 pack. -->
+    <SupportedOSPlatformVersion>27.0</SupportedOSPlatformVersion>
 
     <!-- SQLite + reflection paths need the interpreter on iOS; P/Invoke is unaffected.
          StoryTime.Core is AOT-compiled (excluded from the interpreter): its narration DSP runs
          tens of millions of samples per story, and the interpreter would make a 10-minute story
          take minutes to master on device. -->
     <MtouchInterpreter>all,-StoryTime.Core</MtouchInterpreter>
-
-    <!-- The installed Xcode is newer than the Microsoft.iOS pack validates against (E0191) — trimix/guild-proven -->
-    <ValidateXcodeVersion Condition="'$(ValidateXcodeVersion)' == ''">false</ValidateXcodeVersion>
   </PropertyGroup>
 
   <!-- iCloud-Drive xattrs break codesign ("resource fork ... detritus not allowed") — trimix/guild-proven -->
