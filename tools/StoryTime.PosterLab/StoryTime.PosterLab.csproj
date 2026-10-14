@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Headless poster lab: contact sheets, parallax previews and timing on the Mac.
+       Usage: dotnet run -c Release [outDir] (default /private/tmp/storytime-posters). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>StoryTime.PosterLab</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/app/StoryTime.Poster/StoryTime.Poster.csproj" />
+  </ItemGroup>
+
+</Project>

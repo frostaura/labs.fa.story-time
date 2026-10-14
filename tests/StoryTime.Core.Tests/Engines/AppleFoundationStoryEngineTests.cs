@@ -5,6 +5,8 @@ using StoryTime.Core.Engines;
 using StoryTime.Core.Engines.AppleFoundation;
 using StoryTime.Core.Pipeline;
 using StoryTime.Core.Poster;
+using StoryTime.Core.Engines.Prompts;
+using StoryTime.Poster.Spec;
 using StoryTime.Core.Services;
 using Xunit;
 
@@ -79,7 +81,7 @@ internal sealed class FakeBridge : IFoundationModelsBridge
     public Task<string> GeneratePosterAsync(string requestJson, CancellationToken ct) =>
         Answer("poster", requestJson, ct, _ => JsonSerializer.Serialize(new
         {
-            palette = "OceanDeep", skyLight = "Crescent", landscape = "Water", focal = "Sailboat", accent = "MistBand", mood = "calm",
+            scene = "MoonlitSea", timeOfDay = "Moonlit", mood = "Dreamy", palette = "OceanDeep", features = new[] { "Sailboat", "Otter" },
         }));
 
     public static string OutlineJson(int scenes, string title = "Pip and the Silver Shell", string summary = "Pip and Mila walk softly along the shore")
@@ -193,28 +195,62 @@ public class AppleFoundationStoryEngineTests
     }
 
     [Fact]
-    public async Task Poster_choice_maps_into_a_valid_four_layer_spec()
+    public async Task Poster_choice_maps_into_a_normalized_v3_spec_with_the_story_seed()
     {
-        var (engine, _, _) = Create();
+        var (engine, bridge, _) = Create();
         var outline = await engine.GenerateOutlineAsync(Profile(), null, 5, CancellationToken.None);
-        var spec = new PosterComposer().Validate(await engine.GeneratePosterSpecAsync(outline, CancellationToken.None));
+        var spec = await engine.GeneratePosterSpecAsync(outline, CancellationToken.None);
 
+        Assert.Equal(PosterSpec.CurrentVersion, spec.Version);
+        Assert.Equal(PosterScene.MoonlitSea, spec.Scene);
+        Assert.Equal(PosterTimeOfDay.Moonlit, spec.TimeOfDay);
+        Assert.Equal(PosterMood.Dreamy, spec.Mood);
         Assert.Equal(PosterPalette.OceanDeep, spec.Palette);
-        Assert.Equal(4, spec.Layers.Count);
-        Assert.Contains(spec.Layers.SelectMany(l => l.Elements), e => e.Shape == PosterShape.Sailboat);
-        Assert.Contains(spec.Layers.SelectMany(l => l.Elements), e => e.Shape == PosterShape.Water);
+        Assert.Equal([PosterFeature.Sailboat, PosterFeature.Otter], spec.Features);
+        Assert.Equal(PosterSpecMapper.SeedFor(outline), spec.Seed);
+        Assert.Equal(PosterSpecDeriver.Derive(outline).Seed, spec.Seed); // same seed as the template path
+        Assert.True(PosterSpecRules.SpecEquals(spec, PosterSpecRules.Normalize(spec)));
+
+        var prompt = bridge.Requests("poster").Single().Prompt;
+        Assert.Contains("MoonlitSea", prompt);
+        Assert.Contains("Pip and the Silver Shell", prompt);
     }
 
     [Fact]
-    public void Poster_mapper_drops_water_bound_focal_without_water_and_tolerates_unknown_names()
+    public void Poster_mapper_repairs_unknown_names_and_drops_features_that_do_not_fit_the_scene()
     {
         var spec = PosterSpecMapper.Map(new FmPosterChoice
         {
-            Palette = "NotAPalette", SkyLight = "Sun", Landscape = "Hills", Focal = "WhaleTail", Accent = "None", Mood = "",
+            Scene = "DesertOasis", TimeOfDay = "Noon", Mood = "", Palette = "NotAPalette",
+            Features = ["whale", "Camel", "Fox", "camel", "Unicorn", "Telescope", "Fireflies"],
         }, 5);
-        Assert.Equal(PosterPalette.NightHarbor, spec.Palette);
-        Assert.DoesNotContain(spec.Layers.SelectMany(l => l.Elements), e => e.Shape is PosterShape.WhaleTail or PosterShape.Water);
-        Assert.Equal("calm", spec.Mood);
+        Assert.Equal(PosterScene.DesertOasis, spec.Scene);
+        Assert.Equal(PosterTimeOfDay.Moonlit, spec.TimeOfDay);
+        Assert.Equal(PosterMood.Calm, spec.Mood);
+        Assert.Equal(PosterSpecRules.DefaultPalette(PosterScene.DesertOasis), spec.Palette);
+        Assert.Equal([PosterFeature.Camel, PosterFeature.Telescope, PosterFeature.Fireflies], spec.Features);
+        Assert.Equal(5, spec.Seed);
+    }
+
+    [Fact]
+    public void Poster_mapper_refuses_numeric_names_and_tolerates_null_features()
+    {
+        var spec = PosterSpecMapper.Map(new FmPosterChoice { Scene = "3", Palette = "SnowHush", Features = null! }, 9);
+        Assert.Equal(PosterSpecRules.SceneForPalette(PosterPalette.SnowHush), spec.Scene);
+        Assert.Empty(spec.Features);
+    }
+
+    [Fact]
+    public void Poster_prompt_names_every_v3_enum_and_offers_only_compatible_features_per_scene()
+    {
+        var prompt = StoryPrompts.PosterUser(new StoryOutline { Title = "Moss and the Moon", Settings = ["a snowy village"] });
+        foreach (var name in Enum.GetNames<PosterScene>().Concat(Enum.GetNames<PosterTimeOfDay>())
+                     .Concat(Enum.GetNames<PosterMood>()).Concat(Enum.GetNames<PosterPalette>()).Concat(Enum.GetNames<PosterFeature>()))
+            Assert.Contains(name, prompt);
+        var reefLine = prompt.Split('\n').Single(l => l.StartsWith("ReefAtDusk:", StringComparison.Ordinal));
+        Assert.Contains("Fish", reefLine);
+        Assert.DoesNotContain("Lighthouse", reefLine);
+        Assert.DoesNotContain("layers", prompt, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---------------- whole-story fallbacks ----------------

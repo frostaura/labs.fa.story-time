@@ -4,12 +4,17 @@
   </Folder>
   <Folder Name="/app/">
     <Project Path="src/app/StoryTime.Core/StoryTime.Core.csproj" />
+    <Project Path="src/app/StoryTime.Poster/StoryTime.Poster.csproj" />
     <Project Path="src/app/StoryTime.App/StoryTime.App.csproj" />
   </Folder>
   <Folder Name="/native/">
     <Project Path="src/native/StoryTimeNative.Binding/StoryTimeNative.Binding.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/StoryTime.PosterLab/StoryTime.PosterLab.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/StoryTime.Core.Tests/StoryTime.Core.Tests.csproj" />
+    <Project Path="tests/StoryTime.Poster.Tests/StoryTime.Poster.Tests.csproj" />
   </Folder>
 </Solution>

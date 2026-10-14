@@ -167,7 +167,7 @@ public final class SEFMEngine: NSObject, @unchecked Sendable {
         }
     }
 
-    /// Guided poster choice. Result: {palette, skyLight, landscape, focal, accent, mood}.
+    /// Guided poster choice (spec contract v3). Result: {scene, timeOfDay, mood, palette, features}.
     @objc(generatePoster:completion:)
     public func generatePoster(requestJSON: String, completion: @escaping ResultHandler) -> UUID {
         run(completion) { [model] in

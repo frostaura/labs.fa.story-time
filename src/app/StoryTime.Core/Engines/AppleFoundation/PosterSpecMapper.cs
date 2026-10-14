@@ -1,92 +1,55 @@
 using StoryTime.Contracts;
+using StoryTime.Core.Engines.Prompts;
+using StoryTime.Poster.Core;
+using StoryTime.Poster.Spec;
 
 namespace StoryTime.Core.Engines.AppleFoundation;
 
 /// <summary>The ONLY place the Apple engine touches the poster contract: builds the guided
-/// poster request and maps the model's small enum-only <see cref="FmPosterChoice"/> (Swift
-/// <c>SEFMPosterChoice</c>) onto <see cref="PosterSpec"/>. Deliberately thin — layout is
-/// fixed and the composer (PosterComposer.Validate) repairs anything out of zone, so a
-/// change to the poster contract is re-pointed here and nowhere else.</summary>
+/// poster request and maps the model's enum-name <see cref="FmPosterChoice"/> (Swift
+/// <c>SEFMPosterChoice</c>) onto spec contract v3 (docs/design/poster-engine.md). Names are
+/// parsed leniently (any case; anything unknown stays undefined) and the result always goes
+/// through <see cref="PosterSpecRules.Normalize"/>, which repairs undefined values and drops
+/// features that do not fit the scene — a stray model value degrades a poster, never a story.</summary>
 public static class PosterSpecMapper
 {
     public const string Instructions =
-        "You are the art director for a calm children's bedtime-story poster. " +
-        "Choose quiet, cozy night imagery that fits the story.";
+        "You choose the picture for a calm children's bedtime-story poster. " +
+        "Pick the quiet night place and the few things in it that best fit the story.";
 
-    public static FmRequest Request(StoryOutline outline)
+    public static FmRequest Request(StoryOutline outline) => new()
     {
-        var place = outline.Settings.Count > 0 ? string.Join(", ", outline.Settings.Take(3)) : "a quiet meadow";
-        var who = outline.Characters.Count > 0 ? string.Join(", ", outline.Characters.Take(3).Select(c => c.Kind)) : "a small animal";
-        var prompt = $"Story: \"{outline.Title}\". Places: {place}. Characters: {who}. " +
-                     "Pick the palette, sky light, far landscape, one main thing in front and one small extra touch " +
-                     "that best suit this story. Choose Water only if the story has sea, lake or river; " +
-                     "choose WhaleTail or Sailboat only with Water.";
-        return new FmRequest
-        {
-            Instructions = Instructions,
-            Prompt = prompt,
-            Options = FmOptions.Threshold(0.9, outline.Seed, 0.5, 500),
-        };
-    }
+        Instructions = Instructions,
+        Prompt = StoryPrompts.PosterUser(outline),
+        Options = FmOptions.Threshold(0.9, outline.Seed, 0.5, 500),
+    };
 
-    /// <summary>Maps the choice to a four-layer spec; unknown names fall back to safe defaults.</summary>
+    /// <summary>The spec seed for a story: derived from the outline seed exactly as
+    /// <see cref="PosterSpecDeriver"/> derives it, so the model path and the template path
+    /// vary a poster the same way for the same story.</summary>
+    public static int SeedFor(StoryOutline outline) =>
+        (int)(Hash.Combine((ulong)(uint)outline.Seed, 104729) & 0x7FFFFFFF);
+
+    /// <summary>Maps the choice to a normalized v3 spec with the given seed.</summary>
     public static PosterSpec Map(FmPosterChoice choice, int seed)
     {
-        var rng = new Random(seed);
-        var moonLeft = rng.Next(2) == 0;
-        var moonX = moonLeft ? 0.3 : 0.7;
-        var focalX = moonLeft ? 0.68 : 0.32;
-
-        var sky = new List<PosterElement>
+        var spec = new PosterSpec
         {
-            new() { Shape = Parse(choice.SkyLight, PosterShape.Moon), X = moonX, Y = 0.18, Scale = 0.16, Glow = 0.5 },
-            new() { Shape = PosterShape.Stars, X = 0.5, Y = 0.3, Scale = 0.05, Density = 0.55 },
-        };
-        var accent = Parse(choice.Accent, (PosterShape?)null);
-        if (accent is { } a)
-            sky.Add(new PosterElement { Shape = a, X = 1 - moonX, Y = a == PosterShape.FireflyScatter ? 0.74 : 0.3, Scale = 0.14, Density = 0.5, Tint = 0.3 });
-
-        var far = new List<PosterElement>();
-        var mid = new List<PosterElement>();
-        var landscape = Parse(choice.Landscape, PosterShape.Hills);
-        var hasWater = landscape == PosterShape.Water;
-        if (hasWater)
-        {
-            far.Add(new PosterElement { Shape = PosterShape.Hills, X = moonLeft ? 0.85 : 0.15, Y = 0.68, Scale = 0.7, Tint = 0.45 });
-            mid.Add(new PosterElement { Shape = PosterShape.Water, X = 0.5, Y = 0.72, Scale = 0.9 });
-        }
-        else
-        {
-            far.Add(new PosterElement { Shape = landscape, X = moonLeft ? 0.7 : 0.3, Y = landscape == PosterShape.Mountain ? 0.62 : 0.76, Scale = 0.8, Tint = 0.35 });
-            far.Add(new PosterElement { Shape = PosterShape.Hills, X = moonLeft ? 0.2 : 0.8, Y = 0.86, Scale = 0.7 });
-        }
-
-        var focal = Parse(choice.Focal, PosterShape.WindowGlow);
-        if (focal is PosterShape.WhaleTail or PosterShape.Sailboat && !hasWater) focal = PosterShape.WindowGlow;
-        var lit = focal is PosterShape.WindowGlow or PosterShape.Tent or PosterShape.Lantern;
-        var fore = new List<PosterElement>
-        {
-            new() { Shape = focal, X = focalX, Y = hasWater ? 0.8 : 0.83, Scale = 0.24, Glow = lit ? 0.6 : 0, FlipX = !moonLeft },
-        };
-
-        return new PosterSpec
-        {
-            Palette = Enum.TryParse<PosterPalette>(choice.Palette, ignoreCase: true, out var p) ? p : PosterPalette.NightHarbor,
-            Mood = string.IsNullOrWhiteSpace(choice.Mood) ? "calm" : choice.Mood,
+            Scene = Parse<PosterScene>(choice.Scene),
+            TimeOfDay = Parse<PosterTimeOfDay>(choice.TimeOfDay),
+            Mood = Parse<PosterMood>(choice.Mood),
+            Palette = Parse<PosterPalette>(choice.Palette),
+            Features = (choice.Features ?? []).Select(Parse<PosterFeature>).ToList(),
             Seed = seed,
-            Layers =
-            [
-                new PosterLayer { Depth = 0, Elements = sky },
-                new PosterLayer { Depth = 1, Elements = far },
-                new PosterLayer { Depth = 2, Elements = mid },
-                new PosterLayer { Depth = 3, Elements = fore },
-            ],
         };
+        return PosterSpecRules.Normalize(spec);
     }
 
-    private static PosterShape Parse(string name, PosterShape fallback) =>
-        Enum.TryParse<PosterShape>(name, ignoreCase: true, out var s) ? s : fallback;
-
-    private static PosterShape? Parse(string name, PosterShape? fallback) =>
-        Enum.TryParse<PosterShape>(name, ignoreCase: true, out var s) ? s : fallback;
+    /// <summary>Name (any case) → value; integers and unknown names become undefined (-1)
+    /// so Normalize repairs them. Integers are refused because the schema only offers names.</summary>
+    private static T Parse<T>(string? name) where T : struct, Enum =>
+        !string.IsNullOrWhiteSpace(name) && !char.IsDigit(name.Trim()[0]) && name.Trim()[0] != '-'
+        && Enum.TryParse<T>(name.Trim(), ignoreCase: true, out var value) && Enum.IsDefined(value)
+            ? value
+            : (T)(object)(-1);
 }

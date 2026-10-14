@@ -127,8 +127,15 @@
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="16" />
                                 </Border.StrokeShape>
-                                <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill"
-                                       IsVisible="{Binding HasThumbnail}" />
+                                <Grid>
+                                    <!-- The flattened thumbnail shows instantly; the parallax
+                                         layers render (or load from cache) over it. -->
+                                    <Image Source="{Binding ThumbnailPath}" Aspect="AspectFill"
+                                           IsVisible="{Binding HasThumbnail}" />
+                                    <controls:ParallaxPosterView Poster="{Binding Poster}" CornerRadius="16"
+                                                                 MotionScale="0.5" AnimateAmbient="False"
+                                                                 InputTransparent="True" />
+                                </Grid>
                             </Border>
                             <Label Grid.Row="1" Text="{Binding Title}" FontFamily="OutfitRegular" FontSize="16"
                                    TextColor="{StaticResource Cream}" LineBreakMode="TailTruncation"

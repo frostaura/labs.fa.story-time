@@ -76,54 +76,13 @@ public sealed class NarrationScript
     };
 }
 
-/// <summary>Validates a PosterSpec and resolves it into deterministic draw geometry.
-/// Rasterization happens in the App layer (SkiaPosterRenderer) from this resolved layout.</summary>
+/// <summary>Validates a PosterSpec (contract v3 repair rules). Rendering is the procedural
+/// engine's job (StoryTime.Poster): thumbnails go through IPosterRasterizer, the parallax
+/// layers through the app's ParallaxPosterView.</summary>
 public interface IPosterComposer
 {
-    PosterSpec Validate(PosterSpec spec);            // clamps ranges, enforces exactly 4 layers, falls back safely
-    ResolvedPoster Resolve(PosterSpec spec);         // palette lookup + seeded scatter → concrete elements
-}
-
-public sealed class ResolvedPosterElement
-{
-    public PosterShape Shape { get; init; }
-    public double X { get; init; }                   // 0..1 within layer canvas
-    public double Y { get; init; }                   // anchor: grounded shapes anchor at their base
-    public double Scale { get; init; }
-    /// <summary>Scatter/cluster density carried through for multi-part painters (pine clusters).</summary>
-    public double Density { get; init; }
-    public string ColorHex { get; init; } = "#F3E9DC";
-    /// <summary>Second color for two-tone painters: water waves, lighthouse beam,
-    /// window-glow cottage silhouette. Null → painter's single-color path.</summary>
-    public string? SecondaryColorHex { get; init; }
-    /// <summary>Soft radial glow strength 0..1 rendered behind/around the shape.
-    /// The glow color is the element color unless GlowColorHex overrides it.</summary>
-    public double Glow { get; init; }
-    public string? GlowColorHex { get; init; }
-    /// <summary>Element opacity 0..1 (water reflections, mist). 0 defaults to opaque.</summary>
-    public double Alpha { get; init; } = 1.0;
-    /// <summary>Mirror the painter horizontally around its anchor.</summary>
-    public bool FlipX { get; init; }
-    /// <summary>Mirror vertically around the anchor (moonglade / reflections).</summary>
-    public bool FlipY { get; init; }
-}
-
-public sealed class ResolvedPosterLayer
-{
-    public int Depth { get; init; }
-    public string BackgroundHex { get; init; } = "transparent"; // depth 0 carries the sky fill
-    /// <summary>When both are set (depth 0), the renderer paints a vertical gradient
-    /// top→bottom instead of the flat BackgroundHex. BackgroundHex stays as the mid tone.</summary>
-    public string? BackgroundTopHex { get; init; }
-    public string? BackgroundBottomHex { get; init; }
-    public double ParallaxTravel { get; init; }                 // max px offset at this depth
-    public List<ResolvedPosterElement> Elements { get; init; } = [];
-}
-
-public sealed class ResolvedPoster
-{
-    public List<ResolvedPosterLayer> Layers { get; init; } = [];
-    public string BaseHex { get; init; } = "#3A2E52";
+    /// <summary>Repairs any spec into a valid one — never throws.</summary>
+    PosterSpec Validate(PosterSpec spec);
 }
 
 // ============ Platform seams (implemented in StoryTime.App/Platforms) ============

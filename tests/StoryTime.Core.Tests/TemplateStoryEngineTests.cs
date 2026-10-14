@@ -151,7 +151,7 @@ public class TemplateStoryEngineTests
     }
 
     [Fact]
-    public async Task PosterSpec_IsDeterministicAndFourLayered()
+    public async Task PosterSpec_IsDeterministicAndValid()
     {
         var profile = TestEnv.Profile();
         var engine = Engine(5);
@@ -159,8 +159,9 @@ public class TemplateStoryEngineTests
         var a = await engine.GeneratePosterSpecAsync(outline, CancellationToken.None);
         var b = await engine.GeneratePosterSpecAsync(outline, CancellationToken.None);
 
-        Assert.Equal(4, a.Layers.Count);
         Assert.Equal(System.Text.Json.JsonSerializer.Serialize(a), System.Text.Json.JsonSerializer.Serialize(b));
+        Assert.True(StoryTime.Poster.Spec.PosterSpecRules.SpecEquals(a, StoryTime.Poster.Spec.PosterSpecRules.Normalize(a)));
+        Assert.InRange(a.Features.Count, 1, 3);
     }
 
     [Fact]

@@ -50,6 +50,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../StoryTime.Core/StoryTime.Core.csproj" />
+    <ProjectReference Include="../StoryTime.Poster/StoryTime.Poster.csproj" />
     <ProjectReference Include="../../shared/StoryTime.Contracts/StoryTime.Contracts.csproj" />
     <!-- Swift StoryTimeNative framework (Foundation Models shim) via its .NET binding. -->
     <ProjectReference Include="../../native/StoryTimeNative.Binding/StoryTimeNative.Binding.csproj" />

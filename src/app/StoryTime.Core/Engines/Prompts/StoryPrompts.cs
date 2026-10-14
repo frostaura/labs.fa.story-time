@@ -1,5 +1,6 @@
 using System.Text;
 using StoryTime.Contracts;
+using StoryTime.Poster.Spec;
 
 namespace StoryTime.Core.Engines.Prompts;
 
@@ -203,54 +204,46 @@ public static class StoryPrompts
         "Rewrite it gently so the concern is fully removed while keeping the same characters and plot movement. " +
         "Keep roughly the same length. Return only the rewritten passage.\n\n" + passage;
 
-    /// <summary>Formation contract v2: the LLM art-directs a layered night poster from the
-    /// full scene vocabulary, with semantics for every motif and the layer model spelled
-    /// out. The composer (PosterComposer.Validate) lets a sane composition through and
-    /// repairs only violations, so this prompt IS the art direction.</summary>
+    /// <summary>Poster spec contract v3 (docs/design/poster-engine.md): the model picks ONLY
+    /// enum names — a scene, the light, a mood, a palette and up to three features from the
+    /// story. No drawing, no positions: the procedural engine composes the picture. The
+    /// "what fits where" list is generated from <see cref="PosterSpecRules.Compatibility"/>, so
+    /// the prompt can never drift from the rules that repair the answer.</summary>
     public static string PosterUser(StoryOutline outline)
     {
         var sb = new StringBuilder();
-        sb.Append($"You are the poster artist. Design a flat-illustration NIGHT poster for the bedtime story \"{outline.Title}\" — ");
-        sb.Append("layered like a quiet mountain-and-moon art game: deep gradient sky, soft glows, calm silhouettes. ");
-        if (outline.Settings.Count > 0) sb.Append("Story setting: ").Append(string.Join(", ", outline.Settings.Take(3))).Append(". ");
+        sb.Append($"Choose the poster picture for the bedtime story \"{outline.Title}\". ");
+        if (outline.Settings.Count > 0) sb.Append("Where it happens: ").Append(string.Join(", ", outline.Settings.Take(3))).Append(". ");
         if (outline.Characters.Count > 0)
-            sb.Append("Story creatures: ").Append(string.Join(", ", outline.Characters.Take(3).Select(c => c.Kind))).Append(". ");
+            sb.Append("Who is in it: ").Append(string.Join(", ", outline.Characters.Take(3).Select(c => c.Kind))).Append(". ");
+        if (!string.IsNullOrWhiteSpace(outline.Moral)) sb.Append("What it is about: ").Append(outline.Moral.Trim()).Append(' ');
 
-        sb.Append("PALETTES (pick the one that matches this story's place and mood): ");
-        sb.Append("NightHarbor indigo harbor night; MoonMeadow mossy moonlit green; OceanDeep deep teal sea; ");
-        sb.Append("PlumDusk plum twilight; PineForest dark evergreen; CloudDrift drowsy slate-lavender sky; ");
-        sb.Append("StarfieldViolet violet starfield; LanternGlow warm brown lamplight; TidePool green rock pools; ");
-        sb.Append("SnowHush blue-grey winter hush; EmberSky warm ember dusk; MistValley cool grey mist. ");
+        sb.Append("\nScene, the place closest to the story: ");
+        sb.Append("MoonlitSea open sea and shore; ForestClearing a clearing among pines; MountainLake a lake under mountains; ");
+        sb.Append("FireflyMeadow soft rolling meadow; SnowyVillage snowy houses and pines; DesertOasis dunes and a palm pool; ");
+        sb.Append("IslandCove a palm island beach; StarryHills quiet hills under stars; ReefAtDusk under the sea, coral and kelp; ");
+        sb.Append("CloudKingdom up among the clouds; TownRooftops rooftops and chimneys; JungleCanopy big leaves and vines.");
 
-        sb.Append("LAYERS, back to front — depth 0 SKY AND AIR: ");
-        sb.Append("Moon or Crescent (one, small, y 0.1-0.28, scale 0.12-0.2, glow 0.3-0.7); Stars (one, density sets how many); ");
-        sb.Append("StarCluster small knot of faint stars; ShootingStar one rare wish-streak — include ONLY when the story itself is about stars or wishes, most posters have NONE, never near the moon; Aurora curtain ribbons (snow or space stories); ");
-        sb.Append("Cloud soft puffs (y 0.1-0.4); MistBand horizontal breath of fog; Snowfall drifting flakes (winter); ");
-        sb.Append("BirdFlock distant birds (y 0.2-0.45). ");
+        sb.Append("\nTimeOfDay: Dusk last warm glow; Twilight deep blue after sunset; Moonlit a bright moon; Starlit dark sky full of stars.");
+        sb.Append("\nMood: Calm, Cozy, Dreamy, Magical, Sleepy or Curious, whichever the story feels like.");
+        sb.Append("\nPalette: NightHarbor indigo harbour; MoonMeadow mossy moonlit green; OceanDeep deep teal sea; PlumDusk plum; ");
+        sb.Append("PineForest dark evergreen; CloudDrift slate lavender; StarfieldViolet violet; LanternGlow warm lamplight brown; ");
+        sb.Append("TidePool rock-pool green; SnowHush blue-grey winter; EmberSky warm ember dusk; MistValley cool grey mist.");
 
-        sb.Append("Depth 1 FAR GROUND, large masses anchored to the bottom edge, use 1-3 with staggered y for depth: ");
-        sb.Append("Hills soft rounded masses (crest y 0.6-0.9); Mountain a peaked ridge (crest y 0.52-0.75); ");
-        sb.Append("ForestRow a treeline band (y 0.6-0.88); Path a winding trail leading in (top end y 0.55-0.8). ");
-
-        sb.Append("Depth 2 MIDGROUND: Water calm band (waterline y 0.6-0.85, only if the story has sea, lake or river); ");
-        sb.Append("Boat rowboat or Sailboat or WhaleTail — each sits ON water only; ");
-        sb.Append("Lighthouse on the shore; Pine or RoundTree standing trees (base y 0.7-0.9); Reeds at a bank; ");
-        sb.Append("Lantern a glowing lamp post; FireflyScatter warm drifting motes (meadow or forest evenings). ");
-
-        sb.Append("Depth 3 FOREGROUND, the heart of the poster: ONE focal creature or lit dwelling from THIS story — ");
-        sb.Append("FoxSilhouette sitting fox; Rabbit alert sitting rabbit; Owl perched owl; DeerSilhouette standing deer; ");
-        sb.Append("WhaleTail if the sea IS the story; WindowGlow a cottage with one lit window; Tent a glowing camp tent; ");
-        sb.Append("focal base y 0.72-0.86, scale 0.2-0.32, x 0.25-0.4 or 0.6-0.78, never under the moon. ");
-        sb.Append("Optionally 1-2 small framing plants (Pine, RoundTree, Reeds) or a FlowerScatter along the ground. ");
-
-        sb.Append("Fields per element: x y position, scale size, density for scatters, ");
-        sb.Append("tint 0-0.6 fades far things into the sky haze (more tint = further away), ");
-        sb.Append("glow 0-1 warm light halo (lit windows, lanterns, moon), flipX mirrors a creature to face the other way. ");
-
-        sb.Append("Compose for THIS story: choose only motifs its setting earns, 5-8 shapes total, one light source, ");
-        sb.Append("asymmetric balance (focal on one third, moon on the other), quiet and sparse. ");
-        sb.Append("Respond with compact JSON only: {\"palette\":...,\"mood\":...,\"layers\":[{\"depth\":0,\"elements\":[...]},");
-        sb.Append("{\"depth\":1,...},{\"depth\":2,...},{\"depth\":3,...}],\"seed\":...}.");
+        sb.Append("\nFeatures: up to three things the story really has, most important first, at most one animal. ");
+        sb.Append("Only things that belong in the chosen scene:");
+        foreach (var scene in Enum.GetValues<PosterScene>())
+        {
+            var fits = PosterSpecRules.Compatibility
+                .Where(kv => !SkyEverywhere.Contains(kv.Key) && kv.Value.Contains(scene))
+                .Select(kv => kv.Key.ToString());
+            sb.Append("\n").Append(scene).Append(": ").Append(string.Join(", ", fits)).Append('.');
+        }
+        sb.Append("\nBirds, Clouds, MilkyWay and ShootingStar fit any scene except ReefAtDusk; ShootingStar only when the story is about stars or wishes. ");
+        sb.Append("Fewer is better: leave features out rather than add things the story does not have.");
         return sb.ToString();
     }
+
+    private static readonly PosterFeature[] SkyEverywhere =
+        [PosterFeature.Birds, PosterFeature.Clouds, PosterFeature.MilkyWay, PosterFeature.ShootingStar];
 }

@@ -45,9 +45,7 @@ public sealed class PosterArtRefresher
             ct.ThrowIfCancellationRequested();
             if (IsCurrent(story) || string.IsNullOrEmpty(story.PosterSpecJson)) continue;
 
-            PosterSpec? spec;
-            try { spec = JsonSerializer.Deserialize<PosterSpec>(story.PosterSpecJson); }
-            catch (JsonException) { continue; }
+            var spec = StoryTime.Poster.Spec.PosterSpecJson.Parse(story.PosterSpecJson);
             if (spec is null) continue;
 
             var newPath = Path.Combine(_options.MediaDirectory, $"story-{story.Id}{CurrentSuffix}");

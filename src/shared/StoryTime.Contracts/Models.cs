@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace StoryTime.Contracts;
 
 // ---------- Profile & settings ----------
@@ -93,70 +96,103 @@ public sealed class StoryBible
     public int EpisodeCount { get; set; }
 }
 
-// ---------- Poster ----------
+// ---------- Poster (spec contract v3 — see docs/design/poster-engine.md) ----------
+//
+// The story engine (Apple Foundation Models guided generation, or the deterministic
+// template derivation) emits ONLY this small enum-only spec. It never emits geometry or
+// drawing instructions: the procedural engine (src/app/StoryTime.Poster) owns composition,
+// silhouettes, colour and layering. Every enum below is serialized by NAME and read
+// leniently (case-insensitive names or integers; unknown values become "undefined" and are
+// repaired by PosterSpecRules.Normalize), so a model that emits a stray value can never
+// break story creation.
 
-/// <summary>Curated palette ids — the LLM may only pick from these.</summary>
+/// <summary>Curated palette ids (hue families). Names are stable: the ambient bed and the
+/// background hum key on them too.</summary>
+[JsonConverter(typeof(LenientEnumConverter<PosterPalette>))]
 public enum PosterPalette
 {
     NightHarbor, MoonMeadow, OceanDeep, PlumDusk, PineForest,
     CloudDrift, StarfieldViolet, LanternGlow, TidePool, SnowHush, EmberSky, MistValley
 }
 
-/// <summary>Scene vocabulary for poster formations. Grouped by role; the composer
-/// knows each shape's category (scatter / sky / terrain / grounded / water-bound / focal)
-/// and repairs accordingly. v1 shapes stay first so stored specs keep deserializing.</summary>
-public enum PosterShape
+/// <summary>The closed scene vocabulary — one procedural "biome" each.</summary>
+[JsonConverter(typeof(LenientEnumConverter<PosterScene>))]
+public enum PosterScene
 {
-    // ---- v1 set (stored art depends on these names) ----
-    Moon, Stars, Hills, Water, Cloud, Pine, FoxSilhouette, Lighthouse, Boat, WindowGlow,
-    // ---- celestial ----
-    Crescent, StarCluster, ShootingStar,
-    // ---- sky / atmosphere ----
-    MistBand, Aurora, Snowfall, FireflyScatter,
-    // ---- terrain masses ----
-    Mountain, ForestRow, Path,
-    // ---- flora ----
-    RoundTree, Reeds, FlowerScatter,
-    // ---- structures ----
-    Sailboat, Lantern, Tent,
-    // ---- creatures ----
-    Rabbit, Owl, BirdFlock, DeerSilhouette, WhaleTail,
+    MoonlitSea, ForestClearing, MountainLake, FireflyMeadow, SnowyVillage, DesertOasis,
+    IslandCove, StarryHills, ReefAtDusk, CloudKingdom, TownRooftops, JungleCanopy
 }
 
-public sealed class PosterElement
+/// <summary>Bedtime light, from the last warm glow to deep starlight.</summary>
+[JsonConverter(typeof(LenientEnumConverter<PosterTimeOfDay>))]
+public enum PosterTimeOfDay { Dusk, Twilight, Moonlit, Starlit }
+
+/// <summary>Emotional temperature; shifts warmth, haze, chroma and density, never content.</summary>
+[JsonConverter(typeof(LenientEnumConverter<PosterMood>))]
+public enum PosterMood { Calm, Cozy, Dreamy, Magical, Sleepy, Curious }
+
+/// <summary>Featured elements. At most three per spec; scene compatibility is enforced by
+/// PosterSpecRules (an incompatible feature is dropped, never drawn in the wrong place).</summary>
+[JsonConverter(typeof(LenientEnumConverter<PosterFeature>))]
+public enum PosterFeature
 {
-    public PosterShape Shape { get; set; }
-    /// <summary>0..1 normalized; composer clamps.</summary>
-    public double X { get; set; }
-    public double Y { get; set; }
-    public double Scale { get; set; } = 0.3;
-    /// <summary>Stars/cloud scatter density 0..1 where applicable.</summary>
-    public double Density { get; set; }
-    /// <summary>Atmospheric depth tint 0..1: 0 = the layer's natural color, 1 = fully faded
-    /// into the sky tone (distance haze). Additive v2 field; absent in stored v1 specs.</summary>
-    public double Tint { get; set; }
-    /// <summary>Soft radial glow strength 0..1 rendered behind the shape (moon halo,
-    /// lantern, lit window, tent, fireflies). Additive v2 field.</summary>
-    public double Glow { get; set; }
-    /// <summary>Mirror the shape horizontally (creatures face left/right). Additive v2 field.</summary>
-    public bool FlipX { get; set; }
+    // structures & vehicles
+    Lighthouse, Cabin, Village, Castle, Windmill, Tent, Lantern, Boat, Sailboat, Balloon, Train, Telescope,
+    // creatures (one focal creature per poster)
+    Fox, Rabbit, Owl, Deer, Bear, Cat, Hedgehog, Otter, Whale, Turtle, Fish, Camel, Dinosaur,
+    // ambient life & sky
+    Birds, Fireflies, Flowers, Mushrooms, ShootingStar, Aurora, MilkyWay, Clouds, Snowfall,
 }
 
-public sealed class PosterLayer
-{
-    /// <summary>0 = far background … 3 = foreground.</summary>
-    public int Depth { get; set; }
-    public List<PosterElement> Elements { get; set; } = [];
-}
-
+/// <summary>Poster spec contract v3: enum-only. Same (spec) → same pixels, everywhere.</summary>
 public sealed class PosterSpec
 {
+    public const int CurrentVersion = 3;
+
+    public int Version { get; set; } = CurrentVersion;
+    public PosterScene Scene { get; set; }
+    public PosterTimeOfDay TimeOfDay { get; set; } = PosterTimeOfDay.Moonlit;
+    public PosterMood Mood { get; set; }
     public PosterPalette Palette { get; set; }
-    public string Mood { get; set; } = "calm";
-    /// <summary>Exactly 4, back→front. Composer validates.</summary>
-    public List<PosterLayer> Layers { get; set; } = [];
-    /// <summary>Deterministic scatter seed so same spec → same pixels.</summary>
+    /// <summary>0–3 featured elements, most important first (the first creature is the focal).</summary>
+    public List<PosterFeature> Features { get; set; } = [];
+    /// <summary>Deterministic variation seed (ridges, stars, placement, poses).</summary>
     public int Seed { get; set; }
+}
+
+/// <summary>Enum converter that writes names and reads names (any case) or integers, mapping
+/// anything unknown to an undefined value (-1) instead of throwing — the poster rules then
+/// repair it. A malformed model value must degrade a poster, never fail a story.</summary>
+public sealed class LenientEnumConverter<T> : JsonConverter<T> where T : struct, Enum
+{
+    private static T Undefined => (T)Enum.ToObject(typeof(T), -1);
+
+    public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case JsonTokenType.String:
+                var text = reader.GetString();
+                return !string.IsNullOrWhiteSpace(text)
+                       && !char.IsDigit(text.Trim()[0]) && text.Trim()[0] != '-'
+                       && Enum.TryParse<T>(text.Trim(), ignoreCase: true, out var named)
+                       && Enum.IsDefined(named)
+                    ? named
+                    : Undefined;
+            case JsonTokenType.Number when reader.TryGetInt32(out var number):
+                var value = (T)Enum.ToObject(typeof(T), number);
+                return Enum.IsDefined(value) ? value : Undefined;
+            default:
+                reader.Skip();
+                return Undefined;
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+    {
+        if (Enum.IsDefined(value)) writer.WriteStringValue(value.ToString());
+        else writer.WriteNumberValue(Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture));
+    }
 }
 
 // ---------- Narration ----------

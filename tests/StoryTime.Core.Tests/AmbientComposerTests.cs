@@ -131,12 +131,20 @@ public class AmbientComposerTests
     [Fact]
     public void Context_FromStory_ParsesPosterSpec_AndFallsBack()
     {
-        var spec = new PosterSpec { Palette = PosterPalette.EmberSky, Mood = "cozy", Seed = 42, Layers = [] };
+        var spec = new PosterSpec { Palette = PosterPalette.EmberSky, Mood = PosterMood.Cozy, Seed = 42 };
         var story = new StoryRecord { Id = 3, PosterSpecJson = JsonSerializer.Serialize(spec) };
         var ctx = AmbientContext.FromStory(story);
         Assert.Equal(PosterPalette.EmberSky, ctx.Palette);
         Assert.Equal("cozy", ctx.Mood);
         Assert.Equal(42, ctx.Seed);
+
+        // A story stored under the retired v2 formation contract still yields its palette,
+        // mood and seed (Mood was a free string there; Palette a number).
+        const string legacy = "{\"Palette\":10,\"Mood\":\"cozy\",\"Layers\":[{\"Depth\":0,\"Elements\":[{\"Shape\":0}]}],\"Seed\":42}";
+        var old = AmbientContext.FromStory(new StoryRecord { Id = 4, PosterSpecJson = legacy });
+        Assert.Equal(PosterPalette.EmberSky, old.Palette);
+        Assert.Equal("cozy", old.Mood);
+        Assert.Equal(42, old.Seed);
 
         var bare = AmbientContext.FromStory(new StoryRecord { Id = 9, PosterSpecJson = "not json" });
         Assert.Equal(PosterPalette.NightHarbor, bare.Palette);

@@ -563,7 +563,7 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
         {
             var request = PosterSpecMapper.Request(outline);
             var json = await _bridge.GeneratePosterAsync(request.ToJson(), ct);
-            return PosterSpecMapper.Map(FmJson.Read<FmPosterChoice>(json), HashCombine(outline.Seed, 104729));
+            return PosterSpecMapper.Map(FmJson.Read<FmPosterChoice>(json), PosterSpecMapper.SeedFor(outline));
         }
         catch (FoundationModelsException ex) when (ex.Code == FmErrorCode.Cancelled || ct.IsCancellationRequested)
         {
@@ -571,7 +571,7 @@ public sealed partial class AppleFoundationStoryEngine : IStoryEngine
         }
         catch (FoundationModelsException ex)
         {
-            Record("poster", "poster fell back to the template formation", ex.Code, ex.Explanation ?? ex.Message);
+            Record("poster", "poster fell back to the template spec", ex.Code, ex.Explanation ?? ex.Message);
             return await _template.GeneratePosterSpecAsync(outline, ct);
         }
     }

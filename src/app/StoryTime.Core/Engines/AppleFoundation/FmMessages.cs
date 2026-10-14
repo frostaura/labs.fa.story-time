@@ -77,15 +77,15 @@ public sealed class FmText
     public string Text { get; set; } = string.Empty;
 }
 
-/// <summary>Guided poster choice (Swift <c>SEFMPosterChoice</c>); mapped by PosterSpecMapper.</summary>
+/// <summary>Guided poster choice (Swift <c>SEFMPosterChoice</c>): poster spec contract v3
+/// as enum NAMES, without the seed. Mapped and repaired by PosterSpecMapper.</summary>
 public sealed class FmPosterChoice
 {
-    public string Palette { get; set; } = string.Empty;
-    public string SkyLight { get; set; } = string.Empty;
-    public string Landscape { get; set; } = string.Empty;
-    public string Focal { get; set; } = string.Empty;
-    public string Accent { get; set; } = string.Empty;
+    public string Scene { get; set; } = string.Empty;
+    public string TimeOfDay { get; set; } = string.Empty;
     public string Mood { get; set; } = string.Empty;
+    public string Palette { get; set; } = string.Empty;
+    public List<string> Features { get; set; } = [];
 }
 
 public static class FmJson

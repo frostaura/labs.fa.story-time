@@ -105,7 +105,8 @@ public sealed partial class PlayerViewModel : ObservableObject
     [ObservableProperty]
     private bool _isVoiceRowEnabled;
 
-    public ResolvedPoster? Poster { get; private set; }
+    /// <summary>The story's validated poster spec; the view renders its parallax layers.</summary>
+    public PosterSpec? Poster { get; private set; }
 
     public double ProgressFraction => DurationSeconds <= 0 ? 0 : Math.Clamp(PositionSeconds / DurationSeconds, 0, 1);
 
@@ -140,10 +141,10 @@ public sealed partial class PlayerViewModel : ObservableObject
 
         if (!string.IsNullOrEmpty(_story.PosterSpecJson))
         {
-            var spec = JsonSerializer.Deserialize<PosterSpec>(_story.PosterSpecJson);
+            var spec = StoryTime.Poster.Spec.PosterSpecJson.Parse(_story.PosterSpecJson);
             if (spec is not null)
             {
-                Poster = _composer.Resolve(spec);
+                Poster = _composer.Validate(spec);
                 OnPropertyChanged(nameof(Poster));
             }
         }

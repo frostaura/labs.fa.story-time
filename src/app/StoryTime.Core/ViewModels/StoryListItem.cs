@@ -20,6 +20,24 @@ public sealed partial class StoryListItem : ObservableObject
     public string ThumbnailPath => Record.ThumbnailPath;
     public bool HasThumbnail => !string.IsNullOrEmpty(Record.ThumbnailPath);
 
+    private string? _parsedSpecJson;
+    private PosterSpec? _poster;
+
+    /// <summary>The story's poster spec (parsed once per stored JSON) — cards and shelf
+    /// tiles render its parallax layers; the flattened thumbnail shows while they render.</summary>
+    public PosterSpec? Poster
+    {
+        get
+        {
+            if (!ReferenceEquals(_parsedSpecJson, Record.PosterSpecJson))
+            {
+                _parsedSpecJson = Record.PosterSpecJson;
+                _poster = StoryTime.Poster.Spec.PosterSpecJson.Parse(Record.PosterSpecJson);
+            }
+            return _poster;
+        }
+    }
+
     [ObservableProperty]
     private bool _isFavorite;
 
@@ -51,8 +69,10 @@ public sealed partial class StoryListItem : ObservableObject
     /// without discarding and rebuilding the row.</summary>
     public void Refresh(StoryRecord record)
     {
+        var posterChanged = record.PosterSpecJson != Record.PosterSpecJson;
         Record = record;
         IsFavorite = record.IsFavorite;
+        if (posterChanged) OnPropertyChanged(nameof(Poster));
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(ThumbnailPath));
         OnPropertyChanged(nameof(HasThumbnail));

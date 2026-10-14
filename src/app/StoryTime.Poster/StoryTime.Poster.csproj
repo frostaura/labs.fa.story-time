@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The procedural parallax poster engine. Pure net10.0 + SkiaSharp so it renders headless
+       on the Mac (tests, golden images, contact sheets) and on device (the MAUI head
+       references it). No MAUI, no network, no models. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>StoryTime.Poster</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="3.119.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="StoryTime.Poster.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../shared/StoryTime.Contracts/StoryTime.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

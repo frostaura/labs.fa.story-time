@@ -32,7 +32,7 @@ public interface IFoundationModelsBridge
     /// <summary>Plain single-turn rewrite (polish and repair) → <c>{"text": …}</c>.</summary>
     Task<string> PolishSceneAsync(string requestJson, CancellationToken ct);
 
-    /// <summary>Guided poster choice → <c>{palette, skyLight, landscape, focal, accent, mood}</c>.</summary>
+    /// <summary>Guided poster choice → <c>{scene, timeOfDay, mood, palette, features}</c> (poster spec contract v3, no seed).</summary>
     Task<string> GeneratePosterAsync(string requestJson, CancellationToken ct);
 }
 
