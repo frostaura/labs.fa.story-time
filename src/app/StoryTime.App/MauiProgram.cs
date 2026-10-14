@@ -25,6 +25,8 @@ public static class MauiProgram
 			.UseMauiCommunityToolkitMediaElement(false)
 			.UseSkiaSharp()
 			.UseLocalNotification()
+			.ConfigureMauiHandlers(handlers =>
+				handlers.AddHandler<StoryTime.App.Controls.SheetBackdrop, Platforms.iOS.SheetBackdropHandler>())
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("Outfit-Light.ttf", "OutfitLight");

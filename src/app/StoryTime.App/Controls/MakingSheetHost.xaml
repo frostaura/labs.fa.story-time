@@ -20,15 +20,17 @@
         <toolkit:IsStringNotNullOrEmptyConverter x:Key="IsNotEmptyConverter" />
     </Grid.Resources>
 
-    <!-- Scrim: dims the page behind the expanded sheet (~55% BgPhone); tap collapses. -->
-    <BoxView x:Name="Scrim" Color="{StaticResource BgPhone}" Opacity="0" IsVisible="False">
-        <BoxView.Behaviors>
+    <!-- Backdrop: ~58% black over a subtle blur of the page behind the expanded sheet,
+         fading with the sheet; tap collapses. Not a BoxView: the implicit BoxView style is
+         the 1dp hairline divider, which collapsed the old scrim to a line. -->
+    <controls:SheetBackdrop x:Name="Scrim">
+        <controls:SheetBackdrop.Behaviors>
             <!-- Light at POINTER-DOWN, before the collapse animation starts. -->
             <toolkit:TouchBehavior
                 Command="{Binding Source={x:Reference SheetHost}, Path=BindingContext.CollapseCommand, x:DataType=vm:MakingSheetViewModel}"
                 CurrentTouchStatusChanged="OnPressDownLight" />
-        </BoxView.Behaviors>
-    </BoxView>
+        </controls:SheetBackdrop.Behaviors>
+    </controls:SheetBackdrop>
 
     <!-- Expanded sheet: near-full-height, slides up over the page. -->
     <Border x:Name="SheetPanel" IsVisible="False" Margin="0,64,0,0"

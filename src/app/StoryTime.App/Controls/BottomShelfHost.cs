@@ -7,14 +7,16 @@ using StoryTime.Core.Abstractions;
 
 namespace StoryTime.App.Controls;
 
-/// <summary>Lightweight reusable slide-up shelf: scrim + drag handle + content-sized
+/// <summary>Lightweight reusable slide-up shelf: backdrop + drag handle + content-sized
 /// bottom sheet, in exactly the making sheet's visual language (BgPhone panel, Hairline
-/// stroke, 20-radius top corners, ~55% BgPhone scrim, ≤300 ms eased motion, drag-down ≥110dp
-/// or scrim/handle tap to dismiss — the MakingSheetHost pattern, extracted for shelves that
-/// are content-sized rather than near-full-height and driven by a simple IsOpen flag).
+/// stroke, 20-radius top corners, a <see cref="SheetBackdrop"/> — ~58% black over a subtle
+/// blur — fading with ≤300 ms eased motion, drag-down ≥110dp or backdrop/handle tap to
+/// dismiss — the MakingSheetHost pattern, extracted for shelves that are content-sized
+/// rather than near-full-height and driven by a simple IsOpen flag). While open, the host
+/// is modal for VoiceOver: focus moves into the sheet and stays there.
 ///
 /// Layering: place this as the LAST child of a page's root Grid — above MakingSheetHost —
-/// so an open shelf slides up OVER the docked making mini-bar (the bar dims under the scrim
+/// so an open shelf slides up OVER the docked making mini-bar (the bar dims under the backdrop
 /// and is inert while the shelf is open; it is exactly where it was on dismiss).
 ///
 /// Dismissal goes through <see cref="CloseCommand"/> when one is bound (so the owning VM
@@ -37,7 +39,7 @@ public sealed class BottomShelfHost : Grid
     public static readonly BindableProperty CloseCommandProperty = BindableProperty.Create(
         nameof(CloseCommand), typeof(ICommand), typeof(BottomShelfHost));
 
-    /// <summary>Single close path for scrim tap, handle tap and drag-down dismissal.</summary>
+    /// <summary>Single close path for backdrop tap, handle tap and drag-down dismissal.</summary>
     public ICommand? CloseCommand
     {
         get => (ICommand?)GetValue(CloseCommandProperty);
@@ -54,7 +56,7 @@ public sealed class BottomShelfHost : Grid
         set => SetValue(ShelfContentProperty, value);
     }
 
-    private readonly Grid _scrim;
+    private readonly SheetBackdrop _scrim;
     private readonly Border _sheet;
     private readonly Grid _sheetGrid;
 
@@ -72,10 +74,9 @@ public sealed class BottomShelfHost : Grid
         InputTransparent = true;             // the host grid never blocks the page…
         CascadeInputTransparent = false;     // …only its visible children catch touches.
 
-        // A Grid, not a BoxView: the app's implicit BoxView style is the 1dp hairline
-        // divider (HeightRequest=1), which silently collapses a code-created scrim to an
-        // untappable line. A Grid has no implicit style and fills the host.
-        _scrim = new Grid { BackgroundColor = Token("BgPhone"), Opacity = 0, IsVisible = false };
+        // Not a BoxView: the app's implicit BoxView style is the 1dp hairline divider
+        // (HeightRequest=1), which would collapse the backdrop to an untappable line.
+        _scrim = new SheetBackdrop();
         var scrimTap = new TapGestureRecognizer();
         scrimTap.Tapped += (_, _) => RequestClose();
         _scrim.GestureRecognizers.Add(scrimTap);
@@ -185,12 +186,14 @@ public sealed class BottomShelfHost : Grid
                 if (token != _transition) return;
             }
             if (_sheet.TranslationY <= 0) _sheet.TranslationY = OffscreenY;
-            _ = _scrim.FadeToAsync(0.55, 240, Easing.CubicOut);
+            SheetAccessibility.SetModal(this, true, _sheet);
+            _ = _scrim.FadeToAsync(1, 240, Easing.CubicOut);
             await _sheet.TranslateToAsync(0, 0, 290, Easing.CubicOut);
         }
         else
         {
             if (!_sheet.IsVisible) return;
+            SheetAccessibility.SetModal(this, false, null);
             _ = _scrim.FadeToAsync(0, 220, Easing.CubicOut);
             await _sheet.TranslateToAsync(0, OffscreenY, 260, Easing.CubicIn);
             if (token != _transition) return;

@@ -195,12 +195,14 @@ public partial class MakingSheetHost : Grid
         {
             case MakingSheetState.Expanded:
                 Scrim.IsVisible = true;
-                Scrim.Opacity = 0.55;
+                Scrim.Opacity = 1;
                 SheetPanel.IsVisible = true;
                 SheetPanel.TranslationY = 0;
                 MiniBar.IsVisible = false;
+                SheetAccessibility.SetModal(this, true, SheetPanel);
                 break;
             case MakingSheetState.Collapsed:
+                SheetAccessibility.SetModal(this, false, null);
                 Scrim.IsVisible = false;
                 Scrim.Opacity = 0;
                 SheetPanel.IsVisible = false;
@@ -210,6 +212,7 @@ public partial class MakingSheetHost : Grid
                 UpdateMiniProgress();
                 break;
             default:
+                SheetAccessibility.SetModal(this, false, null);
                 Scrim.IsVisible = false;
                 Scrim.Opacity = 0;
                 SheetPanel.IsVisible = false;
@@ -237,11 +240,13 @@ public partial class MakingSheetHost : Grid
                 Scrim.IsVisible = true;
                 SheetPanel.IsVisible = true;
                 if (SheetPanel.TranslationY <= 0) SheetPanel.TranslationY = OffscreenY;
-                _ = Scrim.FadeToAsync(0.55, 240, Easing.CubicOut);
+                SheetAccessibility.SetModal(this, true, SheetPanel);
+                _ = Scrim.FadeToAsync(1, 240, Easing.CubicOut);
                 await SheetPanel.TranslateToAsync(0, 0, 290, Easing.CubicOut);
                 break;
             }
             case MakingSheetState.Collapsed:
+                SheetAccessibility.SetModal(this, false, null);
             {
                 if (SheetPanel.IsVisible)
                 {
@@ -259,6 +264,7 @@ public partial class MakingSheetHost : Grid
             }
             default:   // Hidden — slide out whatever is on screen
             {
+                SheetAccessibility.SetModal(this, false, null);
                 if (SheetPanel.IsVisible)
                 {
                     _ = Scrim.FadeToAsync(0, 220, Easing.CubicOut);
