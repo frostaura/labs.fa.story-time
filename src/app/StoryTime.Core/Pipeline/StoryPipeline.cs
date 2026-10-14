@@ -24,7 +24,7 @@ namespace StoryTime.Core.Pipeline;
 public sealed class StoryPipeline
 {
     public const string GentleFailureMessage =
-        "The loom got a little tangled tonight. Everything is safe — let's weave again in a moment.";
+        "Something went wrong while making this story. Everything is safe — please try again in a moment.";
 
     /// <summary>Cumulative percent at which each stage completes (Outline 5, Scenes 45,
     /// Poster 50, Narration 100) — the same 5/40/5/50 weights the Report calls below use.

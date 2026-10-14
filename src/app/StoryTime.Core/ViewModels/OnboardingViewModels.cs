@@ -175,7 +175,7 @@ internal sealed class VoicePreviewRunner(ITtsEngine tts, IVoiceSamplePlayer play
 public sealed partial class OnboardingVoiceViewModel : ObservableObject
 {
     public const string SeriesHint = "One gentle world, two minutes at a time. A Story Bible remembers every name.";
-    public const string OneShotHint = "A brand-new standalone tale every night.";
+    public const string OneShotHint = "A brand-new story every night.";
 
     private readonly OnboardingState _state;
     private readonly INavigator _navigator;

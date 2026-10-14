@@ -60,7 +60,7 @@ public class HomeViewModelTests : IAsyncLifetime
         _cooldown.Start();
         await _vm.ActivateAsync();
         Assert.False(_vm.CanWeave);
-        Assert.StartsWith("The loom rests — next weave at ", _vm.WeaveButtonText);
+        Assert.StartsWith("Next story at ", _vm.WeaveButtonText);
         Assert.False(_vm.WeaveCommand.CanExecute(null));
     }
 
@@ -69,7 +69,7 @@ public class HomeViewModelTests : IAsyncLifetime
     {
         await _vm.ActivateAsync();
         Assert.True(_vm.CanWeave);
-        Assert.Equal("Weave tonight's story", _vm.WeaveButtonText);
+        Assert.Equal("Make tonight's story", _vm.WeaveButtonText);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class HomeViewModelTests : IAsyncLifetime
         _host.IsWeaving = true;
         await _vm.ActivateAsync();
         Assert.False(_vm.CanWeave);
-        Assert.Equal("Weaving tonight's story…", _vm.WeaveButtonText);
+        Assert.Equal("Making tonight's story…", _vm.WeaveButtonText);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class HomeViewModelTests : IAsyncLifetime
         // The Weaving page is gone: the sheet opens expanded over Home instead.
         Assert.DoesNotContain(Routes.Weaving, _navigator.Routes);
         Assert.Equal(WeaveSheetState.Expanded, _sheet.State);
-        Assert.Equal("Weaving Aria's story…", _sheet.Headline);
+        Assert.Equal("Making Aria's story…", _sheet.Headline);
     }
 
     [Fact]
@@ -268,10 +268,10 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         Assert.True(_vm.IsVisible);
         Assert.Equal(WeaveSheetViewModel.DisplayFloorPercent, _vm.Percent);
         Assert.All(_vm.Stages, s => Assert.Equal(StageRowState.Waiting, s.State));
-        Assert.Equal("Weaving Aria's story…", _vm.Headline);
-        Assert.Equal("Weaving Aria's story…", _vm.MiniTitle);
-        Assert.Equal($"WEAVING · {WeaveSheetViewModel.DisplayFloorPercent}%", _vm.EyebrowText);
-        Assert.Equal("Close this — we'll keep weaving", _vm.CloseLabel);
+        Assert.Equal("Making Aria's story…", _vm.Headline);
+        Assert.Equal("Making Aria's story…", _vm.MiniTitle);
+        Assert.Equal($"MAKING · {WeaveSheetViewModel.DisplayFloorPercent}%", _vm.EyebrowText);
+        Assert.Equal("Close — your story keeps going", _vm.CloseLabel);
     }
 
     [Fact]
@@ -284,9 +284,9 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         Assert.Equal(StageRowState.Waiting, _vm.Stages[2].State);
         Assert.Equal(20, _vm.Percent);
         Assert.Equal(0.2, _vm.ProgressFraction, precision: 5);
-        Assert.Equal("weaving…", _vm.Stages[1].StateLabel);
-        Assert.Equal("Scenes · 20%", _vm.MiniDetail);
-        Assert.Equal("WEAVING · 20%", _vm.EyebrowText);
+        Assert.Equal("making…", _vm.Stages[1].StateLabel);
+        Assert.Equal("Writing · 20%", _vm.MiniDetail);
+        Assert.Equal("MAKING · 20%", _vm.EyebrowText);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         // which is exactly what every page's host observes after navigation.
         _host.RaiseProgress(new WeaveProgress { Stage = WeaveStage.Narration, Percent = 62, StageFraction = 0.3 });
         Assert.Equal(WeaveSheetState.Collapsed, _vm.State);
-        Assert.Equal("Narration · 62%", _vm.MiniDetail);
+        Assert.Equal("Voice · 62%", _vm.MiniDetail);
 
         _vm.ExpandCommand.Execute(null);
         Assert.Equal(WeaveSheetState.Expanded, _vm.State);
@@ -394,7 +394,7 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task WeavingCopy_UsesLoomHumWording()
+    public async Task MakingCopy_UsesSoftHumWording()
     {
         await _vm.ShowForWeaveAsync();
         Assert.Equal(WeaveSheetViewModel.BackgroundHint, _vm.SubText);
@@ -433,7 +433,7 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         await _vm.ExpandForQaAsync();
         Assert.Equal(WeaveSheetState.Expanded, _vm.State);
         Assert.Equal(WeaveSheetViewModel.DisplayFloorPercent, _vm.Percent);
-        Assert.Equal("Weaving Aria's story…", _vm.Headline);
+        Assert.Equal("Making Aria's story…", _vm.Headline);
     }
 
     [Fact]

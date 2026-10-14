@@ -47,7 +47,7 @@
                     <VerticalStackLayout Grid.Column="1" Spacing="6">
                         <Label Style="{StaticResource UiText}" Text="One story at a time" />
                         <Label Style="{StaticResource Body}"
-                               Text="After each story the loom rests 30 minutes. Bedtime stays bedtime." />
+                               Text="After each story, the next one waits 30 minutes. Bedtime stays bedtime." />
                     </VerticalStackLayout>
                 </Grid>
                 <BoxView />

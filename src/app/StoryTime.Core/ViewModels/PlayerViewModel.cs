@@ -253,7 +253,7 @@ public sealed partial class PlayerViewModel : ObservableObject
     {
         if (IsContinueBusy) return;
         IsContinueBusy = true;
-        ContinueLabel = "Weaving 2 more minutes… ✓";
+        ContinueLabel = "Making 2 more minutes… ✓";
         await Task.Delay(2200);
         ContinueLabel = "Continue the series · +2 min";
         IsContinueBusy = false;

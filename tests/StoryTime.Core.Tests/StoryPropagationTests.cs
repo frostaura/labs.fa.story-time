@@ -139,7 +139,7 @@ public class StoryPropagationTests : IAsyncLifetime
         await SettleAsync();
 
         Assert.Single(_library.Stories);
-        Assert.Contains("weaving…", _library.Stories[0].MetaLine);
+        Assert.Contains("making…", _library.Stories[0].MetaLine);
         Assert.Empty(_home.Stories);   // the weave belongs to the sheet, not the carousel
         Assert.Empty(_shelf.Tiles);
 
@@ -151,7 +151,7 @@ public class StoryPropagationTests : IAsyncLifetime
         Assert.Single(_home.Stories);
         Assert.Single(_shelf.Tiles);
         // The Library row was refreshed in place, not rebuilt.
-        Assert.DoesNotContain("weaving…", _library.Stories[0].MetaLine);
+        Assert.DoesNotContain("making…", _library.Stories[0].MetaLine);
     }
 
     [Fact]

@@ -33,7 +33,7 @@ public sealed partial class StoryListItem : ObservableObject
             {
                 StoryState.Failed => "didn't finish",
                 StoryState.AwaitingApproval => "waiting for you",
-                StoryState.Weaving => "weaving…",
+                StoryState.Weaving => "making…",
                 _ => Record.Mode == StoryMode.Series && Record.EpisodeNumber > 0
                     ? $"Series · Episode {Record.EpisodeNumber}"
                     : "One-shot",

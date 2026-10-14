@@ -489,7 +489,7 @@ public class StoryPipelineTests
         }
         Assert.Equal(WeaveStage.Done, reports[^1].Stage);
         Assert.Equal(100, reports[^1].Percent);
-        // The Narration row goes "weaving…" while the Scenes stage is still short of its
+        // The Narration row goes "making…" while the Scenes stage is still short of its
         // 45% boundary — impossible on the sequential path, definitional for overlap.
         Assert.Contains(reports, r => r.Stage == WeaveStage.Narration && r.Percent < 45);
     }

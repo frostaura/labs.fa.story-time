@@ -41,7 +41,7 @@
 
             <Label Style="{StaticResource Display}" Text="Longer nights, softer light." />
             <Label Style="{StaticResource Body}" Margin="0,12,0,30"
-                   Text="Everything the loom already does, with a little more room to breathe." />
+                   Text="Everything StoryTime already does, with a little more room to breathe." />
 
             <!-- Benefits — hairline-divided rows, per the trial card blurb -->
             <VerticalStackLayout Spacing="0">
@@ -61,8 +61,8 @@
                 </Grid>
                 <BoxView />
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="2" Padding="0,14,0,14">
-                    <Label Grid.Row="0" Style="{StaticResource UiText}" FontSize="15" Text="15-minute rests" />
-                    <Label Grid.Row="1" Style="{StaticResource Caption}" Text="The loom rests 15 minutes between stories, not 30." />
+                    <Label Grid.Row="0" Style="{StaticResource UiText}" FontSize="15" Text="Shorter waits" />
+                    <Label Grid.Row="1" Style="{StaticResource Caption}" Text="15 minutes between stories, not 30." />
                 </Grid>
                 <BoxView />
             </VerticalStackLayout>

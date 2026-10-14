@@ -171,7 +171,7 @@ public partial class HomePage : ContentPage
                 await Share.Default.RequestAsync(new ShareTextRequest
                 {
                     Title = item.Title,
-                    Text = $"“{item.Title}” — a bedtime story woven at home with StoryTime.",
+                    Text = $"“{item.Title}” — a bedtime story made at home with StoryTime.",
                 });
                 break;
             case "Favorite":
