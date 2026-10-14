@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- .NET for iOS binding of the StoryTimeNative Swift framework (src/native/StoryTimeNative).
-       ApiDefinition.cs binds the @objc SEFMEngine surface; the xcframework is built from source
+       ApiDefinition.cs binds the @objc SEFMEngine (Foundation Models) and SESKStore (StoreKit 2) surfaces; the xcframework is built from source
        by src/native/build.sh (automatically, when missing) and is not committed. -->
   <PropertyGroup>
     <TargetFramework>net10.0-ios</TargetFramework>
@@ -18,7 +18,7 @@
     <NativeReference Include="$(StoryTimeNativeXcframework)">
       <Kind>Framework</Kind>
       <SmartLink>false</SmartLink>
-      <Frameworks>Foundation FoundationModels</Frameworks>
+      <Frameworks>Foundation FoundationModels StoreKit UIKit</Frameworks>
     </NativeReference>
   </ItemGroup>
 

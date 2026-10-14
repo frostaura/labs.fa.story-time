@@ -46,7 +46,8 @@ public enum PremiumPurchaseResult
     PurchasesDisabled,
 }
 
-/// <summary>The on-device store seam. iOS: StoreKit (StoreKitPremiumStore). Tests and
+/// <summary>The on-device store seam. iOS: StoreKit 2 (Services.StoreKitPremiumStore over the
+/// native SESKStore shim, Platforms/iOS/AppStoreBridge). Tests and
 /// headless hosts: <see cref="Services.UnavailablePremiumStore"/> or a fake.</summary>
 public interface IPremiumStore
 {

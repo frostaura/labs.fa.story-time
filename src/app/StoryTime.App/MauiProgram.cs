@@ -108,15 +108,16 @@ public static class MauiProgram
 		return builder.Build();
 	}
 
-	/// <summary>Premium: one on-device, one-off StoreKit purchase (no subscription, no server).
-	/// Core's StoreEntitlements and PremiumLedger read and record it; the observer starts at
-	/// launch through an IMauiInitializeService so transactions finished while the app was
-	/// closed are delivered.</summary>
+	/// <summary>Premium: one on-device, one-off StoreKit 2 purchase (no subscription, no server)
+	/// through the StoryTimeNative Swift shim. Core's StoreEntitlements and PremiumLedger read and
+	/// record it; the Transaction.updates listener starts at launch through an
+	/// IMauiInitializeService so Ask to Buy approvals, refunds and revocations are delivered.</summary>
 	static void RegisterEntitlements(IServiceCollection services)
 	{
-		services.AddSingleton<Platforms.iOS.StoreKitPremiumStore>();
-		services.AddSingleton<IPremiumStore>(sp => sp.GetRequiredService<Platforms.iOS.StoreKitPremiumStore>());
-		services.AddSingleton<IMauiInitializeService, Platforms.iOS.StoreKitObserverStarter>();
+		services.AddSingleton<IAppStoreBridge, Platforms.iOS.AppStoreBridge>();
+		services.AddSingleton<StoreKitPremiumStore>();
+		services.AddSingleton<IPremiumStore>(sp => sp.GetRequiredService<StoreKitPremiumStore>());
+		services.AddSingleton<IMauiInitializeService, Platforms.iOS.StoreKitListenerStarter>();
 	}
 
 	/// <summary>Story-engine swap point: Apple's on-device Foundation Models through the

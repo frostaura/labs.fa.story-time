@@ -49,4 +49,38 @@ namespace StoryTimeNative
         [Export("cancel:")]
         void Cancel(NSUuid requestId);
     }
+
+    /// <summary>Product lookup result JSON <c>{state, displayPrice?, displayName?}</c> — main queue.</summary>
+    delegate void SESKProductHandler(string resultJson);
+
+    /// <summary>Purchase / restore outcome (a <c>PremiumPurchaseResult</c> name) plus optional detail — main queue.</summary>
+    delegate void SESKOutcomeHandler(string outcome, [NullAllowed] string detail);
+
+    /// <summary>Verified entitlement change for a product: owned, or revoked/refunded — main queue.</summary>
+    delegate void SESKEntitlementHandler(string productId, bool owned);
+
+    /// <summary>Swift <c>SESKStore</c> (src/native/StoryTimeNative/Sources/Store): StoreKit 2.</summary>
+    [BaseType(typeof(NSObject), Name = "SESKStore")]
+    [DisableDefaultCtor]
+    interface SESKStore
+    {
+        [Static]
+        [Export("shared")]
+        SESKStore Shared { get; }
+
+        [Export("canMakePayments")]
+        bool CanMakePayments { get; }
+
+        [Export("startWithProductId:onEntitlement:")]
+        void Start(string productId, SESKEntitlementHandler onEntitlement);
+
+        [Export("loadProduct:completion:")]
+        void LoadProduct(string productId, SESKProductHandler completion);
+
+        [Export("purchase:completion:")]
+        void Purchase(string productId, SESKOutcomeHandler completion);
+
+        [Export("restore:completion:")]
+        void Restore(string productId, SESKOutcomeHandler completion);
+    }
 }
