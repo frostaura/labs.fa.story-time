@@ -60,7 +60,7 @@
                         <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource PillButtonAccentCompact}"
                                 Text="UPGRADE  →" Command="{Binding ShowUpgradeCommand}" />
                         <Label Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource Caption}"
-                               Text="Premium adds 15-minute stories, a 15-minute loom, and music under every voice." />
+                               Text="Premium adds 15-minute stories, shorter waits between stories, and music under every voice." />
                     </Grid>
                 </Border>
 
@@ -80,7 +80,7 @@
                 <Grid ColumnDefinitions="*,Auto" HeightRequest="64">
                     <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
                         <Label Style="{StaticResource UiText}" FontSize="15" Text="Story-ready notifications" />
-                        <Label Style="{StaticResource Caption}" Text="A gentle ping when the loom finishes" />
+                        <Label Style="{StaticResource Caption}" Text="A gentle ping when a story is ready" />
                     </VerticalStackLayout>
                     <controls:ToggleSwitchView Grid.Column="1" VerticalOptions="Center"
                                                IsOn="{Binding StoryReadyNotifications}" />

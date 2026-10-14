@@ -26,7 +26,7 @@ public class HomeViewModelTests : IAsyncLifetime
         _env = await TestEnv.CreateAsync();
         _clock = new FakeClock();
         _settings = new InMemorySettingsStore();
-        var entitlements = new StubEntitlements(_settings, _clock);
+        var entitlements = new StoreEntitlements(_settings, _clock);
         _cooldown = new CooldownService(_settings, _clock, entitlements);
         _host = new FakeWeaveHost();
         _navigator = new FakeNavigator();
@@ -60,7 +60,7 @@ public class HomeViewModelTests : IAsyncLifetime
         _cooldown.Start();
         await _vm.ActivateAsync();
         Assert.False(_vm.CanWeave);
-        Assert.StartsWith("The loom rests — next weave at ", _vm.WeaveButtonText);
+        Assert.StartsWith("Next story at ", _vm.WeaveButtonText);
         Assert.False(_vm.WeaveCommand.CanExecute(null));
     }
 
@@ -69,7 +69,7 @@ public class HomeViewModelTests : IAsyncLifetime
     {
         await _vm.ActivateAsync();
         Assert.True(_vm.CanWeave);
-        Assert.Equal("Weave tonight's story", _vm.WeaveButtonText);
+        Assert.Equal("Make tonight's story", _vm.WeaveButtonText);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class HomeViewModelTests : IAsyncLifetime
         _host.IsWeaving = true;
         await _vm.ActivateAsync();
         Assert.False(_vm.CanWeave);
-        Assert.Equal("Weaving tonight's story…", _vm.WeaveButtonText);
+        Assert.Equal("Making tonight's story…", _vm.WeaveButtonText);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class HomeViewModelTests : IAsyncLifetime
         // The Weaving page is gone: the sheet opens expanded over Home instead.
         Assert.DoesNotContain(Routes.Weaving, _navigator.Routes);
         Assert.Equal(WeaveSheetState.Expanded, _sheet.State);
-        Assert.Equal("Weaving Aria's story…", _sheet.Headline);
+        Assert.Equal("Making Aria's story…", _sheet.Headline);
     }
 
     [Fact]
@@ -252,9 +252,9 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         _settings = new InMemorySettingsStore();
         _kidMode = new KidModeService();
         var clock = new FakeClock();
-        var cooldown = new CooldownService(_settings, clock, new StubEntitlements(_settings, clock));
+        var cooldown = new CooldownService(_settings, clock, new StoreEntitlements(_settings, clock));
         _vm = new WeaveSheetViewModel(_host, _env.Store, cooldown, _navigator, new PlayerLaunchContext(), _settings,
-            new NullHaptics(), new StubEntitlements(_settings, clock), _kidMode);
+            new NullHaptics(), new StoreEntitlements(_settings, clock), _kidMode);
         await _env.Store.SaveProfileAsync(TestEnv.Profile());
     }
 
@@ -268,10 +268,10 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         Assert.True(_vm.IsVisible);
         Assert.Equal(WeaveSheetViewModel.DisplayFloorPercent, _vm.Percent);
         Assert.All(_vm.Stages, s => Assert.Equal(StageRowState.Waiting, s.State));
-        Assert.Equal("Weaving Aria's story…", _vm.Headline);
-        Assert.Equal("Weaving Aria's story…", _vm.MiniTitle);
-        Assert.Equal($"WEAVING · {WeaveSheetViewModel.DisplayFloorPercent}%", _vm.EyebrowText);
-        Assert.Equal("Close this — we'll keep weaving", _vm.CloseLabel);
+        Assert.Equal("Making Aria's story…", _vm.Headline);
+        Assert.Equal("Making Aria's story…", _vm.MiniTitle);
+        Assert.Equal($"MAKING · {WeaveSheetViewModel.DisplayFloorPercent}%", _vm.EyebrowText);
+        Assert.Equal("Close — your story keeps going", _vm.CloseLabel);
     }
 
     [Fact]
@@ -284,9 +284,9 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         Assert.Equal(StageRowState.Waiting, _vm.Stages[2].State);
         Assert.Equal(20, _vm.Percent);
         Assert.Equal(0.2, _vm.ProgressFraction, precision: 5);
-        Assert.Equal("weaving…", _vm.Stages[1].StateLabel);
-        Assert.Equal("Scenes · 20%", _vm.MiniDetail);
-        Assert.Equal("WEAVING · 20%", _vm.EyebrowText);
+        Assert.Equal("making…", _vm.Stages[1].StateLabel);
+        Assert.Equal("Writing · 20%", _vm.MiniDetail);
+        Assert.Equal("MAKING · 20%", _vm.EyebrowText);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         // which is exactly what every page's host observes after navigation.
         _host.RaiseProgress(new WeaveProgress { Stage = WeaveStage.Narration, Percent = 62, StageFraction = 0.3 });
         Assert.Equal(WeaveSheetState.Collapsed, _vm.State);
-        Assert.Equal("Narration · 62%", _vm.MiniDetail);
+        Assert.Equal("Voice · 62%", _vm.MiniDetail);
 
         _vm.ExpandCommand.Execute(null);
         Assert.Equal(WeaveSheetState.Expanded, _vm.State);
@@ -394,7 +394,7 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task WeavingCopy_UsesLoomHumWording()
+    public async Task MakingCopy_UsesSoftHumWording()
     {
         await _vm.ShowForWeaveAsync();
         Assert.Equal(WeaveSheetViewModel.BackgroundHint, _vm.SubText);
@@ -433,7 +433,7 @@ public class WeaveSheetViewModelTests : IAsyncLifetime
         await _vm.ExpandForQaAsync();
         Assert.Equal(WeaveSheetState.Expanded, _vm.State);
         Assert.Equal(WeaveSheetViewModel.DisplayFloorPercent, _vm.Percent);
-        Assert.Equal("Weaving Aria's story…", _vm.Headline);
+        Assert.Equal("Making Aria's story…", _vm.Headline);
     }
 
     [Fact]
@@ -551,7 +551,7 @@ public class SettingsViewModelTests : IAsyncLifetime
         _settings = new InMemorySettingsStore();
         _navigator = new FakeNavigator();
         var clock = new FakeClock();
-        _vm = new SettingsViewModel(_gate, _settings, new StubEntitlements(_settings, clock), _env.Store, _navigator,
+        _vm = new SettingsViewModel(_gate, _settings, new StoreEntitlements(_settings, clock), _env.Store, _navigator,
             new NullHaptics());
         await _env.Store.SaveProfileAsync(TestEnv.Profile());
     }
@@ -771,7 +771,7 @@ public class OnboardingViewModelTests : IAsyncLifetime
     public async Task VoiceStep_GatesFifteenAndKeepsHintCopy()
     {
         var clock = new FakeClock();
-        var vm = new OnboardingVoiceViewModel(_state, _navigator, new FakeTtsEngine(), new StubEntitlements(_settings, clock),
+        var vm = new OnboardingVoiceViewModel(_state, _navigator, new FakeTtsEngine(), new StoreEntitlements(_settings, clock),
             new NullHaptics(), new NullVoiceSamplePlayer());
         vm.SelectLengthCommand.Execute(StoryLength.Fifteen);
         Assert.True(vm.ShowPremiumHint);
@@ -833,8 +833,8 @@ public class PremiumViewModelTests
     {
         var settings = new InMemorySettingsStore();
         var navigator = new FakeNavigator();
-        var entitlements = new StubEntitlements(settings, new FakeClock());
-        var vm = new PremiumViewModel(settings, navigator, new NullHaptics());
+        var entitlements = new StoreEntitlements(settings, new FakeClock());
+        var vm = FakePremiumStore.CreateViewModel(settings, navigator, new NullHaptics());
 
         Assert.False(vm.IsUnlockedForTesting);
         vm.ToggleTestingUnlockCommand.Execute(null);
@@ -859,11 +859,11 @@ public class PremiumViewModelTests
     }
 
     [Fact]
-    public void Activate_ReadsOverrideFromStore()
+    public async Task Activate_ReadsOverrideFromStore()
     {
         var settings = new InMemorySettingsStore { DebugPremiumOverride = true };
-        var vm = new PremiumViewModel(settings, new FakeNavigator(), new NullHaptics());
-        vm.Activate();
+        var vm = FakePremiumStore.CreateViewModel(settings, new FakeNavigator(), new NullHaptics());
+        await vm.ActivateAsync();
         Assert.True(vm.IsUnlockedForTesting);
         Assert.StartsWith("Premium · unlocked for testing", vm.TestingRowText);
     }
@@ -872,7 +872,7 @@ public class PremiumViewModelTests
     public async Task Close_NavigatesBack()
     {
         var navigator = new FakeNavigator();
-        var vm = new PremiumViewModel(new InMemorySettingsStore(), navigator, new NullHaptics());
+        var vm = FakePremiumStore.CreateViewModel(new InMemorySettingsStore(), navigator, new NullHaptics());
         await vm.CloseCommand.ExecuteAsync(null);
         Assert.Equal(1, navigator.BackCount);
     }

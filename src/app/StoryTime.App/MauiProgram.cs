@@ -54,6 +54,7 @@ public static class MauiProgram
 			sp.GetRequiredService<StoryTime.Core.Services.StoryCatalog>());
 		builder.Services.AddSingleton<ISettingsStore, PreferencesSettingsStore>();
 		builder.Services.AddSingleton<INavigator, ShellNavigator>();
+		RegisterEntitlements(builder.Services);
 		builder.Services.AddSingleton<IBiometricGate, BiometricGate>();
 		builder.Services.AddSingleton<IHaptics, PlatformHaptics>();
 		builder.Services.AddSingleton<StoryTime.Core.Abstractions.INotificationService, LocalNotificationService>();
@@ -103,6 +104,17 @@ public static class MauiProgram
 		Routing.RegisterRoute(StoryTime.Core.ViewModels.Routes.ContentFilters, typeof(ContentFiltersPage));
 
 		return builder.Build();
+	}
+
+	/// <summary>Premium: one on-device, one-off StoreKit purchase (no subscription, no server).
+	/// Core's StoreEntitlements and PremiumLedger read and record it; the observer starts at
+	/// launch through an IMauiInitializeService so transactions finished while the app was
+	/// closed are delivered.</summary>
+	static void RegisterEntitlements(IServiceCollection services)
+	{
+		services.AddSingleton<Platforms.iOS.StoreKitPremiumStore>();
+		services.AddSingleton<IPremiumStore>(sp => sp.GetRequiredService<Platforms.iOS.StoreKitPremiumStore>());
+		services.AddSingleton<IMauiInitializeService, Platforms.iOS.StoreKitObserverStarter>();
 	}
 
 	/// <summary>Story-engine swap point. Today: the deterministic TemplateStoryEngine, so the

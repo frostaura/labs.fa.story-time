@@ -14,6 +14,7 @@ public sealed class InMemorySettingsStore : ISettingsStore
     public long? CooldownAnchorMonotonicMs { get; set; }
     public DateTime? CooldownEndsUtc { get; set; }
     public bool DebugPremiumOverride { get; set; }
+    public bool PremiumPurchased { get; set; }
     public double MusicVolume { get; set; } = 0.3;
     public ContentFilterLevel ContentFilter { get; set; } = ContentFilterLevel.Gentle;
 }

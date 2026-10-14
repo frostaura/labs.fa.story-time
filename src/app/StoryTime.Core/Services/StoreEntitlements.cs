@@ -3,22 +3,24 @@ using StoryTime.Core.Abstractions;
 
 namespace StoryTime.Core.Services;
 
-/// <summary>Local entitlement stub until the M4 monetization decision. No billing exists.</summary>
-public sealed class StubEntitlements : IEntitlements
+/// <summary>Entitlements backed by the locally recorded App Store purchase
+/// (<see cref="ISettingsStore.PremiumPurchased"/>, written only by <see cref="PremiumLedger"/>).
+/// Everything premium-gated — 15-minute stories, the 15-minute wait between stories, music —
+/// follows from <see cref="IsPremium"/>.</summary>
+public sealed class StoreEntitlements : IEntitlements
 {
     private readonly ISettingsStore _settings;
     private readonly IClock _clock;
 
-    public StubEntitlements(ISettingsStore settings, IClock clock)
+    public StoreEntitlements(ISettingsStore settings, IClock clock)
     {
         _settings = settings;
         _clock = clock;
     }
 
-    /// <summary>No billing exists until M4. True only via the Debug-only testing override
-    /// flipped on the PremiumPage; everything premium-gated (15-min length, 15-min
-    /// cooldown) follows from this single property.</summary>
-    public bool IsPremium => _settings.DebugPremiumOverride;
+    /// <summary>True once Premium was bought or restored on this device. The Debug-only
+    /// testing override also unlocks it; the UI that sets it is compiled out of Release.</summary>
+    public bool IsPremium => _settings.PremiumPurchased || _settings.DebugPremiumOverride;
 
     public int TrialNightsLeft
     {

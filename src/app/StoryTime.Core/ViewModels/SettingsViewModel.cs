@@ -93,8 +93,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _haptics.Light();                // gate pass
         IsUnlocked = true;
         BadgeText = $"✓ {_biometrics.MechanismName.ToUpperInvariant()}";
-        TrialLine = _entitlements.IsPremium
-            ? "Premium · unlocked for testing"
+        TrialLine = _settings.PremiumPurchased ? "Premium"
+            : _entitlements.IsPremium ? "Premium · unlocked for testing"
             : $"Trial · {_entitlements.TrialNightsLeft} nights left";
 
         _profile = await _store.GetActiveProfileAsync();
@@ -130,8 +130,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void ToggleNotifications() => StoryReadyNotifications = !StoryReadyNotifications;
 
-    /// <summary>UPGRADE → routes to the Premium page (the coming-soon sheet it replaced
-    /// lives on as the page's honest price row).</summary>
+    /// <summary>UPGRADE → routes to the Premium page (Buy / Restore through the App Store).</summary>
     [RelayCommand]
     private Task ShowUpgradeAsync()
     {

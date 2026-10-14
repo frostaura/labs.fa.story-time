@@ -28,7 +28,7 @@ public sealed class LocalNotificationService : StoryTime.Core.Abstractions.INoti
             {
                 NotificationId = StoryReadyId,
                 Title = "Tonight's story is ready",
-                Description = $"“{storyTitle}” — woven for {childName}.",
+                Description = $"“{storyTitle}” is ready for {childName}.",
             };
             await LocalNotificationCenter.Current.Show(request);
         }

@@ -35,7 +35,7 @@ public sealed partial class StageRow : ObservableObject
     public string StateLabel => State switch
     {
         StageRowState.Waiting => "waiting",
-        StageRowState.Weaving => "weaving…",
+        StageRowState.Weaving => "making…",
         _ => "done",
     };
 }
@@ -77,10 +77,10 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
 
         Stages =
         [
-            new StageRow(WeaveStage.Outline, "Outline", "Outline"),
-            new StageRow(WeaveStage.Scenes, "Scenes · stitch · polish", "Scenes"),
-            new StageRow(WeaveStage.Poster, "Poster — 4 layers", "Poster"),
-            new StageRow(WeaveStage.Narration, "Narration — teaser first", "Narration"),
+            new StageRow(WeaveStage.Outline, "Planning the story", "Planning"),
+            new StageRow(WeaveStage.Scenes, "Writing", "Writing"),
+            new StageRow(WeaveStage.Poster, "Drawing the picture", "Picture"),
+            new StageRow(WeaveStage.Narration, "Recording the voice — teaser first", "Voice"),
         ];
 
         // Singleton lifetime — subscribe once, never unsubscribe.
@@ -168,10 +168,10 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     public double ProgressFraction => Percent / 100.0;
 
     /// <summary>The old giant percentage, demoted to an eyebrow next to the progress bar.</summary>
-    public string EyebrowText => IsFailed ? "STORYTIME" : IsDone ? "STORY READY" : $"WEAVING · {Percent}%";
+    public string EyebrowText => IsFailed ? "STORYTIME" : IsDone ? "STORY READY" : $"MAKING · {Percent}%";
 
     [ObservableProperty]
-    private string _headline = "Weaving the story…";
+    private string _headline = "Making the story…";
 
     [ObservableProperty]
     private string _subText = string.Empty;
@@ -194,7 +194,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
 
     /// <summary>Ghost-button copy: reassures mid-weave (per the mockup-spec
     /// reinterpretation), plain close once the weave has finished.</summary>
-    public string CloseLabel => IsDone || IsFailed ? "↓ close" : "Close this — we'll keep weaving";
+    public string CloseLabel => IsDone || IsFailed ? "↓ close" : "Close — your story keeps going";
 
     [ObservableProperty]
     private string _failureMessage = string.Empty;
@@ -216,7 +216,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     /// (verified 2026-07-31: 39 min backgrounded, unlimited assertion while the audio session
     /// lives). Conditional by design — the hum is a parent-switchable feature, and if it is
     /// off the weave suspends and resumes on return, so this must never promise a ping.</summary>
-    public static string BackgroundHint => "The loom hums while it works — leave it playing and it keeps weaving.";
+    public static string BackgroundHint => "A soft hum plays while your story is made. Leave it on and the story keeps going, even if you leave the app.";
 
     /// <summary>Home calls this right after starting a weave: reset to a fresh weaving
     /// state and open the sheet expanded. No page navigation happens any more.</summary>
@@ -238,10 +238,10 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         await EnsureChildNameAsync();
         if (!IsDone && !IsFailed)
         {
-            Headline = $"Weaving {_childName}'s story…";
+            Headline = $"Making {_childName}'s story…";
             SubText = BackgroundHint;
-            MiniTitle = $"Weaving {_childName}'s story…";
-            if (string.IsNullOrEmpty(MiniDetail)) MiniDetail = $"Outline · {DisplayFloorPercent}%";
+            MiniTitle = $"Making {_childName}'s story…";
+            if (string.IsNullOrEmpty(MiniDetail)) MiniDetail = $"Planning · {DisplayFloorPercent}%";
             if (Percent < DisplayFloorPercent) Percent = DisplayFloorPercent;
         }
         if (_weaveHost.CurrentProgress is { } current) Apply(current);
@@ -256,8 +256,8 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         var minutes = _entitlements.CooldownMinutes;
         var next = _cooldown.NextWeaveAtLocal;
         CooldownLine = next is not null
-            ? $"After this story the loom rests {minutes} minutes — next weave at {next:HH:mm}."
-            : $"After this story the loom rests {minutes} minutes.";
+            ? $"{minutes} minutes between stories — next story at {next:HH:mm}."
+            : $"{minutes} minutes between stories.";
     }
 
     [RelayCommand]
@@ -351,10 +351,10 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         _readyStoryId = 0;
         _lastTickedStage = null;
         foreach (var row in Stages) row.State = StageRowState.Waiting;
-        Headline = $"Weaving {_childName}'s story…";
+        Headline = $"Making {_childName}'s story…";
         SubText = BackgroundHint;
-        MiniTitle = $"Weaving {_childName}'s story…";
-        MiniDetail = $"Outline · {DisplayFloorPercent}%";
+        MiniTitle = $"Making {_childName}'s story…";
+        MiniDetail = $"Planning · {DisplayFloorPercent}%";
         RefreshCooldownLine();
     }
 
@@ -382,7 +382,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
             foreach (var row in Stages) row.State = StageRowState.Done;
         }
         var current = Stages.FirstOrDefault(r => r.State == StageRowState.Weaving);
-        MiniDetail = $"{current?.ShortName ?? "Weaving"} · {Percent}%";
+        MiniDetail = $"{current?.ShortName ?? "Making"} · {Percent}%";
         RefreshCooldownLine();
     }
 
@@ -406,9 +406,9 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
     {
         IsFailed = true;
         FailureMessage = message;
-        Headline = "The loom needs a moment.";
+        Headline = "This story didn't finish.";
         SubText = string.Empty;
-        MiniTitle = "The loom needs a moment.";
+        MiniTitle = "This story didn't finish.";
         MiniDetail = string.Empty;
     }
 
@@ -429,7 +429,7 @@ public sealed partial class WeaveSheetViewModel : ObservableObject
         }
         else if (!IsFailed)
         {
-            Headline = $"Weaving {_childName}'s story…";
+            Headline = $"Making {_childName}'s story…";
             MiniTitle = Headline;
         }
     }

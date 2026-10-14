@@ -95,7 +95,7 @@ public sealed partial class HomeViewModel : ObservableObject
     private bool _canWeave = true;
 
     [ObservableProperty]
-    private string _weaveButtonText = "Weave tonight's story";
+    private string _weaveButtonText = "Make tonight's story";
 
     [ObservableProperty]
     private StoryLength _selectedLength = StoryLength.Ten;
@@ -174,19 +174,19 @@ public sealed partial class HomeViewModel : ObservableObject
         if (_weaveHost.IsWeaving)
         {
             CanWeave = false;
-            WeaveButtonText = "Weaving tonight's story…";
+            WeaveButtonText = "Making tonight's story…";
             return;
         }
         var next = _cooldown.NextWeaveAtLocal;
         if (next is null)
         {
             CanWeave = true;
-            WeaveButtonText = "Weave tonight's story";
+            WeaveButtonText = "Make tonight's story";
         }
         else
         {
             CanWeave = false;
-            WeaveButtonText = $"The loom rests — next weave at {next:HH:mm}";
+            WeaveButtonText = $"Next story at {next:HH:mm}";
         }
     }
 
@@ -324,7 +324,7 @@ public sealed partial class HomeViewModel : ObservableObject
     {
         var interests = profile.Interests.Count > 0
             ? string.Join(" · ", profile.Interests.Take(3))
-            : "Gentle tales";
+            : "Gentle stories";
         return $"{interests} · {profile.Voice} · {(int)profile.Length} min";
     }
 }

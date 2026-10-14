@@ -11,7 +11,7 @@ public class CooldownServiceTests
     {
         var clock = new FakeClock();
         var settings = new InMemorySettingsStore();
-        var entitlements = new StubEntitlements(settings, clock);
+        var entitlements = new StoreEntitlements(settings, clock);
         return (new CooldownService(settings, clock, entitlements), clock, settings);
     }
 
@@ -106,13 +106,13 @@ public class CooldownServiceTests
     }
 }
 
-public class StubEntitlementsTests
+public class StoreEntitlementsTests
 {
-    private static (StubEntitlements Entitlements, FakeClock Clock, InMemorySettingsStore Settings) Make()
+    private static (StoreEntitlements Entitlements, FakeClock Clock, InMemorySettingsStore Settings) Make()
     {
         var clock = new FakeClock();
         var settings = new InMemorySettingsStore();
-        return (new StubEntitlements(settings, clock), clock, settings);
+        return (new StoreEntitlements(settings, clock), clock, settings);
     }
 
     [Fact]
