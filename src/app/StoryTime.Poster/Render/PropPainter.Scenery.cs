@@ -65,13 +65,13 @@ internal static partial class PropPainter
             }
             case FrameKit.Roof:
             {
-                // A window box on the near ledge: planter, trailing leaves and a few blooms.
+                // A window box on the near ledge: planter, trailing leaves and a few flowers.
                 using var box = new SKPath();
                 box.AddRoundRect(new SKRect(f.U(-0.6), f.V(0.3), f.U(0.62), f.V(0.0)), f.L(0.03), f.L(0.03));
                 var wood = k.Colors.Grade(new Oklch(0.5, 0.07, 45));
                 Coat(k, box, wood with { L = Math.Min(wood.L, 0.42) }, 0.8, 0.6);
                 Foliage(k, f, r, leafBase, -0.55, 0.55, 0.28, 0.62, 9);
-                Blooms(k, f, r, 5, -0.4, 0.5, 0.45, 0.7);
+                Flowerheads(k, f, r, 5, -0.4, 0.5, 0.45, 0.7);
                 return;
             }
             case FrameKit.Reef:
@@ -105,7 +105,7 @@ internal static partial class PropPainter
             case FrameKit.Meadow:
                 Foliage(k, f, r, leafBase, -0.7, 0.55, 0.0, 0.7, 16);
                 Blades(k, f, r, leafBase.Lighter(0.02), 9, -0.3, 0.6, 0.95);
-                Blooms(k, f, r, 5, -0.4, 0.45, 0.45, 0.85);
+                Flowerheads(k, f, r, 5, -0.4, 0.45, 0.45, 0.85);
                 break;
             case FrameKit.Forest:
                 Foliage(k, f, r, leafBase, -0.7, 0.5, 0.0, 0.62, 14);
@@ -136,12 +136,12 @@ internal static partial class PropPainter
                 using (var dune = Blob(f, (-0.8, -0.05), (-0.6, 0.3), (0.1, 0.3), (0.7, -0.05)))
                     Coat(k, dune, k.Colors.LandNear.Lighter(-0.03), 0.3, 0.6);
                 Rosette(k, f, r, leafBase.Lighter(0.04));
-                Blooms(k, f, r, 3, -0.2, 0.3, 0.42, 0.58);
+                Flowerheads(k, f, r, 3, -0.2, 0.3, 0.42, 0.58);
                 break;
             case FrameKit.Jungle:
                 Foliage(k, f, r, leafBase, -0.7, 0.55, 0.0, 0.66, 14);
                 Fronds(k, f, r, leafBase.Lighter(0.02), 4, 1.0);
-                Blooms(k, f, r, 3, -0.2, 0.4, 0.4, 0.7);
+                Flowerheads(k, f, r, 3, -0.2, 0.4, 0.4, 0.7);
                 break;
         }
     }
@@ -179,7 +179,7 @@ internal static partial class PropPainter
     }
 
     /// <summary>A few flowers on fine stems in the palette's soft accents.</summary>
-    private static void Blooms(K k, Frame f, Rng r, int n, double u0, double u1, double v0, double v1)
+    private static void Flowerheads(K k, Frame f, Rng r, int n, double u0, double u1, double v0, double v1)
     {
         var hues = new[] { k.Colors.Accent2, new Oklch(0.86, 0.04, 85), new Oklch(0.74, 0.09, 350), k.Colors.Accent };
         for (var i = 0; i < n; i++)

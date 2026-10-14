@@ -5,7 +5,7 @@ namespace StoryTime.Poster.Render;
 
 /// <summary>Warm light pools. Each light washes the ground and everything already painted
 /// on its own layer (SrcATop: it lights what is there, it never paints sky), then adds a
-/// soft bloom in the air around the source. This is the poster's focal glow — the value
+/// soft halo in the air around the source. This is the poster's focal glow — the value
 /// and temperature accent the eye lands on first.</summary>
 internal static class LightPainter
 {
