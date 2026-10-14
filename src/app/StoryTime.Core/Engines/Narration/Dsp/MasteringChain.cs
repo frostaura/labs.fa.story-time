@@ -35,13 +35,17 @@ public sealed record ReverbSettings(
 /// <summary>
 /// Every number of the SoothingNarrator mastering stage, as data — so a re-voiced chain (e.g.
 /// the founder's "loud whisper" bedtime character) is a new profile, not a code change.
-/// Order is fixed: pre-EQ bands → de-esser → post-EQ bands → compressor → reverb; then, outside
-/// the chain, loudness normalisation, the voice-only peak limiter, and the (never compressed)
-/// pad mix.
+/// Order is fixed: per-utterance <see cref="VoiceStages"/> (pitch/time, and whatever voice
+/// reshaping comes next) → pre-EQ bands → de-esser → post-EQ bands → compressor → reverb; then,
+/// outside the chain, loudness normalisation, the voice-only peak limiter, and the (never
+/// compressed) pad mix.
 /// </summary>
 public sealed record MasteringProfile
 {
     public required string Name { get; init; }
+    /// <summary>Per-utterance voice reshaping, in order, on each trimmed 48 kHz utterance before
+    /// it is laid on the timeline (see <see cref="IVoiceStage"/>). Empty: the voice as rendered.</summary>
+    public IReadOnlyList<IVoiceStage> VoiceStages { get; init; } = [];
     /// <summary>EQ before the de-esser.</summary>
     public required IReadOnlyList<EqBand> PreEq { get; init; }
     /// <summary>Null skips the de-esser.</summary>
@@ -88,8 +92,71 @@ public sealed record MasteringProfile
         ],
     };
 
-    /// <summary>The profile the app ships.</summary>
-    public static MasteringProfile Default => VoiceLab;
+    /// <summary>"E — warm mom": the founder's "loud whisper, like mom telling bedtime stories"
+    /// brief (2026-10-14) — lower and slower, warm low-mids, softened presence and air, a small
+    /// room, quieter delivery; deliberately no added noise or breath layer.
+    /// <code>
+    /// voice: pitch −1 st, tempo ×0.93 (resample + WSOLA)
+    /// HP 65 → +4 dB @200 (Q 0.9) → +1.5 dB @380 (Q 1) → −3 dB @2.5k (Q 1) → de-ess → HS −4 dB @5k → LP 9k
+    /// → comp −28 dB 2.5:1 10/220 ms knee 6 +2 → small room 0.35 s / 10 ms / 200–5k / −20 dB
+    /// → −19 LUFS, −3 dBTP; pad 28 LU under.
+    /// </code>
+    /// The voice-lab 9.7 kHz fizz notch is not carried over: the 5 kHz shelf plus the 9 kHz
+    /// low-pass already take ≈ 9 dB out at 9.7 kHz.</summary>
+    public static MasteringProfile WarmMomE { get; } = new()
+    {
+        Name = "E-warm-mom",
+        VoiceStages = [new PitchTimeStage(-1.0, 0.93)],
+        PreEq =
+        [
+            new EqBand(EqKind.HighPass, 65),
+            new EqBand(EqKind.Peaking, 200, 4.0, 0.9),
+            new EqBand(EqKind.Peaking, 380, 1.5, 1.0),
+            new EqBand(EqKind.Peaking, 2500, -3.0, 1.0),
+        ],
+        PostEq =
+        [
+            new EqBand(EqKind.HighShelf, 5000, -4.0),
+            new EqBand(EqKind.LowPass, 9000),
+        ],
+        Compressor = new CompressorSettings(ThresholdDb: -28.0, Ratio: 2.5, AttackMs: 10.0, ReleaseMs: 220.0),
+        Reverb = new ReverbSettings(WetDb: -20.0),
+        TargetLufs = -19.0,
+        PeakCeilingDbtp = -3.0,
+        PadBelowVoiceLu = 28.0,
+    };
+
+    /// <summary>"F": E, a touch lower and slower — pitch −1.5 st, tempo ×0.92.</summary>
+    public static MasteringProfile WarmMomF { get; } = WarmMomE with
+    {
+        Name = "F-lower-slower",
+        VoiceStages = [new PitchTimeStage(-1.5, 0.92)],
+    };
+
+    /// <summary>"G": E, darker and a little roomier — low-pass 7.5 kHz, room wet −19 dB.
+    /// The founder's pick of the E/F/G audition (2026-10-14): warmest and darkest.</summary>
+    public static MasteringProfile WarmMomG { get; } = WarmMomE with
+    {
+        Name = "G-warm-dark",
+        PostEq =
+        [
+            new EqBand(EqKind.HighShelf, 5000, -4.0),
+            new EqBand(EqKind.LowPass, 7500),
+        ],
+        Reverb = new ReverbSettings(WetDb: -19.0),
+    };
+
+    /// <summary>Every named profile, by name and by audition letter (case-insensitive).</summary>
+    public static IReadOnlyList<MasteringProfile> All { get; } = [WarmMomG, WarmMomE, WarmMomF, VoiceLab];
+
+    /// <summary>A named profile: its <see cref="Name"/> or its leading audition letter ("E", "F", "G").</summary>
+    public static MasteringProfile Named(string name) =>
+        All.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)
+            || (name.Length == 1 && p.Name.StartsWith(name + "-", StringComparison.OrdinalIgnoreCase)))
+        ?? throw new ArgumentException($"no mastering profile '{name}' (have: {string.Join(", ", All.Select(p => p.Name))})", nameof(name));
+
+    /// <summary>The profile the app ships — one line to switch (founder pick, 2026-10-14: G).</summary>
+    public static MasteringProfile Default => WarmMomG;
 }
 
 /// <summary>

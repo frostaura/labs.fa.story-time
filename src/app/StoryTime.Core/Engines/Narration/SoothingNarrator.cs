@@ -69,12 +69,13 @@ public sealed class VoiceRenderException(string message, Exception? inner = null
 /// <list type="number">
 /// <item>Each segment is synthesised alone, sanity-checked (RMS above −60 dBFS, within 4×
 /// its expected duration — otherwise the next voice), edge-trimmed at its native rate,
-/// resampled to 48 kHz and streamed to a file on disk (never the whole story in RAM).</item>
+/// resampled to 48 kHz, run through the profile's voice stages (pitch/time…) and streamed to a
+/// file on disk (never the whole story in RAM).</item>
 /// <item>The timeline is laid out from the measured pause map; sentence timestamps fall out.</item>
 /// <item>Analysis pass: the timeline runs through the <see cref="MasteringChain"/> with the
 /// dialogue gain applied, metered (BS.1770 + true peak).</item>
 /// <item>Render pass: the chain re-runs (it is deterministic) with the full performance
-/// gains, the loudness gain (profile: −18 LUFS, −2 dBTP ceiling) and the pad (28 LU under),
+/// gains, the loudness gain (default profile G: −19 LUFS, −3 dBTP ceiling) and the pad (28 LU under),
 /// faded in/out, TPDF-dithered and written. The voice + pad mix is never compressed.</item>
 /// </list>
 /// </summary>
@@ -349,6 +350,7 @@ public sealed class SoothingNarrator(IUtteranceSynthesizer synthesizer, Masterin
                     var trimmed = AudioShaper.TrimEdges(pcm.Samples, pcm.SampleRate);
                     if (trimmed.Length == 0) { last = new VoiceRenderException($"segment {k}: nothing above −50 dBFS"); continue; }
                     resampled = Resampler.Resample(trimmed, pcm.SampleRate, SampleRate);
+                    foreach (var stage in Profile.VoiceStages) resampled = stage.Process(resampled, SampleRate);
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested)
                 {

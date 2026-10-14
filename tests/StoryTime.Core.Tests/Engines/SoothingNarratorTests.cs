@@ -115,16 +115,35 @@ public sealed class SoothingNarratorTests : IDisposable
     }
 
     [Fact]
-    public async Task Loudness_IsMinus18_AndPeaksStayUnderMinus2()
+    public async Task Loudness_HitsTheShippedProfile_Minus19_AndPeaksStayUnderMinus3()
     {
+        Assert.Equal(-19.0, MasteringProfile.Default.TargetLufs);
+        Assert.Equal(-3.0, MasteringProfile.Default.PeakCeilingDbtp);
         var (result, _, _) = await Render(SentenceSplitter.SplitScript(Story).Take(5));   // excerpt: no ending ramp
-        Assert.InRange(result.VoiceLufs, -18.05, -17.95);
-        Assert.InRange(result.IntegratedLufs, -18.3, -17.7);
-        Assert.True(result.TruePeakDbtp <= -2.0 + 0.05, $"true peak {result.TruePeakDbtp:0.00} dBTP");
+        Assert.InRange(result.VoiceLufs, -19.05, -18.95);
+        Assert.InRange(result.IntegratedLufs, -19.3, -18.7);
+        Assert.True(result.TruePeakDbtp <= -3.0 + 0.05, $"true peak {result.TruePeakDbtp:0.00} dBTP");
         // Independent re-measure of the written file.
         var x = ReadWav(result.Manifest.AudioPath);
-        Assert.InRange(LoudnessMeter.Measure(x, 48000), -18.35, -17.65);
-        Assert.True(TruePeakMeter.MeasureDbtp(x) <= -1.9);
+        Assert.InRange(LoudnessMeter.Measure(x, 48000), -19.35, -18.65);
+        Assert.True(TruePeakMeter.MeasureDbtp(x) <= -2.9);
+    }
+
+    [Fact]
+    public async Task VoiceStages_SlowTheSpokenAudio_ButNotThePlannedPauses()
+    {
+        var script = SentenceSplitter.SplitScript(Story).Take(5);
+        var plan = SoothingPlanner.Plan(script);
+        var plain = await new SoothingNarrator(new FakeVoice(), MasteringProfile.Default with { VoiceStages = [] })
+            .RenderAsync(plan, Serena, Path.Combine(_dir, "plain.wav"), null, CancellationToken.None);
+        var shaped = await new SoothingNarrator(new FakeVoice(), MasteringProfile.Default)
+            .RenderAsync(plan, Serena, Path.Combine(_dir, "shaped.wav"), null, CancellationToken.None);
+        for (var k = 0; k < plain.Placements.Count; k++)
+        {
+            var a = plain.Placements[k].EndFrame - plain.Placements[k].StartFrame;
+            var b = shaped.Placements[k].EndFrame - shaped.Placements[k].StartFrame;
+            Assert.InRange(b, a / 0.93 - 2, a / 0.93 + 2);   // tempo ×0.93 on every utterance
+        }
     }
 
     [Fact]

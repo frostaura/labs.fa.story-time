@@ -100,6 +100,37 @@ public static class Resampler
         return sum;
     }
 
+    /// <summary>Resample by an arbitrary ratio (output length ≈ input × <paramref name="ratio"/>),
+    /// through the polyphase bank of the closest rational L/M with L ≤ 4096 — for a ratio such
+    /// as 2^(1/12) the approximation error is far below 0.01 cent.</summary>
+    public static float[] ResampleByRatio(ReadOnlySpan<float> x, double ratio)
+    {
+        if (!(ratio > 0) || double.IsInfinity(ratio)) throw new ArgumentOutOfRangeException(nameof(ratio));
+        if (x.Length == 0) return [];
+        var (up, down) = Rational(ratio, MaxPhases);
+        if (up == down) return x.ToArray();
+        return Polyphase(x, up, down, down, up);
+    }
+
+    /// <summary>Best continued-fraction convergent L/M of <paramref name="ratio"/> with L ≤ <paramref name="maxUp"/>.</summary>
+    internal static (int Up, int Down) Rational(double ratio, int maxUp)
+    {
+        long h0 = 0, h1 = 1, k0 = 1, k1 = 0;
+        var v = ratio;
+        for (var i = 0; i < 64; i++)
+        {
+            var a = (long)Math.Floor(v);
+            long h2 = a * h1 + h0, k2 = a * k1 + k0;
+            if (h2 > maxUp || k2 > 1 << 20) break;
+            (h0, h1, k0, k1) = (h1, h2, k1, k2);
+            var frac = v - a;
+            if (frac < 1e-12) break;
+            v = 1 / frac;
+        }
+        if (h1 == 0 || k1 == 0) throw new ArgumentOutOfRangeException(nameof(ratio), "ratio out of the resampler's range");
+        return ((int)h1, (int)k1);
+    }
+
     /// <summary>Resample mono samples from <paramref name="inRate"/> to <paramref name="outRate"/>.</summary>
     public static float[] Resample(ReadOnlySpan<float> x, int inRate, int outRate = TargetRate)
     {
