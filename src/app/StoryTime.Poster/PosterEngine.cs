@@ -210,6 +210,15 @@ public static class PosterEngine
                 [0f, 0.6f, 1f], SKShaderTileMode.Clamp),
         };
         c.DrawRect(0, 0, w, h, p);
+        // A quiet grade into the Hearth page (#201813) across the bottom 9%, so every
+        // poster, cool or warm, settles into the warm UI instead of sitting on it.
+        using var foot = new SKPaint
+        {
+            IsDither = true,
+            Shader = SKShader.CreateLinearGradient(new SKPoint(0, h * 0.91f), new SKPoint(0, h),
+                [new SKColor(0x20, 0x18, 0x13, 0), new SKColor(0x20, 0x18, 0x13, 70)], SKShaderTileMode.Clamp),
+        };
+        c.DrawRect(0, h * 0.91f, w, h * 0.09f, foot);
         return surface.Snapshot();
     }
 

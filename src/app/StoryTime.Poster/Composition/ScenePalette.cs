@@ -96,7 +96,7 @@ public sealed class ScenePalette
             case PosterMood.Cozy: warm = 0.35; chroma = 1.02; break;
             case PosterMood.Dreamy: haze = 0.6; chroma = 0.85; lift = 0.02; break;
             case PosterMood.Magical: chroma = 1.18; hueShift = 8; stars *= 1.15; break;
-            case PosterMood.Sleepy: lift = -0.025; chroma = 0.82; stars *= 0.8; haze = 0.45; break;
+            case PosterMood.Sleepy: lift = -0.04; chroma = 0.78; stars *= 0.55; haze = 0.45; break;
             case PosterMood.Curious: chroma = 1.08; lift = 0.01; break;
         }
         skyHue += hueShift;
@@ -122,11 +122,12 @@ public sealed class ScenePalette
             PosterScene.ReefAtDusk => 0.17,
             _ => 0.165,
         } + lift * 0.5;
-        var landNear = new Oklch(landL, landC * chroma, landHue);
+        // Cozy warms the land a touch toward the hearth.
+        var landNear = new Oklch(landL, landC * chroma + warm * 0.01, warm > 0 ? HueLerp(landHue, 45, 0.25) : landHue);
         var foliage = new Oklch(landL - 0.01, landC * chroma * 1.15, HueLerp(landHue, 150, 0.25));
 
         var snowy = scene == PosterScene.SnowyVillage;
-        var snow = new Oklch((spec.TimeOfDay == PosterTimeOfDay.Dusk ? 0.52 : 0.47) + lift, 0.028, HueLerp(skyHue, 250, 0.6));
+        var snow = new Oklch((spec.TimeOfDay == PosterTimeOfDay.Dusk ? 0.46 : 0.41) + lift, 0.03, HueLerp(skyHue, 265, 0.6));
 
         var waterTop = horizon with { L = hL * 0.88 + lift, C = horizon.C * 0.9 };
         var waterDeep = zenith with { L = zL * 0.72 + lift, C = zenith.C * 0.9 };

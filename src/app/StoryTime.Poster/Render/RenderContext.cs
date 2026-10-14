@@ -74,6 +74,8 @@ internal static class Paint
     public static void Silhouette(SKCanvas canvas, SKPath path, Oklch body, Oklch rim, double rimAlpha,
         float rimDx, float rimDy, double topLift = 0.02, double baseDrop = 0.025)
     {
+        using var simple = path.Simplify();
+        if (simple is not null) path = simple;   // one outline: no seams where parts overlap
         var b = path.Bounds;
         if (b.IsEmpty) return;
         using var p = new SKPaint
@@ -105,6 +107,8 @@ internal static class Paint
             var fine = Hash.Unit(x, y, 0xA5A5u) * 2 - 1;
             var v = blotch * 0.7 + fine * 0.3;
             var a = (byte)Math.Clamp(Math.Abs(v) * 255, 0, 255);
+            // Lightening specks at half strength: on the darkest ground they read as dust.
+            if (v > 0) a = (byte)(a / 2);
             var c = v > 0 ? a : (byte)0;
             var i = (y * GrainSize + x) * 4;
             span[i] = c; span[i + 1] = c; span[i + 2] = c; span[i + 3] = a;

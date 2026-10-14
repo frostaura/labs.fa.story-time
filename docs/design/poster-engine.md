@@ -326,3 +326,87 @@ Each round has three independent reviewers:
 
 Each reviews the contact sheets and parallax frames. The loop stops after two consecutive
 rounds with no MEDIUM-or-worse defect, or after five rounds.
+
+### Round 1 (first full build)
+
+Twelve HIGH defects were reported across the three lenses.
+
+- **Broken silhouettes**
+  - The cat drew only its tail, the deer only its antlers, and the camel only its tail.
+    Root cause: `SKPaint.GetFillPath` replaces its destination path. `AddStroke` now appends
+    instead, and a test asserts that solid silhouettes have a body.
+  - The whale read as a speech bubble; it is now a humpback.
+  - The owl had glowing eyes; it now has sleepy closed eyes and sits on a real trunk.
+  - The desert palms formed a cage; they now root together and fan apart.
+- **Placement**
+  - Animals stood on water and a tent sat on the lake; placement now checks for solid
+    ground.
+  - The train floated on a ridge; it now runs on mid-ground rails.
+  - The windmill was hidden by a tree; structures now clear default trees.
+- **Layering**
+  - Twinkling stars were drawn over mountains; ambient particles now draw per layer, in
+    both the engine and the app.
+  - The moonglade drifted off the moon; the moon now rides the water's layer.
+  - Shooting stars crossed in front of clouds; they now draw behind them.
+- **No focal subject.** Many posters had nothing to look at; the planner now supplies a
+  default subject per scene.
+- **JungleCanopy read as a broken crop.** Rebuilt as leaf fans, a framing trunk and a
+  crown line.
+
+MEDIUM fixes:
+- the moon is full or crescent only and stays clear of ridges;
+- quieter title band;
+- horizons lowered to 0.64–0.71;
+- taller near bands, so a vertical tilt never squeezes them;
+- framing pieces kept at least 40% in frame;
+- camp lanterns replace street lamps in wild scenes;
+- fewer lit windows;
+- EmberSky moved to plum, and LanternGlow given a cool sky for amber contrast;
+- opaque fan coral and larger fish;
+- lifted, tinted near ink.
+
+Reviewer suggestions not taken:
+- **Cut vertical travel to 25–40%.** Founder device evidence from 2026-07-31 says lower
+  travel reads as static. Taller near bands handle the squeeze instead.
+- **Reduce near travel to 4–5%.** Same reason.
+- **Add a title scrim.** The measured title-band contrast already passes (worst mean
+  5.1:1).
+
+### Round 2
+
+HIGH defects remained:
+- **Faceless creatures.** Every creature was a black cut-out. Each now has sleepy closed
+  eyes, a lighter chest or belly patch, and a rim light.
+- **Stick-figure deer.** Redrawn as a soft doe; small rounded antlers appear only sometimes.
+- **The reef scallop read as a sunken balloon.** Replaced by a branching gorgonian fan.
+  Reef chroma is capped, coral is dusty rose and kelp is sea green.
+- **The title band was still busy.** Now 75% fewer stars there, a brightness cap, and the
+  Milky Way fades by 90% in the band.
+- **The moon slid behind near-layer framing trunks.** Every full-height framer is now a
+  moon exclusion zone, padded by parallax travel. The jungle trunk moved to the focal
+  side.
+- **Subjects overlapped** (otter over sailboat, fish through turtle). A collision pass now
+  pushes subjects apart, inflated by their layers' travel difference, and re-seats them on
+  solid ground.
+- **Stars showed through clouds.** Cloud lobes are unioned into one opaque outline with a
+  bowed underside, and twinkles avoid clouds.
+- **Grounded heroes left the frame at a vertical tilt extreme.** Vertical travel is now
+  0.6× horizontal in the app and the previews. This is a deliberate partial deviation from
+  "full travel on both axes": the founder's 2026-07-31 complaint was a *pinned* vertical
+  channel, and 0.6 keeps it clearly live.
+
+MEDIUM fixes:
+- a guaranteed small amber light on every poster above water;
+- darker timber houses and a darker snow field;
+- a cloud-kingdom value ladder that darkens toward the viewer;
+- an opaque castle with moonlit turret caps;
+- a warm grade into the Hearth page across the bottom 9%;
+- crescents open toward the sun at dusk and twilight;
+- earthshine disc removed;
+- multi-part silhouettes unioned so they show no seams;
+- lightening grain specks halved;
+- palms rooted behind the pool, and dune mid-ground;
+- ±3% horizon variation;
+- Sleepy and Cozy moods more visible;
+- a smaller cat;
+- a rounder cove island.

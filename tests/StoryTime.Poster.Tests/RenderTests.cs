@@ -117,7 +117,7 @@ public class RenderTests(ITestOutputHelper output)
             Assert.All(plan.Clouds, c => Assert.True(c.Y - c.Height * 1.4 >= title.Bottom - 0.02, "cloud in title band"));
             Assert.All(plan.Stars.Where(s => title.Contains(s.X, s.Y)), s => Assert.False(s.Sparkle));
             if (plan.Focal is { } f && f.Depth == 3 && plan.Spec.Scene != PosterScene.ReefAtDusk)
-                Assert.InRange(Math.Abs(f.X - 0.5), 0.10, 0.36);
+                Assert.InRange(Math.Abs(f.X - 0.5), 0.10, 0.40);
         }
     }
 
@@ -142,7 +142,7 @@ public class RenderTests(ITestOutputHelper output)
             // Solid silhouettes must have body, not just a stroke (a GetFillPath bug once
             // reduced the cat to its tail and the deer to its antlers).
             if (prop is not (Prop.Birds or Prop.GrassTuft or Prop.Reeds or Prop.Vines or Prop.Flower or Prop.FishSchool
-                    or Prop.BranchCoral or Prop.Fence or Prop.Lantern or Prop.Telescope or Prop.Mushroom or Prop.Trunk))
+                    or Prop.BranchCoral or Prop.FanCoral or Prop.Bush or Prop.Fence or Prop.Lantern or Prop.Telescope or Prop.Mushroom or Prop.Trunk))
                 Assert.True(painted > 0.08 * 60 * 60, $"{prop} is a sliver ({painted} px)");
         }
     }

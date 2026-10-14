@@ -58,7 +58,7 @@ internal static class SkyPainter
                     ? Oklab.Mix(hor, mid, Noise.SmoothStep(0, 0.45, t))
                     : Oklab.Mix(mid, zen, Noise.SmoothStep(0.45, 1.1, t));
                 var s = ny / 0.16;
-                g = Math.Min(0.25, c.HorizonGlowStrength * 0.3) * Math.Exp(-s * s);
+                g = Math.Min(0.12, c.HorizonGlowStrength * 0.15) * Math.Exp(-s * s);
             }
             else
             {
@@ -167,12 +167,15 @@ internal static class SkyPainter
         {
             // Bite: an offset disc; LitFromRight puts the shadow on the left.
             var d = 2 * r * (float)(1 - moon.Phase);
+            // The lit limb faces the sun: at dusk and twilight the sun is below the horizon,
+            // so the crescent opens downward toward it; at night it lies on its side.
+            var low = plan.Spec.TimeOfDay is PosterTimeOfDay.Dusk or PosterTimeOfDay.Twilight;
+            var dir = moon.LitFromRight ? -1f : 1f;
+            var (bx, by) = low ? (dir * 0.55f, -0.84f) : (dir, -0.04f);
             using var bite = new SKPath();
-            bite.AddCircle(cx + (moon.LitFromRight ? -d : d), cy - r * 0.08f, r * 1.02f);
+            bite.AddCircle(cx + bx * d, cy + by * d, r * 1.02f);
             lit = disc.Op(bite, SKPathOp.Difference) ?? new SKPath(disc);
-            // Earthshine: the unlit disc, barely there.
-            using var es = Paint.Fill(Paint.Sk(cream, 0.025));
-            canvas.DrawPath(disc, es);
+
         }
 
         using (lit)
@@ -299,7 +302,7 @@ internal static class SkyPainter
         if (ny > t.Bottom + 0.06) return 1;
         var vertical = Noise.SmoothStep(t.Bottom + 0.06, t.Bottom - 0.02, ny);
         var horizontal = Noise.SmoothStep(t.Left - 0.08, t.Left + 0.06, nx) * (1 - Noise.SmoothStep(t.Right - 0.06, t.Right + 0.08, nx));
-        return 1 - 0.6 * vertical * horizontal;
+        return 1 - 0.9 * vertical * horizontal;
     }
 
     private static void PaintAurora(SKCanvas canvas, PosterPlan plan, AuroraPlan au, PosterViewport vp)
@@ -356,8 +359,19 @@ internal static class SkyPainter
             var rad = h * (float)r.Range(0.4, 0.62);
             path.AddCircle(x, baseY - h * 0.75f, rad);
         }
+        // One outline (lobes unioned) so overlaps never build up opacity or show seams; the
+        // underside is a soft, slightly bowed curve, not a ruler line.
+        using var merged = path.Simplify() ?? new SKPath(path);
+        using var under = new SKPath();
+        under.MoveTo(cx - w, baseY - h * 0.1f);
+        under.QuadTo(cx, baseY + h * 0.22f, cx + w, baseY - h * 0.1f);
+        under.LineTo(cx + w, baseY - h * 3);
+        under.LineTo(cx - w, baseY - h * 3);
+        under.Close();
+        using var shape = merged.Op(under, SKPathOp.Intersect) ?? new SKPath(merged);
+        path.Reset();
+        path.AddPath(shape);
         canvas.Save();
-        canvas.ClipRect(new SKRect(0, 0, vp.Width, baseY + h * 0.08f));
         var lit = plan.Colors.CloudLit;
         var shade = plan.Colors.CloudShade;
         using var fill = new SKPaint
@@ -366,7 +380,7 @@ internal static class SkyPainter
             IsDither = true,
             MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(0.5f, h * 0.05f)),
             Shader = SKShader.CreateLinearGradient(new SKPoint(0, baseY - h * 1.4f), new SKPoint(0, baseY),
-                [Paint.Sk(lit, cloud.Alpha), Paint.Sk(Oklab.Mix(lit.ToOklab(), shade.ToOklab(), 0.6).ToOklch(), cloud.Alpha), Paint.Sk(shade, cloud.Alpha * 0.85)],
+                [Paint.Sk(lit), Paint.Sk(Oklab.Mix(lit.ToOklab(), shade.ToOklab(), 0.6).ToOklch()), Paint.Sk(shade)],
                 [0f, 0.55f, 1f], SKShaderTileMode.Clamp),
         };
         canvas.DrawPath(path, fill);

@@ -38,8 +38,16 @@ internal static class PropPainter
             : plan.Colors.Ground(Math.Min(1, tone + (isCreature ? 0.12 : 0.05)));
         if (plan.Colors.Snowy && !isCreature && p.Prop is not (Prop.House or Prop.Cabin or Prop.Fence))
             ink = plan.Colors.Ground(Math.Min(1, tone + 0.4)) with { L = plan.Colors.LandNear.L + 0.02 + (1 - tone) * 0.14 };
+        if (plan.Colors.Snowy && p.Prop is Prop.House or Prop.Cabin)
+            ink = plan.Colors.LandNear with { L = plan.Colors.LandNear.L + 0.05 + (1 - tone) * 0.08, H = ScenePalette.HueLerp(plan.Colors.LandNear.H, 40, 0.4) };
         if (plan.Underwater && p.Prop is Prop.BranchCoral or Prop.FanCoral or Prop.Kelp)
-            ink = ink with { H = ScenePalette.HueLerp(ink.H, p.Prop == Prop.Kelp ? 160 : 10, 0.35), C = ink.C + 0.015 };
+            ink = ink with
+            {
+                // Dusty rose corals and sea-green kelp, both quiet: no candy magenta on teal.
+                H = p.Prop == Prop.Kelp ? 165 : 18,
+                C = Math.Min(0.045, ink.C + 0.01),
+                L = ink.L + (p.Prop == Prop.Kelp ? -0.01 : 0.03),
+            };
 
         var x = vp.X(p.X);
         var y = vp.Y(p.Y);
@@ -133,6 +141,29 @@ internal static class PropPainter
             using var wp = Paint.Fill(Paint.Sk(k.Ink.Lighter(0.06), 0.8));
             k.C.DrawRoundRect(x, y, w, h, w * 0.18f, w * 0.18f, wp);
         }
+    }
+
+    /// <summary>A sleepy closed eye: a short cream arc (the owl taught the set that a face
+    /// is what makes a silhouette a character).</summary>
+    private static void SleepyEye(K k, float x, float y, float w)
+    {
+        using var lid = Paint.Stroke(Paint.Sk(ScenePalette.Cream, 0.6), Math.Max(0.7f, w * 0.28f));
+        k.C.DrawArc(new SKRect(x - w, y - w * 0.8f, x + w, y + w * 0.8f), 20, 140, false, lid);
+    }
+
+    /// <summary>A soft lighter patch (chest, belly) clipped to the body — one inner value step.</summary>
+    private static void Patch(K k, SKPath body, float cx, float cy, float rx, float ry)
+    {
+        k.C.Save();
+        k.C.ClipPath(body, SKClipOperation.Intersect, true);
+        using var p = new SKPaint
+        {
+            IsAntialias = true,
+            Color = Paint.Sk(k.Ink.Lighter(0.06), 0.9),
+            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(0.5f, rx * 0.25f)),
+        };
+        k.C.DrawOval(cx, cy, rx, ry, p);
+        k.C.Restore();
     }
 
     /// <summary>Appends the outline of a stroked path. (GetFillPath REPLACES its destination,
@@ -449,31 +480,29 @@ internal static class PropPainter
         k.Sil(outline, 0.04, 0);
     }
 
+    /// <summary>A gorgonian sea fan: a short stem splitting into many fine branches that
+    /// spread into a wide, lacy, irregular fan — unmistakably coral, never a balloon.</summary>
     private static void FanCoral(K k)
     {
         var (x, y, s, r) = (k.X, k.Y, k.S, k.R);
-        using var fan = new SKPath();
-        fan.MoveTo(x, y + s * 0.02f);
-        fan.CubicTo(x - s * 0.7f, y - s * 0.3f, x - s * 0.5f, y - s * 1.0f, x, y - s * 0.95f);
-        fan.CubicTo(x + s * 0.5f, y - s * 1.0f, x + s * 0.7f, y - s * 0.3f, x, y + s * 0.02f);
-        fan.Close();
-        k.Sil(fan, 0.03, 0.02);
-        using var veins = new SKPath();
-        for (var i = 0; i < 9; i++)
+        using var path = new SKPath();
+        void Branch(float bx, float by, float ang, float len, int depth, float width)
         {
-            var a = -MathF.PI / 2 + (i - 4) * 0.17f + (float)r.Jitter(0.04);
-            veins.MoveTo(x, y);
-            veins.QuadTo(x + MathF.Cos(a) * s * 0.4f, y + MathF.Sin(a) * s * 0.5f, x + MathF.Cos(a) * s * 0.55f, y + MathF.Sin(a) * s * 0.9f);
+            var ex = bx + MathF.Cos(ang) * len;
+            var ey = by + MathF.Sin(ang) * len;
+            using var seg = new SKPath();
+            seg.MoveTo(bx, by);
+            seg.QuadTo(bx + MathF.Cos(ang + 0.15f) * len * 0.5f, by + MathF.Sin(ang + 0.15f) * len * 0.5f, ex, ey);
+            using var st = Paint.Stroke(SKColors.White, Math.Max(0.7f, width));
+            AddStroke(path, seg, st);
+            if (depth == 0) return;
+            var spread = 0.32f + (float)r.Jitter(0.08);
+            Branch(ex, ey, ang - spread, len * 0.74f, depth - 1, width * 0.72f);
+            Branch(ex, ey, ang + spread, len * 0.74f, depth - 1, width * 0.72f);
+            if (depth >= 3 && r.Chance(0.5)) Branch(ex, ey, ang + (float)r.Jitter(0.1), len * 0.7f, depth - 2, width * 0.6f);
         }
-        // Lace: lighter veins over the opaque fan.
-        using var lace = Paint.Stroke(Paint.Sk(k.Ink.Lighter(0.06), 0.8), Math.Max(0.7f, s * 0.018f));
-        k.C.Save();
-        k.C.ClipPath(fan, SKClipOperation.Intersect, true);
-        k.C.DrawPath(veins, lace);
-        k.C.Restore();
-        // A short stem rooting it in the reef.
-        using var stem = Paint.Fill(Paint.Sk(k.Ink.Lighter(-0.02)));
-        k.C.DrawRect(x - s * 0.025f, y - s * 0.06f, s * 0.05f, s * 0.1f, stem);
+        Branch(x, y + s * 0.03f, -MathF.PI / 2 + (float)r.Jitter(0.1), s * 0.26f, 4, s * 0.05f);
+        k.Sil(path, 0.04, 0);
     }
 
     /// <summary>Variant 0/2: a fan of broad jungle leaves rising from the bottom edge
@@ -770,6 +799,7 @@ internal static class PropPainter
     {
         var (x, y, s, r) = (k.X, k.Y, k.S, k.R);
         using var path = new SKPath();
+        using var caps = new SKPath();
         var keepW = s * 0.42f;
         var keepH = s * 0.55f;
         path.AddRect(new SKRect(x - keepW / 2, y - keepH, x + keepW / 2, y + s * 0.03f));
@@ -781,24 +811,30 @@ internal static class PropPainter
         void Tower(float tx, float th, float tw)
         {
             path.AddRect(new SKRect(tx - tw / 2, y - th, tx + tw / 2, y + s * 0.03f));
-            path.MoveTo(tx - tw * 0.65f, y - th);
-            path.LineTo(tx, y - th - tw * 1.6f);
-            path.LineTo(tx + tw * 0.65f, y - th);
-            path.Close();
-            path.AddRect(new SKRect(tx - 0.6f, y - th - tw * 1.6f - s * 0.08f, tx + 0.6f, y - th - tw * 1.6f));
-            path.MoveTo(tx + 0.6f, y - th - tw * 1.6f - s * 0.08f);
-            path.LineTo(tx + s * 0.06f, y - th - tw * 1.6f - s * 0.065f);
-            path.LineTo(tx + 0.6f, y - th - tw * 1.6f - s * 0.05f);
-            path.Close();
+            caps.MoveTo(tx - tw * 0.65f, y - th + 1);
+            caps.LineTo(tx, y - th - tw * 1.6f);
+            caps.LineTo(tx + tw * 0.65f, y - th + 1);
+            caps.Close();
+            // Pennant on a slim pole.
+            caps.AddRect(new SKRect(tx - 0.6f, y - th - tw * 1.6f - s * 0.08f, tx + 0.6f, y - th - tw * 1.6f));
+            caps.MoveTo(tx + 0.6f, y - th - tw * 1.6f - s * 0.08f);
+            caps.LineTo(tx + s * 0.06f, y - th - tw * 1.6f - s * 0.065f);
+            caps.LineTo(tx + 0.6f, y - th - tw * 1.6f - s * 0.05f);
+            caps.Close();
         }
         Tower(x - keepW * 0.62f, s * 0.7f, s * 0.15f);
         Tower(x + keepW * 0.62f, s * 0.62f, s * 0.14f);
         Tower(x + (float)r.Jitter(0.05) * s, s * 0.9f, s * 0.12f);
         k.Sil(path, 0.03, 0.01);
+        // Turret caps catch the moon: a soft cream-tinted roof colour.
+        var capColor = Oklab.Mix(k.Ink.ToOklab(), ScenePalette.Cream.ToOklab(), 0.3).ToOklch();
+        Paint.Silhouette(k.C, caps, capColor, ScenePalette.Cream, 0.4, k.RimDx, k.RimDy, 0.03, 0.02);
         if (k.P.Lit)
         {
-            Window(k, x - keepW * 0.25f, y - keepH * 0.6f, s * 0.04f, s * 0.07f, true);
-            Window(k, x + keepW * 0.62f - s * 0.02f, y - s * 0.45f, s * 0.04f, s * 0.06f, r.Chance(0.7));
+            Window(k, x - keepW * 0.25f, y - keepH * 0.6f, s * 0.045f, s * 0.07f, true);
+            Window(k, x + keepW * 0.08f, y - keepH * 0.6f, s * 0.045f, s * 0.07f, r.Chance(0.6));
+            Window(k, x + keepW * 0.62f - s * 0.02f, y - s * 0.45f, s * 0.04f, s * 0.06f, true);
+            Window(k, x - keepW * 0.62f - s * 0.02f, y - s * 0.5f, s * 0.04f, s * 0.06f, r.Chance(0.5));
         }
     }
 
@@ -871,7 +907,7 @@ internal static class PropPainter
             {
                 IsAntialias = true,
                 Shader = SKShader.CreateLinearGradient(new SKPoint(0, y - s * 0.44f), new SKPoint(0, y),
-                    [Paint.Sk(k.Colors.Window.Lighter(-0.08)), Paint.Sk(k.Colors.Window.Lighter(0.04))], SKShaderTileMode.Clamp),
+                    [Paint.Sk(k.Colors.Window.Lighter(-0.2).ScaleC(0.7)), Paint.Sk(k.Colors.Window.Lighter(-0.03))], SKShaderTileMode.Clamp),
             };
             k.C.DrawPath(door, dp);
         }
@@ -1189,6 +1225,8 @@ internal static class PropPainter
         path.CubicTo(cx - s * 0.52f, cy - s * 0.50f, cx - s * 0.54f, cy - s * 0.16f, cx - s * 0.16f, cy - s * 0.10f);
         path.Close();
         k.Sil(path);
+        Patch(k, path, cx + s * 0.1f, cy - s * 0.42f, s * 0.08f, s * 0.17f);
+        SleepyEye(k, hx + s * 0.07f, hy - s * 0.02f, s * 0.035f);
     }
 
     /// <summary>A fox curled asleep: a soft oval, the tail wrapped around the nose, two
@@ -1222,6 +1260,7 @@ internal static class PropPainter
         Paint.Silhouette(k.C, tail, k.Ink.Lighter(0.02), k.RimColor, k.RimAlpha, k.RimDx, k.RimDy);
         using var tip = Paint.Fill(Paint.Sk(k.Ink.Lighter(0.1), 0.9));
         k.C.DrawCircle(cx + s * 0.43f, cy - s * 0.04f, s * 0.04f, tip);
+        SleepyEye(k, hx + s * 0.06f, hy - s * 0.01f, s * 0.035f);
     }
 
     private static void Rabbit(K k)
@@ -1248,6 +1287,10 @@ internal static class PropPainter
         path.AddCircle(cx - s * 0.315f, cy - s * 0.115f, s * 0.075f);
         path.AddOval(new SKRect(cx + s * 0.06f, cy - s * 0.05f, cx + s * 0.22f, cy));
         k.Sil(path);
+        Patch(k, path, cx + s * 0.04f, cy - s * 0.3f, s * 0.1f, s * 0.16f);
+        SleepyEye(k, hx + s * 0.06f, hy - s * 0.01f, s * 0.03f);
+        using var tail = Paint.Fill(Paint.Sk(k.Ink.Lighter(0.1), 0.9));
+        k.C.DrawCircle(cx - s * 0.33f, cy - s * 0.12f, s * 0.05f, tail);
     }
 
     /// <summary>An owl on a branch that reaches in from the frame edge.</summary>
@@ -1297,54 +1340,61 @@ internal static class PropPainter
         k.C.DrawOval(cx, cy - s * 0.25f, s * 0.15f, s * 0.2f, belly);
     }
 
+    /// <summary>A gentle doe (antlers only sometimes, small and rounded): a soft rounded
+    /// torso, a curved neck, big ears, tapered legs with a hint of knee, a sleepy eye.</summary>
     private static void Deer(K k)
     {
-        var (cx, cy, s) = (k.X, k.Y, k.S);
-        Shadow(k, s * 0.42f, -s * 0.02f);
+        var (cx, cy, s, r) = (k.X, k.Y, k.S, k.R);
+        Shadow(k, s * 0.4f, -s * 0.02f);
         using var path = new SKPath();
-        var legTop = cy - s * 0.42f;
-        using (var legs = new SKPath())
+        // Legs: tapered quads, front pair slightly forward.
+        void Leg(float top, float foot, float width)
         {
-            legs.MoveTo(cx - s * 0.30f, legTop); legs.LineTo(cx - s * 0.335f, cy);
-            legs.MoveTo(cx - s * 0.20f, legTop); legs.LineTo(cx - s * 0.165f, cy);
-            legs.MoveTo(cx + s * 0.18f, legTop); legs.LineTo(cx + s * 0.145f, cy);
-            legs.MoveTo(cx + s * 0.28f, legTop); legs.LineTo(cx + s * 0.315f, cy);
-            using var st = Paint.Stroke(SKColors.White, s * 0.045f);
-            AddStroke(path, legs, st);
+            path.MoveTo(top - width, cy - s * 0.4f);
+            path.QuadTo(top - width * 0.8f, cy - s * 0.2f, foot - width * 0.45f, cy);
+            path.LineTo(foot + width * 0.45f, cy);
+            path.QuadTo(top + width * 0.9f, cy - s * 0.2f, top + width, cy - s * 0.4f);
+            path.Close();
         }
-        path.MoveTo(cx - s * 0.36f, cy - s * 0.40f);
-        path.CubicTo(cx - s * 0.42f, cy - s * 0.52f, cx - s * 0.30f, cy - s * 0.60f, cx - s * 0.12f, cy - s * 0.585f);
-        path.CubicTo(cx + s * 0.02f, cy - s * 0.575f, cx + s * 0.14f, cy - s * 0.565f, cx + s * 0.22f, cy - s * 0.60f);
-        path.CubicTo(cx + s * 0.30f, cy - s * 0.70f, cx + s * 0.335f, cy - s * 0.80f, cx + s * 0.36f, cy - s * 0.875f);
-        path.LineTo(cx + s * 0.475f, cy - s * 0.915f);
-        path.LineTo(cx + s * 0.475f, cy - s * 0.875f);
-        path.CubicTo(cx + s * 0.44f, cy - s * 0.845f, cx + s * 0.42f, cy - s * 0.85f, cx + s * 0.40f, cy - s * 0.835f);
-        path.CubicTo(cx + s * 0.36f, cy - s * 0.70f, cx + s * 0.33f, cy - s * 0.56f, cx + s * 0.30f, cy - s * 0.44f);
-        path.CubicTo(cx + s * 0.20f, cy - s * 0.36f, cx - s * 0.22f, cy - s * 0.36f, cx - s * 0.36f, cy - s * 0.40f);
+        Leg(cx - s * 0.26f, cx - s * 0.29f, s * 0.04f);
+        Leg(cx - s * 0.16f, cx - s * 0.12f, s * 0.035f);
+        Leg(cx + s * 0.16f, cx + s * 0.13f, s * 0.035f);
+        Leg(cx + s * 0.25f, cx + s * 0.29f, s * 0.04f);
+        // Torso: a soft bean.
+        path.AddOval(new SKRect(cx - s * 0.36f, cy - s * 0.66f, cx + s * 0.34f, cy - s * 0.36f));
+        // Neck rising forward to the head.
+        path.MoveTo(cx + s * 0.16f, cy - s * 0.6f);
+        path.QuadTo(cx + s * 0.26f, cy - s * 0.78f, cx + s * 0.33f, cy - s * 0.86f);
+        path.LineTo(cx + s * 0.43f, cy - s * 0.8f);
+        path.QuadTo(cx + s * 0.38f, cy - s * 0.66f, cx + s * 0.32f, cy - s * 0.5f);
         path.Close();
-        using (var antlers = new SKPath())
+        // Head: a soft teardrop pointing forward.
+        var hx = cx + s * 0.4f;
+        var hy = cy - s * 0.86f;
+        path.MoveTo(hx - s * 0.08f, hy - s * 0.06f);
+        path.CubicTo(hx + s * 0.02f, hy - s * 0.1f, hx + s * 0.14f, hy - s * 0.02f, hx + s * 0.17f, hy + s * 0.03f);
+        path.QuadTo(hx + s * 0.15f, hy + s * 0.07f, hx + s * 0.08f, hy + s * 0.07f);
+        path.CubicTo(hx, hy + s * 0.08f, hx - s * 0.1f, hy + s * 0.04f, hx - s * 0.08f, hy - s * 0.06f);
+        path.Close();
+        // Big ears.
+        using (var ear = Leaf(hx - s * 0.03f, hy - s * 0.05f, hx - s * 0.16f, hy - s * 0.17f, s * 0.04f, s * 0.01f)) path.AddPath(ear);
+        using (var ear2 = Leaf(hx, hy - s * 0.06f, hx - s * 0.07f, hy - s * 0.2f, s * 0.035f, s * 0.01f)) path.AddPath(ear2);
+        // Tail tuft.
+        using (var tail = Leaf(cx - s * 0.34f, cy - s * 0.6f, cx - s * 0.42f, cy - s * 0.66f, s * 0.035f, 0)) path.AddPath(tail);
+        if (r.Chance(0.4))
         {
-            var ax = cx + s * 0.375f;
-            var ay = cy - s * 0.925f;
-            antlers.MoveTo(ax, ay);
-            antlers.CubicTo(ax - s * 0.04f, ay - s * 0.14f, ax - s * 0.10f, ay - s * 0.20f, ax - s * 0.145f, ay - s * 0.235f);
-            antlers.MoveTo(ax - s * 0.045f, ay - s * 0.125f); antlers.LineTo(ax + s * 0.02f, ay - s * 0.20f);
-            antlers.MoveTo(ax - s * 0.10f, ay - s * 0.19f); antlers.LineTo(ax - s * 0.075f, ay - s * 0.27f);
-            antlers.MoveTo(ax - s * 0.04f, ay + s * 0.01f);
-            antlers.CubicTo(ax - s * 0.10f, ay - s * 0.10f, ax - s * 0.17f, ay - s * 0.145f, ax - s * 0.22f, ay - s * 0.16f);
-            antlers.MoveTo(ax - s * 0.115f, ay - s * 0.095f); antlers.LineTo(ax - s * 0.10f, ay - s * 0.185f);
-            using var thin = Paint.Stroke(SKColors.White, s * 0.028f);
-            AddStroke(path, antlers, thin);
+            // Small rounded antlers: two short tines a side.
+            using var antlers = new SKPath();
+            antlers.MoveTo(hx - s * 0.02f, hy - s * 0.07f);
+            antlers.QuadTo(hx - s * 0.02f, hy - s * 0.18f, hx + s * 0.04f, hy - s * 0.24f);
+            antlers.MoveTo(hx - s * 0.015f, hy - s * 0.15f);
+            antlers.LineTo(hx - s * 0.08f, hy - s * 0.2f);
+            using var st = Paint.Stroke(SKColors.White, s * 0.025f);
+            AddStroke(path, antlers, st);
         }
-        path.MoveTo(cx + s * 0.33f, cy - s * 0.87f);
-        path.LineTo(cx + s * 0.24f, cy - s * 0.95f);
-        path.LineTo(cx + s * 0.325f, cy - s * 0.925f);
-        path.Close();
-        path.MoveTo(cx - s * 0.36f, cy - s * 0.50f);
-        path.QuadTo(cx - s * 0.45f, cy - s * 0.545f, cx - s * 0.435f, cy - s * 0.435f);
-        path.QuadTo(cx - s * 0.40f, cy - s * 0.455f, cx - s * 0.355f, cy - s * 0.43f);
-        path.Close();
         k.Sil(path);
+        Patch(k, path, cx - s * 0.02f, cy - s * 0.42f, s * 0.26f, s * 0.06f);
+        SleepyEye(k, hx + s * 0.05f, hy - s * 0.01f, s * 0.025f);
     }
 
     /// <summary>A bear cub sitting, looking up: round body, round head and ears.</summary>
@@ -1366,6 +1416,9 @@ internal static class PropPainter
         path.AddOval(new SKRect(cx - s * 0.32f, cy - s * 0.1f, cx - s * 0.08f, cy + s * 0.02f));
         path.AddOval(new SKRect(cx + s * 0.1f, cy - s * 0.1f, cx + s * 0.34f, cy + s * 0.02f));
         k.Sil(path);
+        Patch(k, path, cx, cy - s * 0.3f, s * 0.2f, s * 0.2f);
+        SleepyEye(k, hx - s * 0.06f, hy - s * 0.04f, s * 0.035f);
+        SleepyEye(k, hx + s * 0.1f, hy - s * 0.04f, s * 0.035f);
     }
 
     /// <summary>A cat sitting, seen from the side-back, tail curled round its paws.</summary>
@@ -1397,6 +1450,9 @@ internal static class PropPainter
             AddStroke(path, tail, st);
         }
         k.Sil(path);
+        Patch(k, path, cx - s * 0.02f, cy - s * 0.35f, s * 0.09f, s * 0.15f);
+        SleepyEye(k, hx - s * 0.065f, hy, s * 0.03f);
+        SleepyEye(k, hx + s * 0.065f, hy, s * 0.03f);
     }
 
     private static void Hedgehog(K k)
@@ -1419,6 +1475,7 @@ internal static class PropPainter
         k.Sil(path);
         using var nose = Paint.Fill(Paint.Sk(k.Ink.Lighter(-0.05)));
         k.C.DrawCircle(cx + s * 0.58f, cy - s * 0.08f, s * 0.035f, nose);
+        SleepyEye(k, cx + s * 0.38f, cy - s * 0.17f, s * 0.035f);
     }
 
     /// <summary>An otter floating on its back, paws on its chest, tail out.</summary>
@@ -1436,6 +1493,7 @@ internal static class PropPainter
         path.AddOval(new SKRect(cx + s * 0.06f, cy - s * 0.3f, cx + s * 0.2f, cy - s * 0.16f));
         Reflect(k, path, cy + s * 0.02f, 0.3);
         k.Sil(path);
+        SleepyEye(k, cx + s * 0.42f, cy - s * 0.19f, s * 0.03f);
         // Water ripples hugging the body.
         using var ripple = Paint.Fill(Paint.Sk(ScenePalette.Cream, 0.22));
         k.C.DrawRoundRect(cx - s * 0.6f, cy + s * 0.04f, s * 1.1f, Math.Max(0.8f, s * 0.018f), 2, 2, ripple);
@@ -1518,6 +1576,7 @@ internal static class PropPainter
             path.AddOval(new SKRect(cx - s * 0.36f, by - s * 0.08f, cx - s * 0.18f, by + s * 0.02f));
         }
         k.Sil(path);
+        SleepyEye(k, cx + s * 0.5f, by - s * 0.13f, s * 0.025f);
         // Shell plates: a few soft lighter patches.
         using var plate = Paint.Stroke(Paint.Sk(k.Ink.Lighter(0.06), 0.8), Math.Max(0.7f, s * 0.015f));
         k.C.DrawArc(new SKRect(cx - s * 0.22f, by - s * 0.32f, cx + s * 0.18f, by - s * 0.02f), 200, 140, false, plate);
@@ -1587,6 +1646,7 @@ internal static class PropPainter
             AddStroke(path, tail, st);
         }
         k.Sil(path);
+        SleepyEye(k, cx + s * 0.55f, cy - s * 0.855f, s * 0.022f);
     }
 
     /// <summary>A gentle long-neck dinosaur grazing at the treetops — big, slow, kind.</summary>
@@ -1618,6 +1678,8 @@ internal static class PropPainter
         path.QuadTo(cx - s * 0.65f, cy - s * 0.1f, cx - s * 0.75f, cy - s * 0.18f);
         path.Close();
         k.Sil(path);
+        Patch(k, path, cx - s * 0.05f, cy - s * 0.3f, s * 0.3f, s * 0.08f);
+        SleepyEye(k, cx + s * 0.63f, cy - s * 1.045f, s * 0.022f);
     }
 
     private static void Birds(K k)

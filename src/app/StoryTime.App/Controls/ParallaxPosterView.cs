@@ -260,10 +260,16 @@ public sealed class ParallaxPosterView : ContentView
         foreach (var (view, _) in _ambientViews) view.InvalidateSurface();
     }
 
+    /// <summary>Vertical travel relative to horizontal. Full vertical travel pushed grounded
+    /// heroes off the bottom edge at one extreme (critique round 2); 0.6 keeps the pitch
+    /// response clearly alive (the founder's 2026-07-31 complaint was a PINNED vertical
+    /// channel) while the foreground stays composed.</summary>
+    private const double VerticalFactor = 0.6;
+
     private void ApplyOffsets()
     {
         var x = TiltMotion.X;
-        var y = TiltMotion.Y;
+        var y = TiltMotion.Y * VerticalFactor;
         foreach (var (view, travel) in _layers)
         {
             view.TranslationX = Math.Clamp(x, -1, 1) * travel;

@@ -18,8 +18,8 @@ internal static class TerrainPainter
         {
             TerrainStyle.Sand => g with { L = g.L + 0.015, C = g.C * 0.9 + 0.008, H = ScenePalette.HueLerp(g.H, 55, 0.25) },
             TerrainStyle.Cloud => Oklab.Mix(c.CloudLit.ToOklab(), c.CloudShade.ToOklab(), 0.3 + band.Tone * 0.4).ToOklch()
-                with { L = Math.Max(c.CloudShade.L + 0.06, 0.5 - band.Tone * 0.1) },
-            TerrainStyle.Reef => g with { H = ScenePalette.HueLerp(g.H, 200, 0.4), C = g.C * 1.1 },
+                with { L = 0.53 - band.Tone * 0.2 },
+            TerrainStyle.Reef => g with { H = ScenePalette.HueLerp(g.H, 215, 0.4), C = Math.Min(0.035, g.C) },
             TerrainStyle.Canopy => Oklab.Mix(c.Foliage.ToOklab(), c.Haze.ToOklab(), (1 - band.Tone) * 0.7).ToOklch(),
             _ => g,
         };
