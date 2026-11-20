@@ -26,7 +26,7 @@
     <MtouchInterpreter>all,-StoryTime.Core</MtouchInterpreter>
   </PropertyGroup>
 
-  <!-- iCloud-Drive xattrs break codesign ("resource fork ... detritus not allowed") — trimix/guild-proven -->
+  <!-- iCloud-Drive xattrs break codesign ("resource fork ... detritus not allowed") — same workaround as labs.fa.trimix; harmless for the ~/src clone -->
   <Target Name="_StripBundleXattrsBeforeCodesign" BeforeTargets="_CodesignAppBundle">
     <Exec Command="xattr -cr &quot;$(OutDir)&quot;" ContinueOnError="true" />
   </Target>

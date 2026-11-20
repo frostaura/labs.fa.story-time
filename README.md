@@ -23,6 +23,13 @@ Text comes from Apple's on-device Foundation Models through `AppleFoundationStor
 
 ## Build, test, run
 
+The repository is [`frostaura/labs.fa.story-time`](https://github.com/frostaura/labs.fa.story-time) (formerly `fa.story-time`); the app lives on branch `feat/maui-standalone`. Clone it outside iCloud Drive:
+
+```sh
+gh repo clone frostaura/labs.fa.story-time ~/src/labs.fa.story-time
+cd ~/src/labs.fa.story-time && git checkout feat/maui-standalone
+```
+
 You need the user-local .NET 10 SDK under `~/.dotnet` with the `maui` and `ios` workloads, plus Xcode. Source the environment first. The system `dotnet` cannot build this repo.
 
 ```sh
