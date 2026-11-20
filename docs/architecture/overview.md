@@ -5,7 +5,7 @@
 ## Solution layout
 
 ```
-fa.story-time.slnx
+labs.fa.story-time.slnx
 src/
   shared/StoryTime.Contracts        # net10.0, zero deps. DTOs only: ChildProfile, StoryOutline,
                                     #   PosterSpec (contract v3), StoryRecord, StoryBible,

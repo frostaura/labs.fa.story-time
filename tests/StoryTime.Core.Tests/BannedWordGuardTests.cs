@@ -104,8 +104,8 @@ public sealed class BannedWordGuardTests
     private static string RepositoryRoot()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-            if (File.Exists(Path.Combine(dir.FullName, "fa.story-time.slnx")))
+            if (File.Exists(Path.Combine(dir.FullName, "labs.fa.story-time.slnx")))
                 return dir.FullName;
-        throw new InvalidOperationException("Repository root (fa.story-time.slnx) not found above " + AppContext.BaseDirectory);
+        throw new InvalidOperationException("Repository root (labs.fa.story-time.slnx) not found above " + AppContext.BaseDirectory);
     }
 }
